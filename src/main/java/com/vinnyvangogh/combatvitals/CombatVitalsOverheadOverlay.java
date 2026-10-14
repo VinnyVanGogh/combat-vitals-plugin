@@ -7,6 +7,7 @@ import java.awt.Graphics2D;
 import javax.inject.Inject;
 import net.runelite.api.Actor;
 import net.runelite.api.Point;
+import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -81,11 +82,12 @@ class CombatVitalsOverheadOverlay extends Overlay
 		}
 
 		final Actor actor = readout.getActor();
-		final Point location = actor.getCanvasTextLocation(graphics, text, zOffset(actor));
-		if (location == null)
+		final Point anchor = actor.getCanvasTextLocation(graphics, text, zOffset(actor));
+		if (anchor == null)
 		{
 			return;
 		}
+		final Point location = clearOfChat(graphics, actor, anchor);
 
 		final double fraction = HealthReadout.fraction(readout.getRatio(), readout.getScale(),
 			readout.getExactHealth(), readout.getMaxHealth());
@@ -134,6 +136,38 @@ class CombatVitalsOverheadOverlay extends Overlay
 
 		graphics.setColor(BAR_BORDER);
 		graphics.drawRect(x, y, width, height);
+	}
+
+	/**
+	 * Moves the readout below the actor's overhead chat while the chat is on
+	 * screen. The game draws chat at the actor's logical height, which is right
+	 * where the readout sits, and this overlay paints over it.
+	 *
+	 * Moving the readout rather than redrawing the chat above it: the game's own
+	 * text cannot be hidden, so a copy would leave the original peeking out on
+	 * both sides of the bar whenever the line is wider than the readout.
+	 */
+	private Point clearOfChat(Graphics2D graphics, Actor actor, Point location)
+	{
+		final String chat = actor.getOverheadText();
+		if (!OverheadChat.showing(chat, actor.getOverheadCycle()))
+		{
+			return location;
+		}
+
+		final Point chatAt = actor.getCanvasTextLocation(graphics, chat, Math.max(0, actor.getLogicalHeight()));
+		if (chatAt == null)
+		{
+			return location;
+		}
+
+		// Measured in screen space, so it holds at any zoom and model height.
+		final int chatBottom = chatAt.getY() + graphics.getFontMetrics(FontManager.getRunescapeBoldFont()).getDescent();
+		final int padding = config.overheadStyle() == OverheadStyle.BAR ? PAD_Y : 0;
+		final int readoutTop = location.getY() - graphics.getFontMetrics().getAscent() - padding;
+
+		final int shift = OverheadChat.shiftBelow(readoutTop, chatBottom);
+		return shift == 0 ? location : new Point(location.getX(), location.getY() + shift);
 	}
 
 	private Color gradient(double fraction)
