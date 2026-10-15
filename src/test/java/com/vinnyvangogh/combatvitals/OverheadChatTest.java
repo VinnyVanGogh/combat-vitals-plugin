@@ -1,12 +1,18 @@
 package com.vinnyvangogh.combatvitals;
 
+import java.awt.Rectangle;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 public class OverheadChatTest
 {
+	/** The readout's box: x 100..160, y 200..216. */
+	private static final Rectangle READOUT = new Rectangle(100, 200, 60, 16);
+	private static final int DESCENT = 3;
+
 	@Test
 	public void chatWithTimeLeftIsShowing()
 	{
@@ -31,24 +37,43 @@ public class OverheadChatTest
 	}
 
 	@Test
-	public void readoutOverlappingChatMovesBelowIt()
+	public void coveredChatIsDrawnJustAboveTheReadout()
 	{
-		// Chat bottom at 100, readout top at 90: down by 10 plus the gap.
-		assertEquals(10 + OverheadChat.GAP, OverheadChat.shiftBelow(90, 100));
+		// The game's line sits right on the readout.
+		final Rectangle chat = new Rectangle(90, 205, 80, 15);
+
+		final Integer baseline = OverheadChat.baselineAbove(READOUT, chat, DESCENT);
+
+		// The copy's bottom edge (baseline + descent) is GAP above the readout.
+		assertEquals(READOUT.y - OverheadChat.GAP - DESCENT, (int) baseline);
 	}
 
 	@Test
-	public void readoutAboveChatMovesBelowIt()
+	public void partlyCoveredChatIsStillRedrawn()
 	{
-		// Fully above the chat still puts the chat underneath the readout,
-		// where it reads as part of the readout. It belongs on top.
-		assertEquals(60 + OverheadChat.GAP, OverheadChat.shiftBelow(40, 100));
+		// One pixel row of overlap is enough to mangle the line.
+		final Rectangle chat = new Rectangle(90, 186, 80, 15);
+
+		assertEquals(READOUT.y - OverheadChat.GAP - DESCENT, (int) OverheadChat.baselineAbove(READOUT, chat, DESCENT));
 	}
 
 	@Test
-	public void readoutAlreadyBelowChatStaysPut()
+	public void chatClearOfTheReadoutIsLeftToTheGame()
 	{
-		assertEquals(0, OverheadChat.shiftBelow(100 + OverheadChat.GAP, 100));
-		assertEquals(0, OverheadChat.shiftBelow(150, 100));
+		// Above, below, or off to the side: the game's own line is readable,
+		// and a copy would show the same message twice.
+		assertNull(OverheadChat.baselineAbove(READOUT, new Rectangle(90, 150, 80, 15), DESCENT));
+		assertNull(OverheadChat.baselineAbove(READOUT, new Rectangle(90, 230, 80, 15), DESCENT));
+		assertNull(OverheadChat.baselineAbove(READOUT, new Rectangle(300, 205, 80, 15), DESCENT));
+	}
+
+	@Test
+	public void readoutPositionIsNeverChanged()
+	{
+		final Rectangle readout = new Rectangle(READOUT);
+
+		OverheadChat.baselineAbove(readout, new Rectangle(90, 205, 80, 15), DESCENT);
+
+		assertEquals(READOUT, readout);
 	}
 }

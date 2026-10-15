@@ -1,18 +1,21 @@
 package com.vinnyvangogh.combatvitals;
 
+import java.awt.Rectangle;
+
 /**
- * Keeps the overhead readout clear of the game's overhead chat.
+ * Keeps the actor's overhead chat readable over the overhead readout.
  *
  * The game draws an actor's chat line at the same height the readout uses,
- * and the overlay paints over it. The game's text cannot be moved, so the
- * readout steps down below the chat line for as long as the chat is showing.
+ * and the overlay paints over it. The game's text cannot be moved, so while
+ * the readout covers it, the overlay draws its own copy of the line just
+ * above the readout and the readout stays where it is.
  *
- * Pure: screen coordinates in, pixel shift out, so it is testable without a
+ * Pure: screen rectangles in, a baseline out, so it is testable without a
  * running game.
  */
 final class OverheadChat
 {
-	/** Pixels left between the bottom of the chat line and the readout. */
+	/** Pixels left between the bottom of the chat copy and the readout. */
 	static final int GAP = 2;
 
 	private OverheadChat()
@@ -32,14 +35,21 @@ final class OverheadChat
 	}
 
 	/**
-	 * @param readoutTop  screen y of the top edge of the readout, bar included
-	 * @param chatBottom  screen y of the bottom edge of the chat line
-	 * @return how many pixels to move the readout down so the chat sits fully
-	 *         above it, or 0 if it already does
+	 * @param readout the readout's box on screen, bar included; not modified
+	 * @param chat    the game's chat line's box on screen
+	 * @param descent the chat font's descent
+	 * @return the baseline to draw the chat copy at, or null when the readout
+	 *         does not cover the game's line and no copy should be drawn
 	 */
-	static int shiftBelow(int readoutTop, int chatBottom)
+	static Integer baselineAbove(Rectangle readout, Rectangle chat, int descent)
 	{
-		final int wanted = chatBottom + GAP;
-		return readoutTop < wanted ? wanted - readoutTop : 0;
+		// Only redraw when the line is actually covered: an uncovered line is
+		// already readable, and a copy beside it would show the message twice.
+		if (!readout.intersects(chat))
+		{
+			return null;
+		}
+
+		return readout.y - GAP - descent;
 	}
 }
