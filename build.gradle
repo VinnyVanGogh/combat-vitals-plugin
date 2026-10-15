@@ -18,7 +18,7 @@ repositories {
 // be reproducible; a floating dependency means a build that passed yesterday
 // can fail today for reasons nothing in this repo changed. Check
 // https://repo.runelite.net/net/runelite/client/maven-metadata.xml to bump.
-def runeLiteVersion = '1.12.37'
+def runeLiteVersion = '1.13.2'
 def pluginMainClass = 'com.vinnyvangogh.combatvitals.CombatVitalsPluginTest'
 
 dependencies {
