@@ -195,6 +195,21 @@ public interface CombatVitalsConfig extends Config
 		return 0;
 	}
 
+	@ConfigItem(
+		keyName = "hideGameHealthBar",
+		name = "Hide game health bar",
+		description =
+			"Hide the game's own green and red health bar over every player and NPC, yours included, "
+				+ "so it no longer jumps up when someone talks. Hitsplats and overhead chat stay. "
+				+ "Overrides Interface Styles' HD health bars while on, and gives them back when off.",
+		section = displaySection,
+		position = 12
+	)
+	default boolean hideGameHealthBar()
+	{
+		return false;
+	}
+
 
 	@ConfigItem(
 		keyName = "showOwnHealth",

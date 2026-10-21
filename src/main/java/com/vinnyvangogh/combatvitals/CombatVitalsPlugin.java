@@ -13,11 +13,14 @@ import net.runelite.api.NPCComposition;
 import net.runelite.api.ParamID;
 import net.runelite.api.Player;
 import net.runelite.api.Skill;
+import net.runelite.api.SpritePixels;
+import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.InteractingChanged;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.gameval.VarbitID;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.NPCManager;
@@ -54,6 +57,9 @@ public class CombatVitalsPlugin extends Plugin
 	private Client client;
 
 	@Inject
+	private ClientThread clientThread;
+
+	@Inject
 	private CombatVitalsConfig config;
 
 	@Inject
@@ -87,6 +93,9 @@ public class CombatVitalsPlugin extends Plugin
 	private HiscoreEndpoint hiscoreEndpoint = HiscoreEndpoint.NORMAL;
 	private Plugin stockPlugin;
 
+	/** Client thread only. Null until the plugin starts. */
+	private volatile NativeHealthBarHider<SpritePixels> healthBarHider;
+
 	@Provides
 	CombatVitalsConfig provideConfig(ConfigManager configManager)
 	{
@@ -103,6 +112,8 @@ public class CombatVitalsPlugin extends Plugin
 			.filter(p -> STOCK_PLUGIN_NAME.equals(p.getName()))
 			.findFirst()
 			.orElse(null);
+
+		healthBarHider = new NativeHealthBarHider<>(client.getSpriteOverrides(), this::blankSprite);
 	}
 
 	@Override
@@ -110,6 +121,14 @@ public class CombatVitalsPlugin extends Plugin
 	{
 		overlayManager.remove(panelOverlay);
 		overlayManager.remove(overheadOverlay);
+
+		// shutDown runs off the client thread; the sprite map belongs to it.
+		final NativeHealthBarHider<SpritePixels> hider = healthBarHider;
+		healthBarHider = null;
+		if (hider != null)
+		{
+			clientThread.invoke(() -> restoreHealthBars(hider));
+		}
 
 		readout = null;
 		selfReadout = null;
@@ -160,6 +179,67 @@ public class CombatVitalsPlugin extends Plugin
 			// readout should too. The timeout below retires it.
 			interactionEnded = Instant.now();
 		}
+	}
+
+	/**
+	 * Every client tick rather than on config change, so that when Interface
+	 * Styles rewrites or clears the same sprite ids ours is back within a
+	 * frame, and so that turning the option off restores without a separate
+	 * listener.
+	 */
+	@Subscribe
+	public void onClientTick(ClientTick tick)
+	{
+		final NativeHealthBarHider<SpritePixels> hider = healthBarHider;
+		if (hider == null)
+		{
+			return;
+		}
+
+		if (config.hideGameHealthBar())
+		{
+			if (hider.apply())
+			{
+				client.resetHealthBarCaches();
+			}
+		}
+		else
+		{
+			restoreHealthBars(hider);
+		}
+	}
+
+	private void restoreHealthBars(NativeHealthBarHider<SpritePixels> hider)
+	{
+		if (hider.restore())
+		{
+			client.resetHealthBarCaches();
+		}
+	}
+
+	/**
+	 * A fully transparent sprite the size of the one it replaces. Keeping the
+	 * size keeps the client's overhead stacking unchanged, so head icons and
+	 * the like stay exactly where they were. Null while the sprite cannot be
+	 * read yet; {@link NativeHealthBarHider} retries next tick.
+	 */
+	private SpritePixels blankSprite(int spriteId)
+	{
+		final SpritePixels[] original = client.getSprites(client.getIndexSprites(), spriteId, 0);
+		if (original == null || original.length == 0 || original[0] == null)
+		{
+			return null;
+		}
+
+		final int width = original[0].getWidth();
+		final int height = original[0].getHeight();
+		if (width <= 0 || height <= 0)
+		{
+			return null;
+		}
+
+		// Pixel value 0 is transparent to the client's sprite rasteriser.
+		return client.createSpritePixels(new int[width * height], width, height);
 	}
 
 	@Subscribe
