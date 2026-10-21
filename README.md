@@ -195,7 +195,7 @@ the case that broke every earlier iteration of this overlay.
 | Player targets | On | Show the readout when fighting players |
 | Draw over players | On | Off keeps players in the panel only |
 | Look up player hitpoints | On | Hiscores lookup for the opponent's max hitpoints |
-| Show your own health | Off | Draw your health over your character while engaged. Exact, from the orb |
+| Show your own health | On | Draw your health over your character while engaged. Exact, from the orb |
 | Stat comparison panel | Off | Compare your combat stats to a player opponent's, in the panel |
 
 <p align="center">

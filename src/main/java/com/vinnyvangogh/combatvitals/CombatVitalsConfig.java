@@ -222,7 +222,8 @@ public interface CombatVitalsConfig extends Config
 	)
 	default boolean showOwnHealth()
 	{
-		return false;
+		// On by default: "Hide game health bar" hides your own bar too (Board, 2026-10-20).
+		return true;
 	}
 
 	@ConfigItem(
