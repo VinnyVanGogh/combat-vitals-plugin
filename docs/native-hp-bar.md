@@ -124,11 +124,10 @@ reasserts ours.
   search for `getSpriteOverrides` with `StandardHealth`). So, against the
   compliance skill's scale: **allowed, base-client precedent, no Hub
   precedent**.
-- **Open item for the Board:** the local `runelite-compliance` skill's notes
-  list "hiding the game's own health bar" as a Combat Vitals cut under
-  "unhiding/altering interface components". `BRIEF.md`'s cut list (Phase 2,
-  "Cut") does not contain it, and the rule as written is about unhiding. The
-  option ships default off so it can be pulled without touching anything else
-  if the Board keeps the earlier cut; worth naming in the Hub PR body.
+- **Earlier cut reversed (Board, 2026-10-20):** the `runelite-compliance`
+  skill listed "hiding the game's own health bar" as a Combat Vitals cut. It
+  had been cut as not possible; the sprite override makes it possible, so it
+  ships (default off) and the skill's note now says so. Name the Interface
+  Styles precedent in the Hub PR body.
 - No reflection: the hider is generic over the sprite type so its tests use
   plain objects rather than a `Proxy`.
