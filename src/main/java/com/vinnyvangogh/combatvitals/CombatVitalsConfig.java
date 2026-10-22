@@ -210,6 +210,22 @@ public interface CombatVitalsConfig extends Config
 		return false;
 	}
 
+	@ConfigItem(
+		keyName = "hideGameOverheadChat",
+		name = "Hide game chat under readout",
+		description =
+			"While the readout covers someone's overhead chat and the plugin redraws it above, hide the "
+				+ "game's own line so only one copy shows. Only for you and your opponent, only while "
+				+ "covered; the message keeps its full time on screen and goes back to the game otherwise.",
+		section = displaySection,
+		position = 13
+	)
+	default boolean hideGameOverheadChat()
+	{
+		// Off until checked in game (Board, 2026-10-22): it edits the actor's
+		// chat text, which other plugins can read.
+		return false;
+	}
 
 	@ConfigItem(
 		keyName = "showOwnHealth",

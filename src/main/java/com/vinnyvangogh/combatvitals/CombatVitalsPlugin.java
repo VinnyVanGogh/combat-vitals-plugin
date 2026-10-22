@@ -3,6 +3,8 @@ package com.vinnyvangogh.combatvitals;
 import com.google.inject.Provides;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Collections;
+import java.util.Set;
 import javax.inject.Inject;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -96,6 +98,12 @@ public class CombatVitalsPlugin extends Plugin
 	/** Client thread only. Null until the plugin starts. */
 	private volatile NativeHealthBarHider<SpritePixels> healthBarHider;
 
+	/** Client thread only, the overlay included. Null until the plugin starts. */
+	private volatile OverheadChatHolder<Actor> chatHolder;
+
+	/** Actors whose readout covered their chat line in the latest frame, published by the overlay. */
+	private volatile Set<Actor> chatCovered = Collections.emptySet();
+
 	@Provides
 	CombatVitalsConfig provideConfig(ConfigManager configManager)
 	{
@@ -114,6 +122,26 @@ public class CombatVitalsPlugin extends Plugin
 			.orElse(null);
 
 		healthBarHider = new NativeHealthBarHider<>(client.getSpriteOverrides(), this::blankSprite);
+		chatHolder = new OverheadChatHolder<>(new OverheadChatHolder.Access<Actor>()
+		{
+			@Override
+			public String text(Actor actor)
+			{
+				return actor.getOverheadText();
+			}
+
+			@Override
+			public int cyclesRemaining(Actor actor)
+			{
+				return actor.getOverheadCycle();
+			}
+
+			@Override
+			public void setText(Actor actor, String text)
+			{
+				actor.setOverheadText(text);
+			}
+		});
 	}
 
 	@Override
@@ -128,6 +156,15 @@ public class CombatVitalsPlugin extends Plugin
 		if (hider != null)
 		{
 			clientThread.invoke(() -> restoreHealthBars(hider));
+		}
+
+		// Every hidden chat line goes back to the game, with the time it has left.
+		final OverheadChatHolder<Actor> holder = chatHolder;
+		chatHolder = null;
+		chatCovered = Collections.emptySet();
+		if (holder != null)
+		{
+			clientThread.invoke(holder::releaseAll);
 		}
 
 		readout = null;
@@ -151,6 +188,12 @@ public class CombatVitalsPlugin extends Plugin
 				interactionEnded = null;
 				readout = null;
 				selfReadout = null;
+				chatCovered = Collections.emptySet();
+				final OverheadChatHolder<Actor> holder = chatHolder;
+				if (holder != null)
+				{
+					holder.releaseAll();
+				}
 				break;
 			default:
 				break;
@@ -190,6 +233,8 @@ public class CombatVitalsPlugin extends Plugin
 	@Subscribe
 	public void onClientTick(ClientTick tick)
 	{
+		updateChatHolds();
+
 		final NativeHealthBarHider<SpritePixels> hider = healthBarHider;
 		if (hider == null)
 		{
@@ -207,6 +252,53 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			restoreHealthBars(hider);
 		}
+	}
+
+	/**
+	 * Hides the game's chat line for each actor the overlay redrew it for last
+	 * frame, and gives it back to every other. Every client tick, so turning
+	 * the option off, or the readout moving clear, restores within a frame.
+	 */
+	private void updateChatHolds()
+	{
+		final OverheadChatHolder<Actor> holder = chatHolder;
+		if (holder == null)
+		{
+			return;
+		}
+
+		if (config.hideGameOverheadChat() && config.showOverhead())
+		{
+			holder.update(chatCovered);
+		}
+		else
+		{
+			holder.releaseAll();
+		}
+	}
+
+	/**
+	 * The actor's overhead chat as the overlay should draw it, including a line
+	 * this plugin has taken off the game. Client thread only.
+	 *
+	 * @return the text, or null when no chat is up
+	 */
+	String overheadChat(Actor actor)
+	{
+		final OverheadChatHolder<Actor> holder = chatHolder;
+		if (holder != null)
+		{
+			return holder.chat(actor);
+		}
+
+		final String text = actor.getOverheadText();
+		return OverheadChat.showing(text, actor.getOverheadCycle()) ? text : null;
+	}
+
+	/** Called by the overlay once per frame with the actors whose chat it redrew. */
+	void setChatCovered(Set<Actor> covered)
+	{
+		chatCovered = covered;
 	}
 
 	private void restoreHealthBars(NativeHealthBarHider<SpritePixels> hider)
