@@ -186,6 +186,8 @@ the case that broke every earlier iteration of this overlay.
 | Bar background | Opaque black | Fill behind the health bar. Lower the alpha to let the game's bar show through |
 | Overhead position | Top | Top, Middle or Bottom relative to the target |
 | Overhead offset | 0 | Extra height in pixels, ±200 |
+| Hide game health bar | Off | Hide the game's own health bar over everyone, yours included |
+| Hide game chat under readout | Off | While the readout covers someone's overhead chat and the plugin redraws it above, hide the game's own line so only one shows. You and your opponent only |
 
 ### Targets
 
@@ -195,7 +197,7 @@ the case that broke every earlier iteration of this overlay.
 | Player targets | On | Show the readout when fighting players |
 | Draw over players | On | Off keeps players in the panel only |
 | Look up player hitpoints | On | Hiscores lookup for the opponent's max hitpoints |
-| Show your own health | Off | Draw your health over your character while engaged. Exact, from the orb |
+| Show your own health | On | Draw your health over your character while engaged. Exact, from the orb |
 | Stat comparison panel | Off | Compare your combat stats to a player opponent's, in the panel |
 
 <p align="center">

@@ -2,11 +2,16 @@ package com.vinnyvangogh.combatvitals;
 
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
+import java.util.HashSet;
+import java.util.Set;
 import javax.inject.Inject;
 import net.runelite.api.Actor;
 import net.runelite.api.Point;
+import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -23,6 +28,9 @@ class CombatVitalsOverheadOverlay extends Overlay
 	private static final int PAD_Y = 2;
 
 	private static final Color BAR_BORDER = new Color(0, 0, 0, 200);
+
+	/** The game's default overhead chat colour. */
+	private static final Color CHAT_COLOUR = Color.YELLOW;
 
 	/**
 	 * Height cleared when lifting the text above the game's own health bar.
@@ -47,25 +55,35 @@ class CombatVitalsOverheadOverlay extends Overlay
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
-		if (!config.showOverhead())
+		// Rebuilt every frame and handed over whole: an actor missing from it
+		// gets its chat line back from the plugin on the next client tick.
+		final Set<Actor> covered = new HashSet<>();
+		try
 		{
+			if (!config.showOverhead())
+			{
+				return null;
+			}
+
+			final CombatVitalsPlugin.Readout opponent = plugin.getReadout();
+			if (opponent != null && (opponent.isNpc() || config.overheadForPlayers()))
+			{
+				draw(graphics, opponent, covered);
+			}
+
+			// Both sides in one visual language. Getting your own health from some
+			// other plugin would render it in a different style beside your
+			// opponent's, which is the main reason this belongs here.
+			draw(graphics, plugin.getSelfReadout(), covered);
 			return null;
 		}
-
-		final CombatVitalsPlugin.Readout opponent = plugin.getReadout();
-		if (opponent != null && (opponent.isNpc() || config.overheadForPlayers()))
+		finally
 		{
-			draw(graphics, opponent);
+			plugin.setChatCovered(covered);
 		}
-
-		// Both sides in one visual language. Getting your own health from some
-		// other plugin would render it in a different style beside your
-		// opponent's, which is the main reason this belongs here.
-		draw(graphics, plugin.getSelfReadout());
-		return null;
 	}
 
-	private void draw(Graphics2D graphics, CombatVitalsPlugin.Readout readout)
+	private void draw(Graphics2D graphics, CombatVitalsPlugin.Readout readout, Set<Actor> covered)
 	{
 		if (readout == null)
 		{
@@ -98,11 +116,31 @@ class CombatVitalsOverheadOverlay extends Overlay
 			// the two fight each other — red text on a green bar is the worst
 			// case and the reason this style exists.
 			OverlayUtil.renderTextLocation(graphics, location, text, Color.WHITE);
-			return;
+		}
+		else
+		{
+			final Color colour = config.colourGradient() ? gradient(fraction) : Color.WHITE;
+			OverlayUtil.renderTextLocation(graphics, location, text, colour);
 		}
 
-		final Color colour = config.colourGradient() ? gradient(fraction) : Color.WHITE;
-		OverlayUtil.renderTextLocation(graphics, location, text, colour);
+		if (drawChatAbove(graphics, actor, readoutBounds(graphics, location, text)))
+		{
+			covered.add(actor);
+		}
+	}
+
+	/** The readout's box on screen, the bar's padding included for the Bar style. */
+	private Rectangle readoutBounds(Graphics2D graphics, Point location, String text)
+	{
+		final FontMetrics metrics = graphics.getFontMetrics();
+		final int padX = config.overheadStyle() == OverheadStyle.BAR ? PAD_X : 0;
+		final int padY = config.overheadStyle() == OverheadStyle.BAR ? PAD_Y : 0;
+
+		return new Rectangle(
+			location.getX() - padX,
+			location.getY() - metrics.getAscent() - padY,
+			metrics.stringWidth(text) + padX * 2,
+			metrics.getAscent() + metrics.getDescent() + padY * 2);
 	}
 
 	/**
@@ -134,6 +172,66 @@ class CombatVitalsOverheadOverlay extends Overlay
 
 		graphics.setColor(BAR_BORDER);
 		graphics.drawRect(x, y, width, height);
+	}
+
+	/**
+	 * Redraws the actor's overhead chat just above the readout while the
+	 * readout covers the game's own line. The game draws chat at the actor's
+	 * logical height, right where the readout sits, and this overlay paints
+	 * over it; the game's text cannot be moved, so the readout keeps its place
+	 * and the chat gets a readable copy on top.
+	 *
+	 * Measured in screen space, so it holds at any zoom, position and model
+	 * height. When the readout does not cover the game's line (another
+	 * position, or the offset setting moves it clear) no copy is drawn, so the
+	 * message never shows twice.
+	 *
+	 * With "Hide game chat under readout" on, the plugin takes the game's line
+	 * off the actor while this copy is drawn; the text then comes from the
+	 * plugin, which still has it.
+	 *
+	 * @return true when the copy was drawn, meaning the game's line is covered
+	 */
+	private boolean drawChatAbove(Graphics2D graphics, Actor actor, Rectangle readout)
+	{
+		final String chat = plugin.overheadChat(actor);
+		if (chat == null)
+		{
+			return false;
+		}
+
+		// The game's overhead chat font. Set before measuring: the canvas text
+		// location centres on the width of the current font.
+		final Font previous = graphics.getFont();
+		graphics.setFont(FontManager.getRunescapeBoldFont());
+		try
+		{
+			final Point chatAt = actor.getCanvasTextLocation(graphics, chat, Math.max(0, actor.getLogicalHeight()));
+			if (chatAt == null)
+			{
+				return false;
+			}
+
+			final FontMetrics metrics = graphics.getFontMetrics();
+			final Rectangle line = new Rectangle(chatAt.getX(), chatAt.getY() - metrics.getAscent(),
+				metrics.stringWidth(chat), metrics.getAscent() + metrics.getDescent());
+
+			final Integer baseline = OverheadChat.baselineAbove(readout, line, metrics.getDescent());
+			if (baseline == null)
+			{
+				return false;
+			}
+
+			// Centred on the actor like the game's line, in its default yellow
+			// with the black shadow renderTextLocation adds. The API does not
+			// expose the chat's colour or effect, so those are not reproduced.
+			OverlayUtil.renderTextLocation(graphics, new Point(chatAt.getX(), baseline), chat, CHAT_COLOUR);
+			return true;
+		}
+		finally
+		{
+			graphics.setFont(previous);
+		}
 	}
 
 	private Color gradient(double fraction)
