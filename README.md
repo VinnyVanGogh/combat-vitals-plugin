@@ -204,7 +204,7 @@ the case that broke every earlier iteration of this overlay.
 | Overhead position | Top | Top, Middle or Bottom relative to the target |
 | Overhead offset | 0 | Extra height in pixels, ±200 |
 | Hide game health bar | Off | Hide the game's own health bar over everyone, yours included |
-| Hide game chat under readout | Off | While the readout covers someone's overhead chat and the plugin redraws it above, hide the game's own line so only one shows. You and your opponent only |
+| Hide game chat under readout | Off | While the readout or skilling badge covers someone's overhead chat and the plugin redraws it above, hide the game's own line so only one shows. You, your opponent and the NPC under the badge only |
 
 ### Targets
 

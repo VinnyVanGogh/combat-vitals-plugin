@@ -222,9 +222,10 @@ public interface CombatVitalsConfig extends Config
 		keyName = "hideGameOverheadChat",
 		name = "Hide game chat under readout",
 		description =
-			"While the readout covers someone's overhead chat and the plugin redraws it above, hide the "
-				+ "game's own line so only one copy shows. Only for you and your opponent, only while "
-				+ "covered; the message keeps its full time on screen and goes back to the game otherwise.",
+			"While the readout or skilling badge covers someone's overhead chat and the plugin redraws it "
+				+ "above, hide the game's own line so only one copy shows. Only for you, your opponent and "
+				+ "the skilling NPC under the badge, only while covered; the message keeps its full time on "
+				+ "screen and goes back to the game otherwise.",
 		section = displaySection,
 		position = 13
 	)

@@ -44,12 +44,13 @@ Code: `OverheadChatHolder.java` (state, unit tested in
 `shutDown`, `onGameStateChanged`) and `CombatVitalsOverheadOverlay.render` /
 `drawChatAbove`.
 
-1. Every frame the overlay draws the readout for the opponent and for you. For
-   each, `drawChatAbove` asks the plugin for the actor's chat (the held text if
-   we hold it, otherwise the game's live text) and draws the copy only if the
-   readout covers the game's line. Actors that got a copy go into a fresh set,
-   published to the plugin at the end of the frame, in a `finally` so a
-   failing draw still publishes.
+1. Every frame the overlay draws the readout for the opponent and for you, and
+   the skilling badge (PR #7) for the skilling NPC being worked. For each,
+   `drawChatAbove` asks the plugin for the actor's chat (the held text if we
+   hold it, otherwise the game's live text) and draws the copy only if the box
+   just drawn (readout or badge) covers the game's line. Actors that got a copy
+   go into a fresh set, published to the plugin at the end of the frame, in a
+   `finally` so a failing draw still publishes.
 2. Every client tick, with the option on (and *Show over target* on), the
    holder:
    - lets go of every held actor not in the latest set, writing the real text
@@ -60,15 +61,35 @@ Code: `OverheadChatHolder.java` (state, unit tested in
 3. Option off, overlay off, logout/hop, or plugin shutdown: everything held is
    written back (shutdown via `ClientThread.invoke`).
 
-Only two actors can ever be held: your tracked opponent and you. Bystanders,
-NPC dialogue on other NPCs and anyone the readout does not cover are never
-touched.
+Only three actors can ever be held: your tracked opponent, you, and the
+skilling NPC under the badge. Bystanders, NPC dialogue on other NPCs and
+anyone this plugin draws nothing over are never touched.
 
-The set follows the readout, and the readout follows `CombatState` (PR #4):
-a target gets a readout only if it can be fought (`Attack` option, combat
-level, or a hit you dealt it), and your own only while in combat. So a fishing
-spot, banker or pet never gets a chat move or a hidden line, and your own
-chat is only ever touched while your own readout is up.
+The set follows what the overlay draws. The readout follows `CombatState`
+(PR #4): a target gets a readout only if it can be fought (`Attack` option,
+combat level, or a hit you dealt it), and your own only while in combat. The
+badge follows `SkillingActions` (PR #7): only a non-attackable NPC whose menu
+names a skill. So a banker or a pet never gets a chat move or a hidden line,
+and your own chat is only ever touched while your own readout is up.
+
+### The skilling badge
+
+The badge sits at the same height as the readout and covers the NPC's chat
+line the same way, so it lifts the chat by the same rule: one rule, "whatever
+this plugin draws over an actor's head lifts that actor's chat above it and
+hides the game's line underneath; nothing drawn, nothing touched". The
+alternative, leaving the badge out, would put the badge over the NPC's line
+unreadably, which is the bug this work exists to fix. In practice a fishing
+spot never talks, so this matters for pickpocket targets with ambient lines.
+
+Overlap between the badge and a moved chat line: on the same actor it cannot
+happen, `OverheadChat.baselineAbove` places the copy `GAP` px above the box
+that was drawn (the badge's box, icon included). The badge and the opponent
+readout are mutually exclusive (`buildSkillingReadout` returns null while
+`CombatState.showTarget()`), so the only pair that can share a frame is your
+own readout (being hit while skilling) and the badge on the NPC. Those are two
+different actors at two different screen positions, exactly like two readouts
+on neighbouring actors, and this work does not try to separate them.
 
 ### Never dropping a message
 
@@ -129,3 +150,9 @@ reflection, no new network use. Compliance otherwise unchanged from
     Expect: no readout, the game's own line drawn as normal over your head,
     nothing moved or hidden. Then attack an NPC: your readout appears and the
     next message you type moves above it.
+11. With the skilling badge on, pickpocket an NPC that has ambient overhead
+    lines (for example a Man or Woman in Lumbridge, or any H.A.M. member).
+    Expect: the badge over the NPC, and when the NPC talks, one yellow line
+    above the badge, nothing showing through the badge, no overlap between the
+    two. Turn *Skilling badge* off: the badge goes and the game's own line
+    comes back over the NPC's head.

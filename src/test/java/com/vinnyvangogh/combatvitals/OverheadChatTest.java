@@ -68,6 +68,21 @@ public class OverheadChatTest
 	}
 
 	@Test
+	public void skillingBadgeLiftsChatClearOfItsWholeBox()
+	{
+		// The badge's box is taller than a text line (the skill icon) and wider
+		// (icon plus gap); the chat copy must clear the whole box, not the text.
+		final Rectangle badge = new Rectangle(90, 196, 90, 24);
+		final Rectangle chat = new Rectangle(100, 205, 60, 15);
+
+		final Integer baseline = OverheadChat.baselineAbove(badge, chat, DESCENT);
+
+		assertEquals(badge.y - OverheadChat.GAP - DESCENT, (int) baseline);
+		// The copy's bottom edge sits above the badge's top: no overlap.
+		assertTrue(baseline + DESCENT < badge.y);
+	}
+
+	@Test
 	public void readoutPositionIsNeverChanged()
 	{
 		final Rectangle readout = new Rectangle(READOUT);
