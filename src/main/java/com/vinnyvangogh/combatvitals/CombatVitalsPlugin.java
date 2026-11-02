@@ -10,10 +10,15 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
+import net.runelite.api.EquipmentInventorySlot;
+import net.runelite.api.GameState;
+import net.runelite.api.Item;
+import net.runelite.api.ItemContainer;
 import net.runelite.api.NPC;
 import net.runelite.api.NPCComposition;
 import net.runelite.api.ParamID;
 import net.runelite.api.Player;
+import net.runelite.api.Prayer;
 import net.runelite.api.Skill;
 import net.runelite.api.SpritePixels;
 import net.runelite.api.events.ClientTick;
@@ -21,8 +26,14 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.HitsplatApplied;
 import net.runelite.api.events.InteractingChanged;
+import net.runelite.api.events.MenuOptionClicked;
+import net.runelite.api.events.NpcDespawned;
+import net.runelite.api.events.StatChanged;
+import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.gameval.VarbitID;
+import net.runelite.client.Notifier;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -83,6 +94,9 @@ public class CombatVitalsPlugin extends Plugin
 	@Inject
 	private CombatVitalsOverheadOverlay overheadOverlay;
 
+	@Inject
+	private Notifier notifier;
+
 	/** Replaced wholesale each tick, never mutated, so the overlay thread sees a consistent view. */
 	@Getter
 	private volatile Readout readout;
@@ -91,6 +105,10 @@ public class CombatVitalsPlugin extends Plugin
 	@Getter
 	private volatile Readout selfReadout;
 
+	/** The skilling badge, for the fishing spot or other skilling NPC being worked. */
+	@Getter
+	private volatile SkillingReadout skillingReadout;
+
 	private Actor opponent;
 
 	/**
@@ -98,6 +116,21 @@ public class CombatVitalsPlugin extends Plugin
 	 * fishing spots, rocks, bankers and pets are NPCs too.
 	 */
 	private final CombatState combat = new CombatState();
+
+	/** The skilling NPC being worked, when the interaction is not a fight. */
+	private NPC skillingTarget;
+
+	private final SkillingState skilling = new SkillingState();
+	private final BoostTracker boosts = new BoostTracker();
+	private final BoostTimer boostTimer = new BoostTimer();
+
+	/** Boost levels are seeded from the client once, for a plugin enabled mid-session. */
+	private boolean boostsSeeded;
+
+	/** Ticks until the next boost drop, computed once per tick for the snapshot. */
+	private int ticksUntilDrop = -1;
+
+	private int lastSpecEnergy = -1;
 
 	private HiscoreEndpoint hiscoreEndpoint = HiscoreEndpoint.NORMAL;
 	private Plugin stockPlugin;
@@ -178,6 +211,7 @@ public class CombatVitalsPlugin extends Plugin
 		selfReadout = null;
 		opponent = null;
 		combat.clear();
+		clearSkilling();
 		stockPlugin = null;
 	}
 
@@ -188,6 +222,9 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			case LOGGED_IN:
 				hiscoreEndpoint = HiscoreEndpoint.fromWorldTypes(client.getWorldType());
+				// Logging in restarts the drain segment (OSRS wiki, "Temporary
+				// skill boost"): the one anchor available before a drop is seen.
+				boostTimer.anchorLogin(client.getTickCount());
 				break;
 			case LOGIN_SCREEN:
 			case HOPPING:
@@ -195,6 +232,7 @@ public class CombatVitalsPlugin extends Plugin
 				combat.clear();
 				readout = null;
 				selfReadout = null;
+				clearSkilling();
 				chatCovered = Collections.emptySet();
 				final OverheadChatHolder<Actor> holder = chatHolder;
 				if (holder != null)
@@ -205,6 +243,18 @@ public class CombatVitalsPlugin extends Plugin
 			default:
 				break;
 		}
+	}
+
+	private void clearSkilling()
+	{
+		skillingTarget = null;
+		skillingReadout = null;
+		skilling.clear();
+		boosts.clear();
+		boostTimer.clear();
+		boostsSeeded = false;
+		ticksUntilDrop = -1;
+		lastSpecEnergy = -1;
 	}
 
 	@Subscribe
@@ -223,13 +273,133 @@ public class CombatVitalsPlugin extends Plugin
 			// Held even when it cannot be fought, so that a later hitsplat can
 			// prove otherwise; the readouts below check attackability first.
 			opponent = target;
-			combat.engage(attackable(target));
+			final boolean fight = attackable(target);
+			combat.engage(fight);
+
+			// Not a fight: perhaps a fishing spot. The badge takes the NPC only
+			// when its menu names a skill; anything else drops the badge at once.
+			final Skill trained = fight ? null : skillingSkill(target);
+			if (trained != null)
+			{
+				skillingTarget = (NPC) target;
+				skilling.engage(trained);
+			}
+			else
+			{
+				skillingTarget = null;
+				skilling.release();
+			}
 		}
 		else
 		{
 			// Keep the opponent: the health bar lingers after combat and the
 			// readout should too. The timeout below retires it.
-			combat.disengage(Instant.now());
+			final Instant now = Instant.now();
+			combat.disengage(now);
+			skilling.disengage(now);
+		}
+	}
+
+	/** The skill a non-attackable NPC trains, from its menu, or null. */
+	private static Skill skillingSkill(Actor target)
+	{
+		if (!(target instanceof NPC))
+		{
+			return null;
+		}
+
+		final NPC npc = (NPC) target;
+		NPCComposition composition = npc.getTransformedComposition();
+		if (composition == null)
+		{
+			composition = npc.getComposition();
+		}
+		if (composition == null)
+		{
+			return null;
+		}
+
+		return SkillingActions.skill(composition.getActions(), composition.getName());
+	}
+
+	/**
+	 * The badge's boost tracking. Every skill is watched, not only the one on
+	 * the badge: the usual order is drink, then click the spot, and a drop in
+	 * any non-combat skill fixes the phase of the shared drain timer.
+	 */
+	@Subscribe
+	public void onStatChanged(StatChanged event)
+	{
+		final Skill skill = event.getSkill();
+		final int tick = client.getTickCount();
+		final int real = event.getLevel();
+		final int boosted = event.getBoostedLevel();
+
+		final BoostTracker.Change change = boosts.observe(skill, real, boosted);
+		if ((change == BoostTracker.Change.DROP || change == BoostTracker.Change.EXPIRED)
+			&& BoostTimer.onSkillingTimer(skill))
+		{
+			boostTimer.anchorDrop(tick);
+		}
+
+		final SkillingState.Warning warning = skilling.boostChanged(skill, change, tick);
+		if (warning != SkillingState.Warning.NONE)
+		{
+			final String message = warning == SkillingState.Warning.EXPIRED
+				? skill.getName() + " boost has worn off"
+				: skill.getName() + " boost dropped to +" + (boosted - real);
+			notifier.notify(config.skillingBoostNotify(), message);
+		}
+	}
+
+	/** Drink or Eat on an item: remembered so a boost that follows can be named. */
+	@Subscribe
+	public void onMenuOptionClicked(MenuOptionClicked event)
+	{
+		if (!event.isItemOp())
+		{
+			return;
+		}
+
+		final String option = event.getMenuOption();
+		if (!"Drink".equalsIgnoreCase(option) && !"Eat".equalsIgnoreCase(option))
+		{
+			return;
+		}
+
+		skilling.consumed(client.getItemDefinition(event.getItemId()).getName(), client.getTickCount());
+	}
+
+	/** Special attack energy falling while a skilling spec tool is wielded is that tool's special. */
+	@Subscribe
+	public void onVarbitChanged(VarbitChanged event)
+	{
+		if (event.getVarpId() != VarPlayerID.SA_ENERGY)
+		{
+			return;
+		}
+
+		final int energy = event.getValue();
+		if (lastSpecEnergy != -1 && energy < lastSpecEnergy)
+		{
+			final String weapon = weaponName();
+			final Skill toolSkill = SkillingTools.specSkill(weapon);
+			if (toolSkill != null)
+			{
+				skilling.specUsed(weapon, toolSkill, client.getTickCount());
+			}
+		}
+		lastSpecEnergy = energy;
+	}
+
+	/** Fishing spots move by despawning; the badge has nothing left to sit over. */
+	@Subscribe
+	public void onNpcDespawned(NpcDespawned event)
+	{
+		if (event.getNpc() == skillingTarget)
+		{
+			skillingTarget = null;
+			skilling.release();
 		}
 	}
 
@@ -376,8 +546,123 @@ public class CombatVitalsPlugin extends Plugin
 	public void onGameTick(GameTick tick)
 	{
 		expireOpponent();
+		expireSkillingTarget();
+		seedBoosts();
+		tickBoostTimer();
 		readout = buildReadout();
 		selfReadout = buildSelfReadout();
+		skillingReadout = buildSkillingReadout();
+	}
+
+	private void expireSkillingTarget()
+	{
+		if (skillingTarget == null)
+		{
+			return;
+		}
+
+		final Player self = client.getLocalPlayer();
+		final boolean stillOnTarget = self != null && self.getInteracting() == skillingTarget;
+
+		if (skilling.expire(Instant.now(), timeout(), stillOnTarget))
+		{
+			skillingTarget = null;
+		}
+	}
+
+	/**
+	 * A plugin enabled mid-session has seen no stat updates. Seed from the
+	 * client so the first real change is classified rather than swallowed.
+	 */
+	private void seedBoosts()
+	{
+		if (boostsSeeded || client.getGameState() != GameState.LOGGED_IN)
+		{
+			return;
+		}
+
+		for (Skill skill : Skill.values())
+		{
+			if (!boosts.isSeeded(skill))
+			{
+				boosts.seed(skill, client.getBoostedSkillLevel(skill));
+			}
+		}
+		lastSpecEnergy = client.getVarpValue(VarPlayerID.SA_ENERGY);
+		boostsSeeded = true;
+	}
+
+	/**
+	 * Advances the drain timer every tick, badge or no badge, so its phase
+	 * survives long stretches with nothing boosted. Preserve is read here, on
+	 * the client thread, the same way the Boosts plugin does.
+	 */
+	private void tickBoostTimer()
+	{
+		final int tick = client.getTickCount();
+		ticksUntilDrop = boostTimer.ticksUntilDrop(tick, client.isPrayerActive(Prayer.PRESERVE));
+		if (ticksUntilDrop <= 0 && boostTimer.isKnown())
+		{
+			boostTimer.roll(tick);
+			ticksUntilDrop = boostTimer.ticksUntilDrop(tick, client.isPrayerActive(Prayer.PRESERVE));
+		}
+	}
+
+	/**
+	 * The skilling badge. Only while the interaction is not a fight: a hit
+	 * landing on the held NPC promotes it to an opponent, and the health bar
+	 * takes over.
+	 */
+	private SkillingReadout buildSkillingReadout()
+	{
+		final Skill skill = skilling.skill();
+		final NPC target = skillingTarget;
+		if (!config.skillingEnabled() || skill == null || target == null || combat.showTarget())
+		{
+			return null;
+		}
+
+		final int tick = client.getTickCount();
+		final int real = client.getRealSkillLevel(skill);
+		final int boosted = client.getBoostedSkillLevel(skill);
+
+		int specPercent = -1;
+		if (config.skillingSpecEnergy() && SkillingTools.specSkill(weaponName()) == skill)
+		{
+			// SA_ENERGY is in tenths of a percent.
+			specPercent = client.getVarpValue(VarPlayerID.SA_ENERGY) / 10;
+		}
+
+		return new SkillingReadout(
+			target,
+			skill,
+			real,
+			boosted,
+			config.skillingBoostTimer() ? ticksUntilDrop : -1,
+			boostTimer.cycleLength(),
+			boostTimer.isConfirmed(),
+			specPercent,
+			config.skillingBoostSource() ? skilling.source() : null,
+			skilling.warning(tick),
+			System.currentTimeMillis());
+	}
+
+	/** The wielded weapon's name, or null with nothing in the slot. */
+	private String weaponName()
+	{
+		final ItemContainer worn = client.getItemContainer(InventoryID.WORN);
+		if (worn == null)
+		{
+			return null;
+		}
+
+		final Item weapon = worn.getItem(EquipmentInventorySlot.WEAPON.getSlotIdx());
+		if (weapon == null)
+		{
+			return null;
+		}
+
+		return client.getItemDefinition(weapon.getId()).getName();
 	}
 
 	private void expireOpponent()

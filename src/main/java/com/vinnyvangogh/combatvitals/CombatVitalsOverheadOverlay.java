@@ -6,11 +6,13 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
 import java.util.HashSet;
 import java.util.Set;
 import javax.inject.Inject;
 import net.runelite.api.Actor;
 import net.runelite.api.Point;
+import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
@@ -39,14 +41,20 @@ class CombatVitalsOverheadOverlay extends Overlay
 	 */
 	private static final int BAR_CLEARANCE = 34;
 
+	/** Space between the skill icon and the badge text. */
+	private static final int ICON_GAP = 3;
+
 	private final CombatVitalsPlugin plugin;
 	private final CombatVitalsConfig config;
+	private final SkillIconManager skillIconManager;
 
 	@Inject
-	CombatVitalsOverheadOverlay(CombatVitalsPlugin plugin, CombatVitalsConfig config)
+	CombatVitalsOverheadOverlay(CombatVitalsPlugin plugin, CombatVitalsConfig config,
+		SkillIconManager skillIconManager)
 	{
 		this.plugin = plugin;
 		this.config = config;
+		this.skillIconManager = skillIconManager;
 
 		setPosition(OverlayPosition.DYNAMIC);
 		setLayer(OverlayLayer.UNDER_WIDGETS);
@@ -75,11 +83,104 @@ class CombatVitalsOverheadOverlay extends Overlay
 			// other plugin would render it in a different style beside your
 			// opponent's, which is the main reason this belongs here.
 			draw(graphics, plugin.getSelfReadout(), covered);
+
+			if (config.skillingEnabled())
+			{
+				drawSkilling(graphics, plugin.getSkillingReadout(), covered);
+			}
 			return null;
 		}
 		finally
 		{
 			plugin.setChatCovered(covered);
+		}
+	}
+
+	/**
+	 * The skilling badge: the health bar's style, with the skill's icon in
+	 * place of a health number. While boosted the bar drains with the boost
+	 * timer, so the colour ramp means "time left" rather than "health left".
+	 * A drop or expiry paints the whole bar in the empty colour for a moment.
+	 *
+	 * The badge sits where the readout would, so it covers the skilling NPC's
+	 * own chat line the same way; it lifts the line above itself by the same
+	 * rule ({@link #drawChatAbove}), so the badge and the chat never overlap.
+	 */
+	private void drawSkilling(Graphics2D graphics, SkillingReadout readout, Set<Actor> covered)
+	{
+		if (readout == null)
+		{
+			return;
+		}
+
+		final int seconds = SkillingText.seconds(readout.getTicksUntilDrop(),
+			System.currentTimeMillis() - readout.getTickMillis());
+		final String text = SkillingText.text(readout.getSkill().getName(), readout.getReal(),
+			readout.getBoosted(), seconds, !readout.isTimerConfirmed(), readout.getSpecPercent(),
+			readout.getSource(), readout.getWarning());
+
+		final Actor actor = readout.getActor();
+		final Point centred = actor.getCanvasTextLocation(graphics, text, zOffset(actor));
+		if (centred == null)
+		{
+			return;
+		}
+
+		final BufferedImage icon = skillIconManager.getSkillImage(readout.getSkill(), true);
+		final int iconWidth = icon == null ? 0 : icon.getWidth() + ICON_GAP;
+		final int iconHeight = icon == null ? 0 : icon.getHeight();
+
+		// The game centres the text alone; shift it right by half the icon so
+		// the icon-plus-text block is what ends up centred over the actor.
+		final Point location = new Point(centred.getX() + iconWidth / 2, centred.getY());
+
+		final boolean warning = readout.getWarning() != SkillingState.Warning.NONE;
+		final double fraction = readout.isBoosted() && readout.getTicksUntilDrop() >= 0
+			&& readout.getCycleLength() > 0
+			? (double) readout.getTicksUntilDrop() / readout.getCycleLength()
+			: 1.0;
+		final Color colour = warning
+			? config.healthLowColour()
+			: config.colourGradient() ? gradient(fraction) : config.healthFullColour();
+
+		final FontMetrics metrics = graphics.getFontMetrics();
+		final int textWidth = metrics.stringWidth(text);
+		final int textHeight = metrics.getAscent() + metrics.getDescent();
+
+		final Rectangle bounds;
+		if (config.overheadStyle() == OverheadStyle.BAR)
+		{
+			final int x = location.getX() - iconWidth - PAD_X;
+			final int width = iconWidth + textWidth + PAD_X * 2;
+			final int height = Math.max(textHeight, iconHeight) + PAD_Y * 2;
+			final int y = location.getY() - metrics.getAscent() - PAD_Y - (height - textHeight - PAD_Y * 2) / 2;
+
+			fillBar(graphics, x, y, width, height, warning ? 1.0 : fraction, colour);
+			if (icon != null)
+			{
+				graphics.drawImage(icon, x + PAD_X, y + (height - iconHeight) / 2, null);
+			}
+			OverlayUtil.renderTextLocation(graphics, location, text, Color.WHITE);
+			bounds = new Rectangle(x, y, width, height);
+		}
+		else
+		{
+			final int textTop = location.getY() - metrics.getAscent();
+			bounds = new Rectangle(location.getX(), textTop, textWidth, textHeight);
+			if (icon != null)
+			{
+				final int iconX = location.getX() - iconWidth;
+				final int iconY = textTop + (metrics.getAscent() - iconHeight) / 2;
+				graphics.drawImage(icon, iconX, iconY, null);
+				bounds.add(new Rectangle(iconX, iconY, icon.getWidth(), iconHeight));
+			}
+			OverlayUtil.renderTextLocation(graphics, location, text,
+				config.colourGradient() || warning ? colour : Color.WHITE);
+		}
+
+		if (drawChatAbove(graphics, actor, bounds))
+		{
+			covered.add(actor);
 		}
 	}
 
@@ -158,6 +259,13 @@ class CombatVitalsOverheadOverlay extends Overlay
 		final int width = textWidth + PAD_X * 2;
 		final int height = metrics.getAscent() + metrics.getDescent() + PAD_Y * 2;
 
+		fillBar(graphics, x, y, width, height, fraction,
+			config.colourGradient() ? gradient(fraction) : config.healthFullColour());
+	}
+
+	/** Background, a fill proportional to {@code fraction} in {@code colour}, and a border. */
+	private void fillBar(Graphics2D graphics, int x, int y, int width, int height, double fraction, Color colour)
+	{
 		// Opaque by default: a translucent background lets the game's own health
 		// bar show through and the two read as one smeared bar.
 		graphics.setColor(config.barBackground());
@@ -166,7 +274,7 @@ class CombatVitalsOverheadOverlay extends Overlay
 		final int filled = (int) Math.round(width * Math.max(0, Math.min(1, fraction)));
 		if (filled > 0)
 		{
-			graphics.setColor(config.colourGradient() ? gradient(fraction) : config.healthFullColour());
+			graphics.setColor(colour);
 			graphics.fillRect(x, y, filled, height);
 		}
 
@@ -175,11 +283,11 @@ class CombatVitalsOverheadOverlay extends Overlay
 	}
 
 	/**
-	 * Redraws the actor's overhead chat just above the readout while the
-	 * readout covers the game's own line. The game draws chat at the actor's
-	 * logical height, right where the readout sits, and this overlay paints
-	 * over it; the game's text cannot be moved, so the readout keeps its place
-	 * and the chat gets a readable copy on top.
+	 * Redraws the actor's overhead chat just above the readout (or the skilling
+	 * badge) while it covers the game's own line. The game draws chat at the
+	 * actor's logical height, right where the readout sits, and this overlay
+	 * paints over it; the game's text cannot be moved, so the readout keeps its
+	 * place and the chat gets a readable copy on top.
 	 *
 	 * Measured in screen space, so it holds at any zoom, position and model
 	 * height. When the readout does not cover the game's line (another
@@ -190,6 +298,7 @@ class CombatVitalsOverheadOverlay extends Overlay
 	 * off the actor while this copy is drawn; the text then comes from the
 	 * plugin, which still has it.
 	 *
+	 * @param readout the box this overlay drew over the actor, badge or readout
 	 * @return true when the copy was drawn, meaning the game's line is covered
 	 */
 	private boolean drawChatAbove(Graphics2D graphics, Actor actor, Rectangle readout)
