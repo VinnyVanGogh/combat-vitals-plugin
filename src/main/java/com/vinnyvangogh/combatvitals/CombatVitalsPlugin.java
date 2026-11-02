@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import javax.inject.Inject;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +23,9 @@ import net.runelite.api.ParamID;
 import net.runelite.api.Player;
 import net.runelite.api.Prayer;
 import net.runelite.api.Skill;
+import net.runelite.api.SpritePixels;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.HitsplatApplied;
@@ -36,6 +39,7 @@ import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.Notifier;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.FishingSpot;
@@ -71,6 +75,9 @@ public class CombatVitalsPlugin extends Plugin
 
 	@Inject
 	private Client client;
+
+	@Inject
+	private ClientThread clientThread;
 
 	@Inject
 	private CombatVitalsConfig config;
@@ -138,6 +145,15 @@ public class CombatVitalsPlugin extends Plugin
 	private HiscoreEndpoint hiscoreEndpoint = HiscoreEndpoint.NORMAL;
 	private Plugin stockPlugin;
 
+	/** Client thread only. Null until the plugin starts. */
+	private volatile NativeHealthBarHider<SpritePixels> healthBarHider;
+
+	/** Client thread only, the overlay included. Null until the plugin starts. */
+	private volatile OverheadChatHolder<Actor> chatHolder;
+
+	/** Actors whose readout covered their chat line in the latest frame, published by the overlay. */
+	private volatile Set<Actor> chatCovered = Collections.emptySet();
+
 	@Provides
 	CombatVitalsConfig provideConfig(ConfigManager configManager)
 	{
@@ -154,6 +170,28 @@ public class CombatVitalsPlugin extends Plugin
 			.filter(p -> STOCK_PLUGIN_NAME.equals(p.getName()))
 			.findFirst()
 			.orElse(null);
+
+		healthBarHider = new NativeHealthBarHider<>(client.getSpriteOverrides(), this::blankSprite);
+		chatHolder = new OverheadChatHolder<>(new OverheadChatHolder.Access<Actor>()
+		{
+			@Override
+			public String text(Actor actor)
+			{
+				return actor.getOverheadText();
+			}
+
+			@Override
+			public int cyclesRemaining(Actor actor)
+			{
+				return actor.getOverheadCycle();
+			}
+
+			@Override
+			public void setText(Actor actor, String text)
+			{
+				actor.setOverheadText(text);
+			}
+		});
 	}
 
 	@Override
@@ -161,6 +199,23 @@ public class CombatVitalsPlugin extends Plugin
 	{
 		overlayManager.remove(panelOverlay);
 		overlayManager.remove(overheadOverlay);
+
+		// shutDown runs off the client thread; the sprite map belongs to it.
+		final NativeHealthBarHider<SpritePixels> hider = healthBarHider;
+		healthBarHider = null;
+		if (hider != null)
+		{
+			clientThread.invoke(() -> restoreHealthBars(hider));
+		}
+
+		// Every hidden chat line goes back to the game, with the time it has left.
+		final OverheadChatHolder<Actor> holder = chatHolder;
+		chatHolder = null;
+		chatCovered = Collections.emptySet();
+		if (holder != null)
+		{
+			clientThread.invoke(holder::releaseAll);
+		}
 
 		readout = null;
 		selfReadout = null;
@@ -188,6 +243,12 @@ public class CombatVitalsPlugin extends Plugin
 				readout = null;
 				selfReadout = null;
 				clearSkilling();
+				chatCovered = Collections.emptySet();
+				final OverheadChatHolder<Actor> holder = chatHolder;
+				if (holder != null)
+				{
+					holder.releaseAll();
+				}
 				break;
 			default:
 				break;
@@ -449,6 +510,121 @@ public class CombatVitalsPlugin extends Plugin
 
 		final boolean onTarget = !onMe && actor == opponent && event.getHitsplat().isMine();
 		combat.hit(onTarget, Instant.now());
+	}
+
+	/**
+	 * Every client tick rather than on config change, so that when Interface
+	 * Styles rewrites or clears the same sprite ids ours is back within a
+	 * frame, and so that turning the option off restores without a separate
+	 * listener.
+	 */
+	@Subscribe
+	public void onClientTick(ClientTick tick)
+	{
+		updateChatHolds();
+
+		final NativeHealthBarHider<SpritePixels> hider = healthBarHider;
+		if (hider == null)
+		{
+			return;
+		}
+
+		if (config.hideGameHealthBar())
+		{
+			if (hider.apply())
+			{
+				client.resetHealthBarCaches();
+			}
+		}
+		else
+		{
+			restoreHealthBars(hider);
+		}
+	}
+
+	/**
+	 * Hides the game's chat line for each actor the overlay redrew it for last
+	 * frame, and gives it back to every other. Every client tick, so turning
+	 * the option off, or the readout moving clear, restores within a frame.
+	 *
+	 * The set only ever holds actors the overlay drew over: the opponent, whose
+	 * readout only exists for a real fight ({@link CombatState#showTarget()}),
+	 * and you, under your own bar or the skilling badge. A skilling NPC is
+	 * never drawn over, so its chat is never moved or hidden.
+	 */
+	private void updateChatHolds()
+	{
+		final OverheadChatHolder<Actor> holder = chatHolder;
+		if (holder == null)
+		{
+			return;
+		}
+
+		if (config.hideGameOverheadChat() && config.showOverhead())
+		{
+			holder.update(chatCovered);
+		}
+		else
+		{
+			holder.releaseAll();
+		}
+	}
+
+	/**
+	 * The actor's overhead chat as the overlay should draw it, including a line
+	 * this plugin has taken off the game. Client thread only.
+	 *
+	 * @return the text, or null when no chat is up
+	 */
+	String overheadChat(Actor actor)
+	{
+		final OverheadChatHolder<Actor> holder = chatHolder;
+		if (holder != null)
+		{
+			return holder.chat(actor);
+		}
+
+		final String text = actor.getOverheadText();
+		return OverheadChat.showing(text, actor.getOverheadCycle()) ? text : null;
+	}
+
+	/** Called by the overlay once per frame with the actors whose chat it redrew. */
+	void setChatCovered(Set<Actor> covered)
+	{
+		chatCovered = covered;
+	}
+
+	private void restoreHealthBars(NativeHealthBarHider<SpritePixels> hider)
+	{
+		if (hider.restore())
+		{
+			client.resetHealthBarCaches();
+		}
+	}
+
+	/**
+	 * A fully transparent sprite the size of the one it replaces. Keeping the
+	 * size keeps the client's overhead stacking unchanged, so head icons and
+	 * the like stay exactly where they were. Null while the sprite cannot be
+	 * read yet; {@link NativeHealthBarHider} retries next tick.
+	 */
+	private SpritePixels blankSprite(int spriteId)
+	{
+		final SpritePixels[] original = client.getSprites(client.getIndexSprites(), spriteId, 0);
+		if (original == null || original.length == 0 || original[0] == null)
+		{
+			return null;
+		}
+
+		final int width = original[0].getWidth();
+		final int height = original[0].getHeight();
+		if (width <= 0 || height <= 0)
+		{
+			return null;
+		}
+
+		// Pixel value 0 is transparent to the client's sprite rasteriser.
+		return client.createSpritePixels(new int[width * height], width, height);
 	}
 
 	@Subscribe
