@@ -21,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Raised `Text above health bar` (`ABOVE_BAR`) vertical clearance from 18 px to 34 px so overhead text clears the native health bar (`6da65b6`).
 
 ### Fixed
+- Clicking a skilling NPC (fishing spot, rock, banker, shopkeeper, pet) no longer pops your own health bar or holds a stale opponent: a target now counts only if it is attackable (`Attack` menu option or a combat level), your own bar also shows for `opponentTimeout` after any hitsplat on you or dealt by you, and the opponent expires unless you are still interacting with that same actor (`CombatState`, `CombatStateTest`).
 - Reordered Display config section items so health gradient colour pickers sit directly below `Colour by health`, and shortened the `Overhead style` label to `Style` so it does not truncate in the config panel (`5688c60`).
 - Expired stale opponent references after the interaction timeout and skipped actors with negative health ratios so despawned NPCs are not sampled (`2980ee2`, `053a4b4`).
 - Added `--add-exports java.desktop/com.apple.eawt=ALL-UNNAMED` on macOS in the Gradle `run` task so the developer client starts on Java 11+ toolchains without `IllegalAccessError` (`5bae9e1`).
