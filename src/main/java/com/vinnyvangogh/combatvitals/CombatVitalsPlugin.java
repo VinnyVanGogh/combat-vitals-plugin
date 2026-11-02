@@ -3,25 +3,31 @@ package com.vinnyvangogh.combatvitals;
 import com.google.inject.Provides;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Collections;
+import java.util.List;
 import javax.inject.Inject;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
+import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.GameState;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
+import net.runelite.api.MenuAction;
 import net.runelite.api.NPC;
 import net.runelite.api.NPCComposition;
 import net.runelite.api.ParamID;
 import net.runelite.api.Player;
 import net.runelite.api.Prayer;
 import net.runelite.api.Skill;
+import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.HitsplatApplied;
 import net.runelite.api.events.InteractingChanged;
+import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.StatChanged;
@@ -32,6 +38,7 @@ import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.Notifier;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.game.FishingSpot;
 import net.runelite.client.game.NPCManager;
 import net.runelite.client.hiscore.HiscoreEndpoint;
 import net.runelite.client.hiscore.HiscoreManager;
@@ -97,7 +104,10 @@ public class CombatVitalsPlugin extends Plugin
 	@Getter
 	private volatile Readout selfReadout;
 
-	/** The skilling badge, for the fishing spot or other skilling NPC being worked. */
+	/**
+	 * The skilling badge, while a fishing spot or other skilling NPC is being
+	 * worked. Drawn over the local player, never over the NPC.
+	 */
 	@Getter
 	private volatile SkillingReadout skillingReadout;
 
@@ -113,6 +123,7 @@ public class CombatVitalsPlugin extends Plugin
 	private NPC skillingTarget;
 
 	private final SkillingState skilling = new SkillingState();
+	private final InventoryCatches inventoryCatches = new InventoryCatches();
 	private final BoostTracker boosts = new BoostTracker();
 	private final BoostTimer boostTimer = new BoostTimer();
 
@@ -188,6 +199,7 @@ public class CombatVitalsPlugin extends Plugin
 		skillingTarget = null;
 		skillingReadout = null;
 		skilling.clear();
+		inventoryCatches.clear();
 		boosts.clear();
 		boostTimer.clear();
 		boostsSeeded = false;
@@ -290,22 +302,95 @@ public class CombatVitalsPlugin extends Plugin
 		}
 	}
 
-	/** Drink or Eat on an item: remembered so a boost that follows can be named. */
+	/**
+	 * Drink or Eat on an item: remembered so a boost that follows can be
+	 * named. An option on an NPC (Net, Bait, Harpoon...): remembered so the
+	 * badge knows which method the spot is worked with. The event is read,
+	 * never changed.
+	 */
 	@Subscribe
 	public void onMenuOptionClicked(MenuOptionClicked event)
 	{
-		if (!event.isItemOp())
-		{
-			return;
-		}
-
 		final String option = event.getMenuOption();
-		if (!"Drink".equalsIgnoreCase(option) && !"Eat".equalsIgnoreCase(option))
+
+		if (event.isItemOp())
+		{
+			if ("Drink".equalsIgnoreCase(option) || "Eat".equalsIgnoreCase(option))
+			{
+				skilling.consumed(client.getItemDefinition(event.getItemId()).getName(), client.getTickCount());
+			}
+			return;
+		}
+
+		if (isNpcOption(event.getMenuAction()))
+		{
+			skilling.clicked(option);
+		}
+	}
+
+	private static boolean isNpcOption(MenuAction action)
+	{
+		if (action == null)
+		{
+			return false;
+		}
+
+		switch (action)
+		{
+			case NPC_FIRST_OPTION:
+			case NPC_SECOND_OPTION:
+			case NPC_THIRD_OPTION:
+			case NPC_FOURTH_OPTION:
+			case NPC_FIFTH_OPTION:
+				return true;
+			default:
+				return false;
+		}
+	}
+
+	/** "You catch some shrimps.": the fish the badge highlights. */
+	@Subscribe
+	public void onChatMessage(ChatMessage event)
+	{
+		if (event.getType() != ChatMessageType.GAMEMESSAGE && event.getType() != ChatMessageType.SPAM)
 		{
 			return;
 		}
 
-		skilling.consumed(client.getItemDefinition(event.getItemId()).getName(), client.getTickCount());
+		final FishingCatches.Fish fish = FishingCatches.fromCatchMessage(Text.removeTags(event.getMessage()));
+		if (fish != null)
+		{
+			skilling.caught(fish.getItemId());
+		}
+	}
+
+	/**
+	 * A fish landing in the inventory, for when the catch message is filtered
+	 * out of the chat or the fish stacks. The inventory is read once per
+	 * change, never per tick.
+	 */
+	@Subscribe
+	public void onItemContainerChanged(ItemContainerChanged event)
+	{
+		if (event.getContainerId() != InventoryID.INV || event.getItemContainer() == null)
+		{
+			return;
+		}
+
+		final Item[] items = event.getItemContainer().getItems();
+		final int[] ids = new int[items.length];
+		final int[] quantities = new int[items.length];
+		for (int i = 0; i < items.length; i++)
+		{
+			ids[i] = items[i].getId();
+			quantities[i] = items[i].getQuantity();
+		}
+
+		final int caught = inventoryCatches.observe(ids, quantities);
+		if (caught != -1)
+		{
+			skilling.caught(caught);
+		}
 	}
 
 	/** Special attack energy falling while a skilling spec tool is wielded is that tool's special. */
@@ -435,7 +520,8 @@ public class CombatVitalsPlugin extends Plugin
 	/**
 	 * The skilling badge. Only while the interaction is not a fight: a hit
 	 * landing on the held NPC promotes it to an opponent, and the health bar
-	 * takes over.
+	 * takes over. The NPC decides whether the badge is up and what it can
+	 * catch; it is not where the badge is drawn.
 	 */
 	private SkillingReadout buildSkillingReadout()
 	{
@@ -458,7 +544,6 @@ public class CombatVitalsPlugin extends Plugin
 		}
 
 		return new SkillingReadout(
-			target,
 			skill,
 			real,
 			boosted,
@@ -468,7 +553,28 @@ public class CombatVitalsPlugin extends Plugin
 			specPercent,
 			config.skillingBoostSource() ? skilling.source() : null,
 			skilling.warning(tick),
+			catches(skill, target, boosted),
+			skilling.lastCatch(),
 			System.currentTimeMillis());
+	}
+
+	/**
+	 * The fish the clicked method can land at the boosted level, the last
+	 * catch first. The spot type comes from the base client's
+	 * {@link FishingSpot} table of spot NPC ids; an unknown spot, an unknown
+	 * method, or any skill but fishing gives nothing, and the badge shows the
+	 * skill and level alone.
+	 */
+	private List<FishingCatches.Fish> catches(Skill skill, NPC target, int boosted)
+	{
+		if (!config.skillingCatches() || skill != Skill.FISHING)
+		{
+			return Collections.emptyList();
+		}
+
+		final FishingSpot spot = FishingSpot.findSpot(target.getId());
+		final List<FishingCatches.Fish> all = FishingCatches.forOption(spot, skilling.method());
+		return FishingCatches.highlightFirst(FishingCatches.catchable(all, boosted), skilling.lastCatch());
 	}
 
 	/** The wielded weapon's name, or null with nothing in the slot. */

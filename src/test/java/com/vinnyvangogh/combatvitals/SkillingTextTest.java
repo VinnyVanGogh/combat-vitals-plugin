@@ -73,6 +73,15 @@ public class SkillingTextTest
 	}
 
 	@Test
+	public void overflowCountsTheFishBeyondTheIcons()
+	{
+		assertEquals(null, SkillingText.overflow(0, 3));
+		assertEquals(null, SkillingText.overflow(3, 3));
+		assertEquals("+1", SkillingText.overflow(4, 3));
+		assertEquals("+2", SkillingText.overflow(5, 3));
+	}
+
+	@Test
 	public void secondsCountDownBetweenTicks()
 	{
 		assertEquals(60, SkillingText.seconds(100, 0));

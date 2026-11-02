@@ -243,6 +243,96 @@ public class SkillingStateTest
 	}
 
 	@Test
+	public void theClickedOptionIsTheMethod()
+	{
+		SkillingState state = new SkillingState();
+		// Menu click first, then the interaction starts on the next tick.
+		state.clicked("Bait");
+		state.engage(Skill.FISHING);
+
+		assertEquals("Bait", state.method());
+	}
+
+	@Test
+	public void aNewClickReplacesTheMethod()
+	{
+		SkillingState state = new SkillingState();
+		state.clicked("Net");
+		state.engage(Skill.FISHING);
+		state.clicked("Bait");
+		state.engage(Skill.FISHING);
+
+		assertEquals("Bait", state.method());
+	}
+
+	@Test
+	public void engagingWithoutAClickHasNoMethod()
+	{
+		SkillingState state = new SkillingState();
+		state.engage(Skill.FISHING);
+
+		assertNull("no guess: the badge falls back to skill and level", state.method());
+	}
+
+	@Test
+	public void aClickIsUsedOnce()
+	{
+		// Click Net, fish, the spot moves, and the game re-engages the new
+		// spot without a click: the method is kept from the last click. But
+		// a click that was never followed by an engagement on a skilling NPC
+		// (clicked Bait, then clicked a banker) is forgotten.
+		SkillingState state = new SkillingState();
+		state.clicked("Net");
+		state.engage(Skill.FISHING);
+		state.engage(Skill.FISHING);
+		assertEquals("Net", state.method());
+
+		state.clicked("Bait");
+		state.release();
+		state.engage(Skill.FISHING);
+		assertNull(state.method());
+	}
+
+	@Test
+	public void theLastCatchIsRemembered()
+	{
+		SkillingState state = new SkillingState();
+		state.engage(Skill.FISHING);
+		assertEquals(-1, state.lastCatch());
+
+		state.caught(317);
+		assertEquals(317, state.lastCatch());
+		state.caught(321);
+		assertEquals(321, state.lastCatch());
+	}
+
+	@Test
+	public void theLastCatchSurvivesTheSpotMoving()
+	{
+		SkillingState state = new SkillingState();
+		state.clicked("Net");
+		state.engage(Skill.FISHING);
+		state.caught(317);
+		state.disengage(T0);
+		state.engage(Skill.FISHING);
+
+		assertEquals(317, state.lastCatch());
+	}
+
+	@Test
+	public void releaseForgetsTheCatchAndMethod()
+	{
+		SkillingState state = new SkillingState();
+		state.clicked("Net");
+		state.engage(Skill.FISHING);
+		state.caught(317);
+		state.release();
+
+		assertEquals(-1, state.lastCatch());
+		assertNull(state.method());
+	}
+
+	@Test
 	public void dosesAreStripped()
 	{
 		assertEquals("Fishing potion", SkillingState.stripDoses("Fishing potion(3)"));
@@ -258,10 +348,14 @@ public class SkillingStateTest
 		state.consumed("Fishing potion(3)", 50);
 		state.boostChanged(Skill.FISHING, BoostTracker.Change.RISE, 50);
 		state.boostChanged(Skill.FISHING, BoostTracker.Change.DROP, 51);
+		state.clicked("Net");
+		state.caught(317);
 		state.clear();
 
 		assertNull(state.skill());
 		assertNull(state.source());
+		assertNull(state.method());
+		assertEquals(-1, state.lastCatch());
 		assertEquals(SkillingState.Warning.NONE, state.warning(51));
 	}
 }
