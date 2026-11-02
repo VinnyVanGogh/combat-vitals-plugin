@@ -139,6 +139,13 @@ precedent that shows it is allowed:
 | Wielded tool identified from `InventoryID.WORN` | None | Base client `specialcounter` reads the weapon slot the same way | Allowed |
 | Drink / Eat remembered from `MenuOptionClicked` | Menu Restrictions: adding or removing entries | The event is read, never modified or consumed; no entry is added | Allowed |
 | Skill inferred from the NPC's menu options (`Net`, `Pickpocket`, …) | None | `NPCComposition.getActions()` is the same read the attackability gate uses | Allowed |
+| Spot type from the spot's NPC id via `net.runelite.client.game.FishingSpot.findSpot` (v2, 2026-11-02) | None | Base client `fishing` plugin's overlay does exactly this, and `FishingSpot` is public API shipped for it | Allowed |
+| Fish per method and level, a static table cited from the OSRS wiki ("Fishing", "Fishing spot") | None: own-account level display against public game data | Base client `fishing` plugin draws the spot's fish icon from the same table; many hub plugins (e.g. skill calculators) ship wiki level tables | Allowed |
+| Menu option clicked on an NPC read from `MenuOptionClicked` (which method the spot is worked with) | Menu Restrictions: adding or removing entries | Read only, never modified or consumed; the same event the Drink/Eat read uses | Allowed |
+| "You catch ..." read from `ChatMessage` (GAMEMESSAGE / SPAM) | None | Base client `fishing` plugin reads the same messages to drive its session timer | Allowed |
+| Fish landing in the inventory read from `ItemContainerChanged` for `InventoryID.INV` | None | Base client `fishing` plugin and countless hub plugins read inventory changes this way; only the fish in the table are counted | Allowed |
+| Item icons via `ItemManager.getImage` | None | Base client overlays everywhere | Allowed |
+| Badge anchored on the local player (`Client.getLocalPlayer`), never the NPC | None | Same anchor as this plugin's own-health readout | Allowed |
 
 Not done, deliberately: no tile objects (trees, rocks) in this pass, by Board
 decision 2026-11-02; they follow as task-fb282112. No guessing a boost source:

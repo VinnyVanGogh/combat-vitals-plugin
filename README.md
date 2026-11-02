@@ -90,15 +90,27 @@ showing the same target, and hides its panel while Opponent Information is
 enabled so the two never stack in the same corner. Both are switchable.
 
 **Skilling vitals.** Click a fishing spot, or any other skilling NPC that
-cannot be fought, and the same badge appears over it with the skill's icon in
-place of a health number: `Fishing 79 (+3) 45s`. Your boosted level, the boost,
-and the seconds until it drops by one, with the bar draining alongside. Wield a
-dragon, infernal, crystal or 3rd age axe, pickaxe or harpoon and the badge adds
-your remaining special attack energy. When the boost came from something the
-plugin saw happen, the potion you drank, the pie you ate, the tool you spec'd,
-it says so; otherwise it says nothing rather than guess. When the boost drops
-or wears off the badge flashes red for a moment, and can send a RuneLite
-notification if you turn that on.
+cannot be fought, and the same badge appears over your own head, where your
+health bar sits, with the skill's icon in place of a health number:
+`Fishing 79 (+3) 45s`. Your boosted level, the boost, and the seconds until it
+drops by one, with the bar draining alongside. It is drawn over you, never over
+the spot: the spot moves, and the level is yours. If your health bar is up at
+the same time (something hit you while you fished) the badge sits above it.
+Wield a dragon, infernal, crystal or 3rd age axe, pickaxe or harpoon and the
+badge adds your remaining special attack energy. When the boost came from
+something the plugin saw happen, the potion you drank, the pie you ate, the
+tool you spec'd, it says so; otherwise it says nothing rather than guess. When
+the boost drops or wears off the badge flashes red for a moment, and can send a
+RuneLite notification if you turn that on.
+
+**What you can catch.** On a fishing spot the badge also shows the fish the
+method you clicked can land at your current boosted level, as small icons
+beside the level: Net on a shrimp spot at Fishing 10 shows shrimps only, since
+anchovies need 15; Bait on the same spot shows sardine and herring. Up to three
+icons, then `+N`. The fish you last caught, from the `You catch some shrimps.`
+message or from it landing in your inventory, leads and the others fade. The
+spot type comes from RuneLite's own fishing spot table and the levels from the
+OSRS wiki; a spot the plugin does not know shows the skill and level alone.
 
 The timer is honest about what it knows. The game never tells the client where
 it is in its one-minute drain cycle, so from login the badge shows an estimate
@@ -204,7 +216,7 @@ the case that broke every earlier iteration of this overlay.
 | Overhead position | Top | Top, Middle or Bottom relative to the target |
 | Overhead offset | 0 | Extra height in pixels, ±200 |
 | Hide game health bar | Off | Hide the game's own health bar over everyone, yours included |
-| Hide game chat under readout | Off | While the readout or skilling badge covers someone's overhead chat and the plugin redraws it above, hide the game's own line so only one shows. You, your opponent and the NPC under the badge only |
+| Hide game chat under readout | Off | While the readout or skilling badge covers someone's overhead chat and the plugin redraws it above, hide the game's own line so only one shows. You and your opponent only; the badge is over your own head, so a skilling NPC is never touched |
 
 ### Targets
 
@@ -225,7 +237,8 @@ the case that broke every earlier iteration of this overlay.
 
 | Setting | Default | What it does |
 |---|---|---|
-| Skilling badge | On | Draw the badge over a fishing spot or other skilling NPC you are working |
+| Skilling badge | On | Draw the badge over your head while you work a fishing spot or other skilling NPC |
+| Show what you can catch | On | On a fishing spot, icons of the fish the clicked method lands at your level, up to three then `+N` |
 | Show boost timer | On | Seconds until the boost drops by one, `~` while estimated from login |
 | Show boost source | On | Name the potion, food or special attack the boost came from, when seen |
 | Show spec energy | On | Remaining special attack energy when wielding a spec skilling tool |
@@ -324,6 +337,16 @@ without a login. The timer appears at the first drop.
 source it saw: a Drink or Eat, or a special attack from a recognised tool,
 within a couple of ticks of the boost rising. A boost from anything else, or
 one applied before the plugin was enabled, shows no source rather than a guess.
+
+**The badge shows no fish on a fishing spot.** Either *Show what you can catch*
+is off, your level is below the first fish for that method, or the spot is one
+the plugin has no table for (aerial fishing, quest spots, the Civitas illa
+Fortis park, squid). It also needs to have seen you click the spot: the method
+comes from the menu option you chose, so a spot engaged without a click shows
+the level alone until you click again.
+
+**The badge is over my head, not the spot.** By design. The spot moves every
+minute or so, it is small, and the level on the badge is yours, not its.
 
 **The panel never shows.** Opponent Information is probably enabled, and this
 plugin hides its panel to avoid stacking. Disable the stock plugin, or turn off

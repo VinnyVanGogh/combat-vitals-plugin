@@ -61,35 +61,39 @@ Code: `OverheadChatHolder.java` (state, unit tested in
 3. Option off, overlay off, logout/hop, or plugin shutdown: everything held is
    written back (shutdown via `ClientThread.invoke`).
 
-Only three actors can ever be held: your tracked opponent, you, and the
-skilling NPC under the badge. Bystanders, NPC dialogue on other NPCs and
-anyone this plugin draws nothing over are never touched.
+Only two actors can ever be held: your tracked opponent, and you. Bystanders,
+NPC dialogue on other NPCs, the skilling NPC you are working, and anyone this
+plugin draws nothing over are never touched.
 
 The set follows what the overlay draws. The readout follows `CombatState`
 (PR #4): a target gets a readout only if it can be fought (`Attack` option,
 combat level, or a hit you dealt it), and your own only while in combat. The
-badge follows `SkillingActions` (PR #7): only a non-attackable NPC whose menu
-names a skill. So a banker or a pet never gets a chat move or a hidden line,
-and your own chat is only ever touched while your own readout is up.
+badge follows `SkillingActions` (PR #7, moved over your own head in PR #9):
+only while a non-attackable NPC whose menu names a skill is being worked. So
+a banker or a pet never gets a chat move or a hidden line, and your own chat
+is only ever touched while your own bar or the badge is up.
 
 ### The skilling badge
 
-The badge sits at the same height as the readout and covers the NPC's chat
-line the same way, so it lifts the chat by the same rule: one rule, "whatever
-this plugin draws over an actor's head lifts that actor's chat above it and
-hides the game's line underneath; nothing drawn, nothing touched". The
-alternative, leaving the badge out, would put the badge over the NPC's line
-unreadably, which is the bug this work exists to fix. In practice a fishing
-spot never talks, so this matters for pickpocket targets with ambient lines.
+The badge (PR #9) is drawn over your own head at the same anchor as your own
+health bar, never over the NPC. It covers your own chat line the way the bar
+does, so it lifts the chat by the same rule: one rule, "whatever this plugin
+draws over an actor's head lifts that actor's chat above it and hides the
+game's line underneath; nothing drawn, nothing touched". The alternative,
+leaving the badge out, would put the badge over your own line unreadably,
+which is the bug this work exists to fix. Decision: yes, the badge lifts
+overhead chat the same way the readout does.
 
-Overlap between the badge and a moved chat line: on the same actor it cannot
-happen, `OverheadChat.baselineAbove` places the copy `GAP` px above the box
-that was drawn (the badge's box, icon included). The badge and the opponent
-readout are mutually exclusive (`buildSkillingReadout` returns null while
-`CombatState.showTarget()`), so the only pair that can share a frame is your
-own readout (being hit while skilling) and the badge on the NPC. Those are two
-different actors at two different screen positions, exactly like two readouts
-on neighbouring actors, and this work does not try to separate them.
+Overlap between the badge and a moved chat line cannot happen. When your bar
+and the badge are both up (hit while fishing) the badge stacks `GAP` px above
+the bar (`OverheadStack.liftAbove`), and the overlay lifts one copy of your
+chat above the union of the two boxes (`OverheadStack.union`), so the copy
+clears the topmost box and the message is never drawn twice
+(`OverheadChatTest.badgeStackedOnTheBarLiftsChatClearOfBoth`). The badge and
+the opponent readout are mutually exclusive (`buildSkillingReadout` returns
+null while `CombatState.showTarget()`), and the opponent is a different actor
+at a different screen position anyway, exactly like two readouts on
+neighbouring actors.
 
 ### Never dropping a message
 

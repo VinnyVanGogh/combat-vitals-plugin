@@ -63,6 +63,18 @@ final class SkillingText
 	}
 
 	/**
+	 * The "+N" after the fish icons, for the fish beyond the ones drawn.
+	 *
+	 * @param fish  how many fish the method can land at this level
+	 * @param icons how many icons the badge draws at most
+	 * @return the overflow text, or null when every fish has an icon
+	 */
+	static String overflow(int fish, int icons)
+	{
+		return fish > icons ? "+" + (fish - icons) : null;
+	}
+
+	/**
 	 * Seconds left, counted down between ticks so the number moves every
 	 * second rather than every 0.6 s. Rounds up: a boost with 0.4 s left has
 	 * not dropped yet.

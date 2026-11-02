@@ -83,6 +83,23 @@ public class OverheadChatTest
 	}
 
 	@Test
+	public void badgeStackedOnTheBarLiftsChatClearOfBoth()
+	{
+		// Hit while fishing: your own bar at the anchor, the badge stacked
+		// above it. The one chat copy goes above the whole stack, so it
+		// overlaps neither box and the message is not drawn twice.
+		final Rectangle bar = new Rectangle(100, 200, 60, 16);
+		final Rectangle badge = new Rectangle(90, 200 - OverheadStack.liftAbove(bar), 90, 24);
+		final Rectangle chat = new Rectangle(100, 205, 60, 15);
+
+		final Integer baseline = OverheadChat.baselineAbove(OverheadStack.union(bar, badge), chat, DESCENT);
+
+		assertEquals(badge.y - OverheadChat.GAP - DESCENT, (int) baseline);
+		assertTrue(baseline + DESCENT < badge.y);
+		assertTrue(baseline + DESCENT < bar.y);
+	}
+
+	@Test
 	public void readoutPositionIsNeverChanged()
 	{
 		final Rectangle readout = new Rectangle(READOUT);

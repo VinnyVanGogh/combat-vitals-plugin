@@ -1,6 +1,8 @@
 package com.vinnyvangogh.combatvitals;
 
+import java.awt.AlphaComposite;
 import java.awt.Color;
+import java.awt.Composite;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -8,10 +10,14 @@ import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import javax.inject.Inject;
 import net.runelite.api.Actor;
+import net.runelite.api.Client;
+import net.runelite.api.Player;
 import net.runelite.api.Point;
+import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.Overlay;
@@ -44,17 +50,27 @@ class CombatVitalsOverheadOverlay extends Overlay
 	/** Space between the skill icon and the badge text. */
 	private static final int ICON_GAP = 3;
 
+	/** Fish icons drawn on the badge before the count takes over. */
+	static final int MAX_FISH_ICONS = 3;
+
+	/** Fish that are not the last catch are faded, so the current one reads as current. */
+	private static final float OTHER_FISH_ALPHA = 0.55f;
+
+	private final Client client;
 	private final CombatVitalsPlugin plugin;
 	private final CombatVitalsConfig config;
 	private final SkillIconManager skillIconManager;
+	private final ItemManager itemManager;
 
 	@Inject
-	CombatVitalsOverheadOverlay(CombatVitalsPlugin plugin, CombatVitalsConfig config,
-		SkillIconManager skillIconManager)
+	CombatVitalsOverheadOverlay(Client client, CombatVitalsPlugin plugin, CombatVitalsConfig config,
+		SkillIconManager skillIconManager, ItemManager itemManager)
 	{
+		this.client = client;
 		this.plugin = plugin;
 		this.config = config;
 		this.skillIconManager = skillIconManager;
+		this.itemManager = itemManager;
 
 		setPosition(OverlayPosition.DYNAMIC);
 		setLayer(OverlayLayer.UNDER_WIDGETS);
@@ -76,18 +92,24 @@ class CombatVitalsOverheadOverlay extends Overlay
 			final CombatVitalsPlugin.Readout opponent = plugin.getReadout();
 			if (opponent != null && (opponent.isNpc() || config.overheadForPlayers()))
 			{
-				draw(graphics, opponent, covered);
+				liftChat(graphics, opponent.getActor(), draw(graphics, opponent), covered);
 			}
 
 			// Both sides in one visual language. Getting your own health from some
 			// other plugin would render it in a different style beside your
 			// opponent's, which is the main reason this belongs here.
-			draw(graphics, plugin.getSelfReadout(), covered);
+			final Rectangle selfBar = draw(graphics, plugin.getSelfReadout());
 
-			if (config.skillingEnabled())
-			{
-				drawSkilling(graphics, plugin.getSkillingReadout(), covered);
-			}
+			// The badge shares the anchor with your own bar and stacks above it
+			// when both are up (hit while fishing).
+			final Rectangle badge = config.skillingEnabled()
+				? drawSkilling(graphics, plugin.getSkillingReadout(), selfBar)
+				: null;
+
+			// Your own overhead chat goes above whichever of the two is topmost,
+			// once: the bar and the badge are one stack over one actor, so one
+			// copy of the line, lifted clear of both, is all that is wanted.
+			liftChat(graphics, client.getLocalPlayer(), OverheadStack.union(selfBar, badge), covered);
 			return null;
 		}
 		finally
@@ -97,20 +119,49 @@ class CombatVitalsOverheadOverlay extends Overlay
 	}
 
 	/**
-	 * The skilling badge: the health bar's style, with the skill's icon in
-	 * place of a health number. While boosted the bar drains with the boost
-	 * timer, so the colour ramp means "time left" rather than "health left".
-	 * A drop or expiry paints the whole bar in the empty colour for a moment.
+	 * Redraws the actor's chat above the box drawn over it, and records the
+	 * actor as covered so the plugin can take the game's line off it.
 	 *
-	 * The badge sits where the readout would, so it covers the skilling NPC's
-	 * own chat line the same way; it lifts the line above itself by the same
-	 * rule ({@link #drawChatAbove}), so the badge and the chat never overlap.
+	 * @param box what this overlay drew over the actor this frame, or null
+	 *            when nothing was
 	 */
-	private void drawSkilling(Graphics2D graphics, SkillingReadout readout, Set<Actor> covered)
+	private void liftChat(Graphics2D graphics, Actor actor, Rectangle box, Set<Actor> covered)
+	{
+		if (actor != null && box != null && drawChatAbove(graphics, actor, box))
+		{
+			covered.add(actor);
+		}
+	}
+
+	/**
+	 * The skilling badge, over your own head at the same anchor as your
+	 * health bar: the health bar's style, with the skill's icon in place of a
+	 * health number, and on a fishing spot the fish the clicked method can
+	 * land at your level. While boosted the bar drains with the boost timer,
+	 * so the colour ramp means "time left" rather than "health left". A drop
+	 * or expiry paints the whole bar in the empty colour for a moment.
+	 *
+	 * The badge covers your own chat line the way the health bar does; the
+	 * caller lifts the line above the whole stack ({@link #drawChatAbove}),
+	 * so the badge and the chat never overlap.
+	 *
+	 * @param below your own health bar's box when it is drawn this frame, so
+	 *              the badge can sit above it; null when it is not
+	 * @return the badge's box, or null when nothing was drawn
+	 */
+	private Rectangle drawSkilling(Graphics2D graphics, SkillingReadout readout, Rectangle below)
 	{
 		if (readout == null)
 		{
-			return;
+			return null;
+		}
+
+		// Always the local player. The spot being worked is not where the
+		// badge goes: it moves, it is small, and it is not whose level this is.
+		final Player self = client.getLocalPlayer();
+		if (self == null)
+		{
+			return null;
 		}
 
 		final int seconds = SkillingText.seconds(readout.getTicksUntilDrop(),
@@ -119,20 +170,45 @@ class CombatVitalsOverheadOverlay extends Overlay
 			readout.getBoosted(), seconds, !readout.isTimerConfirmed(), readout.getSpecPercent(),
 			readout.getSource(), readout.getWarning());
 
-		final Actor actor = readout.getActor();
-		final Point centred = actor.getCanvasTextLocation(graphics, text, zOffset(actor));
+		final Point centred = self.getCanvasTextLocation(graphics, text, zOffset(self));
 		if (centred == null)
 		{
-			return;
+			return null;
 		}
+
+		final FontMetrics metrics = graphics.getFontMetrics();
+		final int textWidth = metrics.stringWidth(text);
+		final int textHeight = metrics.getAscent() + metrics.getDescent();
 
 		final BufferedImage icon = skillIconManager.getSkillImage(readout.getSkill(), true);
 		final int iconWidth = icon == null ? 0 : icon.getWidth() + ICON_GAP;
 		final int iconHeight = icon == null ? 0 : icon.getHeight();
 
-		// The game centres the text alone; shift it right by half the icon so
-		// the icon-plus-text block is what ends up centred over the actor.
-		final Point location = new Point(centred.getX() + iconWidth / 2, centred.getY());
+		// Fish icons are scaled to the text height so they read as part of
+		// the line rather than sitting on it.
+		final List<FishingCatches.Fish> fish = readout.getFish();
+		final int shown = Math.min(fish.size(), MAX_FISH_ICONS);
+		final int fishHeight = textHeight;
+		final BufferedImage[] fishImages = new BufferedImage[shown];
+		final int[] fishWidths = new int[shown];
+		int fishWidth = 0;
+		for (int i = 0; i < shown; i++)
+		{
+			fishImages[i] = itemManager.getImage(fish.get(i).getItemId());
+			fishWidths[i] = fishImages[i].getHeight() <= 0
+				? fishHeight
+				: fishImages[i].getWidth() * fishHeight / fishImages[i].getHeight();
+			fishWidth += ICON_GAP + fishWidths[i];
+		}
+		final String overflow = SkillingText.overflow(fish.size(), MAX_FISH_ICONS);
+		final int overflowWidth = overflow == null ? 0 : ICON_GAP + metrics.stringWidth(overflow);
+
+		// The game centres the text alone; centre the whole icon-text-fish
+		// block on the same point, and lift it clear of the health bar below.
+		final int contentWidth = iconWidth + textWidth + fishWidth + overflowWidth;
+		final int left = centred.getX() + textWidth / 2 - contentWidth / 2;
+		final int baseline = centred.getY() - OverheadStack.liftAbove(below);
+		final Point location = new Point(left + iconWidth, baseline);
 
 		final boolean warning = readout.getWarning() != SkillingState.Warning.NONE;
 		final double fraction = readout.isBoosted() && readout.getTicksUntilDrop() >= 0
@@ -143,52 +219,59 @@ class CombatVitalsOverheadOverlay extends Overlay
 			? config.healthLowColour()
 			: config.colourGradient() ? gradient(fraction) : config.healthFullColour();
 
-		final FontMetrics metrics = graphics.getFontMetrics();
-		final int textWidth = metrics.stringWidth(text);
-		final int textHeight = metrics.getAscent() + metrics.getDescent();
+		final int height = Math.max(textHeight, iconHeight) + PAD_Y * 2;
+		final int top = baseline - metrics.getAscent() - PAD_Y - (height - textHeight - PAD_Y * 2) / 2;
+		final Rectangle bounds = new Rectangle(left - PAD_X, top, contentWidth + PAD_X * 2, height);
 
-		final Rectangle bounds;
-		if (config.overheadStyle() == OverheadStyle.BAR)
+		final boolean bar = config.overheadStyle() == OverheadStyle.BAR;
+		if (bar)
 		{
-			final int x = location.getX() - iconWidth - PAD_X;
-			final int width = iconWidth + textWidth + PAD_X * 2;
-			final int height = Math.max(textHeight, iconHeight) + PAD_Y * 2;
-			final int y = location.getY() - metrics.getAscent() - PAD_Y - (height - textHeight - PAD_Y * 2) / 2;
+			fillBar(graphics, bounds.x, bounds.y, bounds.width, bounds.height, warning ? 1.0 : fraction, colour);
+		}
 
-			fillBar(graphics, x, y, width, height, warning ? 1.0 : fraction, colour);
-			if (icon != null)
+		if (icon != null)
+		{
+			graphics.drawImage(icon, left, bounds.y + (height - iconHeight) / 2, null);
+		}
+
+		final Color textColour = bar || !(config.colourGradient() || warning) ? Color.WHITE : colour;
+		OverlayUtil.renderTextLocation(graphics, location, text, textColour);
+
+		int x = left + iconWidth + textWidth;
+		final int fishTop = baseline - metrics.getAscent();
+		final Composite composite = graphics.getComposite();
+		for (int i = 0; i < shown; i++)
+		{
+			x += ICON_GAP;
+			final boolean faded = readout.isLastCatchShown() && i > 0;
+			if (faded)
 			{
-				graphics.drawImage(icon, x + PAD_X, y + (height - iconHeight) / 2, null);
+				graphics.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, OTHER_FISH_ALPHA));
 			}
-			OverlayUtil.renderTextLocation(graphics, location, text, Color.WHITE);
-			bounds = new Rectangle(x, y, width, height);
-		}
-		else
-		{
-			final int textTop = location.getY() - metrics.getAscent();
-			bounds = new Rectangle(location.getX(), textTop, textWidth, textHeight);
-			if (icon != null)
+			graphics.drawImage(fishImages[i], x, fishTop, fishWidths[i], fishHeight, null);
+			if (faded)
 			{
-				final int iconX = location.getX() - iconWidth;
-				final int iconY = textTop + (metrics.getAscent() - iconHeight) / 2;
-				graphics.drawImage(icon, iconX, iconY, null);
-				bounds.add(new Rectangle(iconX, iconY, icon.getWidth(), iconHeight));
+				graphics.setComposite(composite);
 			}
-			OverlayUtil.renderTextLocation(graphics, location, text,
-				config.colourGradient() || warning ? colour : Color.WHITE);
+			x += fishWidths[i];
+		}
+		if (overflow != null)
+		{
+			OverlayUtil.renderTextLocation(graphics, new Point(x + ICON_GAP, baseline), overflow, textColour);
 		}
 
-		if (drawChatAbove(graphics, actor, bounds))
-		{
-			covered.add(actor);
-		}
+		return bounds;
 	}
 
-	private void draw(Graphics2D graphics, CombatVitalsPlugin.Readout readout, Set<Actor> covered)
+	/**
+	 * @return the readout's box on screen (the bar's padding included for the
+	 *         Bar style), or null when nothing was drawn
+	 */
+	private Rectangle draw(Graphics2D graphics, CombatVitalsPlugin.Readout readout)
 	{
 		if (readout == null)
 		{
-			return;
+			return null;
 		}
 
 		final String text = HealthReadout.text(readout.getRange(), readout.getMaxHealth(),
@@ -196,14 +279,14 @@ class CombatVitalsOverheadOverlay extends Overlay
 			readout.getExactHealth());
 		if (text == null)
 		{
-			return;
+			return null;
 		}
 
 		final Actor actor = readout.getActor();
 		final Point location = actor.getCanvasTextLocation(graphics, text, zOffset(actor));
 		if (location == null)
 		{
-			return;
+			return null;
 		}
 
 		final double fraction = HealthReadout.fraction(readout.getRatio(), readout.getScale(),
@@ -211,45 +294,31 @@ class CombatVitalsOverheadOverlay extends Overlay
 
 		if (config.overheadStyle() == OverheadStyle.BAR)
 		{
-			drawBar(graphics, location, text, fraction);
+			final Rectangle bounds = drawBar(graphics, location, text, fraction);
 
 			// White on a filled bar. Colouring the text as well as the bar makes
 			// the two fight each other — red text on a green bar is the worst
 			// case and the reason this style exists.
 			OverlayUtil.renderTextLocation(graphics, location, text, Color.WHITE);
-		}
-		else
-		{
-			final Color colour = config.colourGradient() ? gradient(fraction) : Color.WHITE;
-			OverlayUtil.renderTextLocation(graphics, location, text, colour);
+			return bounds;
 		}
 
-		if (drawChatAbove(graphics, actor, readoutBounds(graphics, location, text)))
-		{
-			covered.add(actor);
-		}
-	}
+		final Color colour = config.colourGradient() ? gradient(fraction) : Color.WHITE;
+		OverlayUtil.renderTextLocation(graphics, location, text, colour);
 
-	/** The readout's box on screen, the bar's padding included for the Bar style. */
-	private Rectangle readoutBounds(Graphics2D graphics, Point location, String text)
-	{
 		final FontMetrics metrics = graphics.getFontMetrics();
-		final int padX = config.overheadStyle() == OverheadStyle.BAR ? PAD_X : 0;
-		final int padY = config.overheadStyle() == OverheadStyle.BAR ? PAD_Y : 0;
-
-		return new Rectangle(
-			location.getX() - padX,
-			location.getY() - metrics.getAscent() - padY,
-			metrics.stringWidth(text) + padX * 2,
-			metrics.getAscent() + metrics.getDescent() + padY * 2);
+		return new Rectangle(location.getX(), location.getY() - metrics.getAscent(),
+			metrics.stringWidth(text), metrics.getAscent() + metrics.getDescent());
 	}
 
 	/**
 	 * A bar exactly as wide as the text it sits behind. The game's own bar is a
 	 * fixed handful of pixels and the readout is always wider, so sizing to the
 	 * text is what makes the two legible together instead of overlapping.
+	 *
+	 * @return the bar's box
 	 */
-	private void drawBar(Graphics2D graphics, Point location, String text, double fraction)
+	private Rectangle drawBar(Graphics2D graphics, Point location, String text, double fraction)
 	{
 		final FontMetrics metrics = graphics.getFontMetrics();
 		final int textWidth = metrics.stringWidth(text);
@@ -261,6 +330,7 @@ class CombatVitalsOverheadOverlay extends Overlay
 
 		fillBar(graphics, x, y, width, height, fraction,
 			config.colourGradient() ? gradient(fraction) : config.healthFullColour());
+		return new Rectangle(x, y, width, height);
 	}
 
 	/** Background, a fill proportional to {@code fraction} in {@code colour}, and a border. */
@@ -283,11 +353,12 @@ class CombatVitalsOverheadOverlay extends Overlay
 	}
 
 	/**
-	 * Redraws the actor's overhead chat just above the readout (or the skilling
-	 * badge) while it covers the game's own line. The game draws chat at the
-	 * actor's logical height, right where the readout sits, and this overlay
-	 * paints over it; the game's text cannot be moved, so the readout keeps its
-	 * place and the chat gets a readable copy on top.
+	 * Redraws the actor's overhead chat just above the box this overlay drew
+	 * over it (the readout, or your own bar-and-badge stack) while that box
+	 * covers the game's own line. The game draws chat at the actor's logical
+	 * height, right where the readout sits, and this overlay paints over it;
+	 * the game's text cannot be moved, so the readout keeps its place and the
+	 * chat gets a readable copy on top.
 	 *
 	 * Measured in screen space, so it holds at any zoom, position and model
 	 * height. When the readout does not cover the game's line (another
@@ -298,7 +369,7 @@ class CombatVitalsOverheadOverlay extends Overlay
 	 * off the actor while this copy is drawn; the text then comes from the
 	 * plugin, which still has it.
 	 *
-	 * @param readout the box this overlay drew over the actor, badge or readout
+	 * @param readout the box this overlay drew over the actor
 	 * @return true when the copy was drawn, meaning the game's line is covered
 	 */
 	private boolean drawChatAbove(Graphics2D graphics, Actor actor, Rectangle readout)

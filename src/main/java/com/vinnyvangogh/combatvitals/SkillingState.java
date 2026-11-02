@@ -41,6 +41,15 @@ final class SkillingState
 	private Skill skill;
 	private Instant interactionEnded;
 
+	/** The menu option of the last NPC click, until an engagement takes it. */
+	private String pendingClick;
+
+	/** The option the current engagement was started with: Net, Bait, Harpoon... */
+	private String method;
+
+	/** Item id of the last fish landed, or -1. */
+	private int lastCatch = -1;
+
 	private final String[] sourceBySkill = new String[Skill.values().length];
 
 	private String consumedItem;
@@ -54,12 +63,31 @@ final class SkillingState
 	private Warning lastWarning = Warning.NONE;
 	private int warningTick = -1;
 
-	/** The player started interacting with an NPC that trains {@code skill}. */
+	/**
+	 * The player clicked a menu option on an NPC. Remembered until the
+	 * interaction it starts arrives, a tick later, so the badge knows which
+	 * method the spot is being worked with.
+	 */
+	void clicked(String option)
+	{
+		pendingClick = option;
+	}
+
+	/**
+	 * The player started interacting with an NPC that trains {@code skill}.
+	 * A click just before this names the method; without one (the spot moved
+	 * and the game re-engaged it) the method from the last click stands.
+	 */
 	void engage(Skill skill)
 	{
 		engaged = true;
 		this.skill = skill;
 		interactionEnded = null;
+		if (pendingClick != null)
+		{
+			method = pendingClick;
+			pendingClick = null;
+		}
 	}
 
 	/** The player moved on to something that is not a skilling NPC: no linger. */
@@ -68,6 +96,27 @@ final class SkillingState
 		engaged = false;
 		skill = null;
 		interactionEnded = null;
+		pendingClick = null;
+		method = null;
+		lastCatch = -1;
+	}
+
+	/** The option the current engagement was clicked with, or null when none was seen. */
+	String method()
+	{
+		return method;
+	}
+
+	/** A fish landed: from the catch message or the inventory. */
+	void caught(int itemId)
+	{
+		lastCatch = itemId;
+	}
+
+	/** Item id of the last fish landed this engagement, or -1. */
+	int lastCatch()
+	{
+		return lastCatch;
 	}
 
 	/** The player stopped interacting. The badge lingers until {@link #expire}. */
@@ -96,6 +145,8 @@ final class SkillingState
 			engaged = false;
 			skill = null;
 			interactionEnded = null;
+			method = null;
+			lastCatch = -1;
 			return true;
 		}
 		return false;
@@ -175,6 +226,9 @@ final class SkillingState
 		engaged = false;
 		skill = null;
 		interactionEnded = null;
+		pendingClick = null;
+		method = null;
+		lastCatch = -1;
 		java.util.Arrays.fill(sourceBySkill, null);
 		consumedItem = null;
 		consumedTick = -1;

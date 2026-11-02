@@ -34,7 +34,7 @@ public interface CombatVitalsConfig extends Config
 
 	@ConfigSection(
 		name = "Skilling vitals",
-		description = "A badge over the fishing spot or other skilling NPC you are working",
+		description = "A badge over your head while you work a fishing spot or other skilling NPC",
 		position = 2
 	)
 	String skillingSection = "skilling";
@@ -322,12 +322,29 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingEnabled",
 		name = "Skilling badge",
 		description =
-			"When you work a fishing spot or another skilling NPC, draw a badge over it in the health "
-				+ "bar's style: the skill's icon, your level, and your boost.",
+			"When you work a fishing spot or another skilling NPC, draw a badge over your head, where "
+				+ "your own health bar sits, in the health bar's style: the skill's icon, your level, "
+				+ "and your boost.",
 		section = skillingSection,
 		position = 0
 	)
 	default boolean skillingEnabled()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingCatches",
+		name = "Show what you can catch",
+		description =
+			"On a fishing spot, show the fish the method you clicked (Net, Bait, Lure, Cage, Harpoon...) "
+				+ "can land at your current boosted level, as small icons beside the level: up to three, "
+				+ "then +N. The fish you last caught leads. Spots the plugin does not know show the "
+				+ "level alone.",
+		section = skillingSection,
+		position = 1
+	)
+	default boolean skillingCatches()
 	{
 		return true;
 	}
@@ -340,7 +357,7 @@ public interface CombatVitalsConfig extends Config
 				+ "it is in its drain cycle, so the timer is an estimate (marked ~) from login until a drop "
 				+ "is seen, and exact after that. Preserve is accounted for.",
 		section = skillingSection,
-		position = 1
+		position = 2
 	)
 	default boolean skillingBoostTimer()
 	{
@@ -355,7 +372,7 @@ public interface CombatVitalsConfig extends Config
 				+ "ate, or the special attack of the tool you are wielding. Otherwise nothing is shown "
 				+ "rather than a guess.",
 		section = skillingSection,
-		position = 2
+		position = 3
 	)
 	default boolean skillingBoostSource()
 	{
@@ -369,7 +386,7 @@ public interface CombatVitalsConfig extends Config
 			"When the wielded tool has a special attack that boosts the skill (dragon, infernal, crystal "
 				+ "and 3rd age axes, pickaxes and harpoons), show the remaining special attack energy.",
 		section = skillingSection,
-		position = 3
+		position = 4
 	)
 	default boolean skillingSpecEnergy()
 	{
@@ -383,7 +400,7 @@ public interface CombatVitalsConfig extends Config
 			"Send a RuneLite notification when the badge's boost drops by one or wears off. The badge "
 				+ "itself always shows the cue.",
 		section = skillingSection,
-		position = 4
+		position = 5
 	)
 	default Notification skillingBoostNotify()
 	{
