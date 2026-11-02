@@ -124,6 +124,27 @@ sources.
 Verdict: no part of Phase 2 requires a second concurrent lookup. The hard
 invariant holds.
 
+### Skilling vitals, compliance (added 2026-11-02)
+
+The badge over a skilling NPC reads only the local player's own state and
+sends nothing anywhere. Each element, the rule it lands nearest, and the
+precedent that shows it is allowed:
+
+| Element | Nearest rule | Precedent | Verdict |
+|---|---|---|---|
+| Own boosted level and `+N` per skill, from `Client.getBoostedSkillLevel` / `getRealSkillLevel` | None: own-account stat display | Base client `boosts` plugin shows exactly this, with `SkillIconManager` icons | Allowed |
+| Seconds until the boost drops, Preserve-aware | None; not a boss mechanic, not PvP | Base client `BoostsPlugin.getChangeDownTicks` is the ported model | Allowed |
+| Boost drop / expiry cue and optional notification | None | Base client `BoostsConfig.notifyOnBoost` notifies on the boost threshold | Allowed |
+| Remaining special attack energy from `VarPlayerID.SA_ENERGY` | Interface Restrictions: "No unhiding hidden interface components (special attack bar)" | Nothing is unhidden; a number is drawn from a varp. Base client `statusbars` draws special attack energy as a bar, `specialcounter` reads `SA_ENERGY` | Allowed |
+| Wielded tool identified from `InventoryID.WORN` | None | Base client `specialcounter` reads the weapon slot the same way | Allowed |
+| Drink / Eat remembered from `MenuOptionClicked` | Menu Restrictions: adding or removing entries | The event is read, never modified or consumed; no entry is added | Allowed |
+| Skill inferred from the NPC's menu options (`Net`, `Pickpocket`, …) | None | `NPCComposition.getActions()` is the same read the attackability gate uses | Allowed |
+
+Not done, deliberately: no tile objects (trees, rocks) in this pass, by Board
+decision 2026-11-02; they follow as task-fb282112. No guessing a boost source:
+a rise with nothing recently drunk, eaten or spec'd shows no source. No
+automation of any kind, and no change to any menu.
+
 ---
 
 ## Phase 0.5, Measure before building
