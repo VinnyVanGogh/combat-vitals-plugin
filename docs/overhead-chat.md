@@ -44,13 +44,14 @@ Code: `OverheadChatHolder.java` (state, unit tested in
 `shutDown`, `onGameStateChanged`) and `CombatVitalsOverheadOverlay.render` /
 `drawChatAbove`.
 
-1. Every frame the overlay draws the readout for the opponent and for you, and
-   the skilling badge (PR #7) for the skilling NPC being worked. For each,
-   `drawChatAbove` asks the plugin for the actor's chat (the held text if we
-   hold it, otherwise the game's live text) and draws the copy only if the box
-   just drawn (readout or badge) covers the game's line. Actors that got a copy
-   go into a fresh set, published to the plugin at the end of the frame, in a
-   `finally` so a failing draw still publishes.
+1. Every frame the overlay draws the readout for the opponent, and for you
+   your own bar and the skilling badge (PR #7, over your own head since PR #9),
+   stacked. For the opponent, and once for you, `drawChatAbove` asks the plugin
+   for the actor's chat (the held text if we hold it, otherwise the game's live
+   text) and draws the copy only if the box just drawn (readout, or your
+   bar-and-badge stack) covers the game's line. Actors that got a copy go into
+   a fresh set, published to the plugin at the end of the frame, in a `finally`
+   so a failing draw still publishes.
 2. Every client tick, with the option on (and *Show over target* on), the
    holder:
    - lets go of every held actor not in the latest set, writing the real text
@@ -154,9 +155,13 @@ reflection, no new network use. Compliance otherwise unchanged from
     Expect: no readout, the game's own line drawn as normal over your head,
     nothing moved or hidden. Then attack an NPC: your readout appears and the
     next message you type moves above it.
-11. With the skilling badge on, pickpocket an NPC that has ambient overhead
-    lines (for example a Man or Woman in Lumbridge, or any H.A.M. member).
-    Expect: the badge over the NPC, and when the NPC talks, one yellow line
-    above the badge, nothing showing through the badge, no overlap between the
-    two. Turn *Skilling badge* off: the badge goes and the game's own line
-    comes back over the NPC's head.
+11. With the skilling badge on, click a fishing spot (no readout) and type a
+    message. Expect: the badge over your own head, one yellow line above the
+    badge, nothing showing through it, no overlap between the two. The spot
+    itself has nothing drawn over it. Turn *Skilling badge* off mid-message:
+    the badge goes and the game's own line comes back over your head with its
+    time left.
+12. Badge and bar together: attack an NPC, then click a fishing spot before
+    your bar times out (or fish where something can hit you). Expect: your bar
+    at the anchor, the badge stacked above it, and a typed message as one line
+    above the badge, never between the two and never twice.
