@@ -30,6 +30,7 @@ To log in to the developer client with a Jagex account, follow the [RuneLite Usi
 
 - **Tick snapshot (`CombatVitalsPlugin`)**: Rebuilds immutable `Readout` snapshots (`readout` and `selfReadout`) once per `GameTick`. Overlays (`CombatVitalsPanelOverlay`, `CombatVitalsOverheadOverlay`) read the volatile snapshot each frame and perform no state calculations or scene scans.
 - **Pure math (`HealthRecovery`, `HealthReadout`)**: Ratio-to-health inversion and readout formatting/colour interpolation live in pure classes with no RuneLite client dependency and are covered by JUnit tests (`HealthRecoveryTest`, `HealthReadoutTest`).
+- **Combat gate (`CombatState`)**: Decides whether an interaction is a fight. A target counts only if attackable (`NPCComposition` has an `Attack` option or a combat level; players always); a `HitsplatApplied` on you or dealt by you is combat evidence for `opponentTimeout`. Pure and covered by `CombatStateTest`; the plugin feeds it from `onInteractingChanged`, `onHitsplatApplied` and `onGameTick`.
 - **Exact self-health**: The local player's health is read from `Skill.HITPOINTS` via the client (`getBoostedSkillLevel` / `getRealSkillLevel`) and is never passed through `HealthRecovery`.
 
 ## Compliance and Engineering Rules

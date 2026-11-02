@@ -277,7 +277,13 @@ they run every frame while the underlying bar changes only on a tick.
 ## Troubleshooting
 
 **Nothing appears when I attack something.** The readout only tracks a target
-*you* engaged. Being attacked does not trigger it, by design.
+*you* engaged. Being attacked does not show the attacker, by design; it does
+show your own health, if that option is on, until the opponent timeout passes.
+
+**Nothing appears when I click a fishing spot, a banker or a pet.** Correct.
+Those are NPCs, but they cannot be fought, so the plugin treats them as no
+target at all. Only an attackable target, or a hit landing on you or from you,
+counts as combat.
 
 **The panel never shows.** Opponent Information is probably enabled, and this
 plugin hides its panel to avoid stacking. Disable the stock plugin, or turn off
