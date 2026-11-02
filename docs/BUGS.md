@@ -2,6 +2,11 @@
 
 Merged bug fixes in reverse chronological order (newest first). Pre-PR bootstrap commits on `main` are cited by short commit hash.
 
+## 2026-11-02 — Clicking a skilling NPC popped the player's own health bar and held stale opponents (#4)
+- **What broke:** Clicking a non-combat NPC such as a fishing spot (or banker, shopkeeper, rock, or pet) popped the player's own overhead health bar when *Show your own health* was enabled and prevented any previously engaged opponent from expiring, because `onInteractingChanged` treated every non-null target as combat and `expireOpponent` waited whenever `getInteracting()` was non-null.
+- **How it was found:** In-game screenshot from the Board while fishing at a Shrimp/Anchovies/Sardine/Herring spot (`20 / 20 (100%)` rendered over the local player).
+- **Fix:** Added `CombatState` (`CombatStateTest`) to require an attackable target (`Attack` menu option or combat level > 0 on the NPC composition; players always) for opponent readouts, accepted combat hitsplat evidence (`isMine()` anywhere, or `isOthers()` on the local player, excluding poison/venom/disease/heal/prayer drain) within `opponentTimeout` for the self-health bar, and narrowed expiry so only `getInteracting() == opponent` holds the target (#4).
+
 ## 2026-09-02 — Native health bar suppression hid hitsplats and overhead icons (`7e9eac9`)
 - **What broke:** Enabling the experimental `Hide game's health bar` option suppressed the target actor's entire 2D UI layer via `Hooks` (`RenderableDrawListener`), hiding hitsplats, name plates, and overhead prayer icons alongside the native health bar.
 - **How it was found:** In-game testing and review of rejected Plugin Hub submissions (`Add Combat Entity Hider` / `Add PVP Entity Hider`).
