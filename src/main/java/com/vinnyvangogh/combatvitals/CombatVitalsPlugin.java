@@ -19,6 +19,7 @@ import net.runelite.api.SpritePixels;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
+import net.runelite.api.events.HitsplatApplied;
 import net.runelite.api.events.InteractingChanged;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.gameval.VarbitID;
@@ -91,7 +92,13 @@ public class CombatVitalsPlugin extends Plugin
 	private volatile Readout selfReadout;
 
 	private Actor opponent;
-	private Instant interactionEnded;
+
+	/**
+	 * Whether the interaction is a fight. Interacting with an NPC is not proof:
+	 * fishing spots, rocks, bankers and pets are NPCs too.
+	 */
+	private final CombatState combat = new CombatState();
+
 	private HiscoreEndpoint hiscoreEndpoint = HiscoreEndpoint.NORMAL;
 	private Plugin stockPlugin;
 
@@ -170,7 +177,7 @@ public class CombatVitalsPlugin extends Plugin
 		readout = null;
 		selfReadout = null;
 		opponent = null;
-		interactionEnded = null;
+		combat.clear();
 		stockPlugin = null;
 	}
 
@@ -185,7 +192,7 @@ public class CombatVitalsPlugin extends Plugin
 			case LOGIN_SCREEN:
 			case HOPPING:
 				opponent = null;
-				interactionEnded = null;
+				combat.clear();
 				readout = null;
 				selfReadout = null;
 				chatCovered = Collections.emptySet();
@@ -213,15 +220,42 @@ public class CombatVitalsPlugin extends Plugin
 		final Actor target = event.getTarget();
 		if (target != null)
 		{
+			// Held even when it cannot be fought, so that a later hitsplat can
+			// prove otherwise; the readouts below check attackability first.
 			opponent = target;
-			interactionEnded = null;
+			combat.engage(attackable(target));
 		}
 		else
 		{
 			// Keep the opponent: the health bar lingers after combat and the
 			// readout should too. The timeout below retires it.
-			interactionEnded = Instant.now();
+			combat.disengage(Instant.now());
 		}
+	}
+
+	/**
+	 * Hitsplats are the proof of combat that interaction alone is not. One on
+	 * you, or one you dealt, keeps your own bar up for the timeout, and one you
+	 * dealt to the held target proves it attackable whatever its menu said.
+	 */
+	@Subscribe
+	public void onHitsplatApplied(HitsplatApplied event)
+	{
+		final Player self = client.getLocalPlayer();
+		if (self == null)
+		{
+			return;
+		}
+
+		final Actor actor = event.getActor();
+		final boolean onMe = actor == self;
+		if (!CombatState.evidence(onMe, event.getHitsplat()))
+		{
+			return;
+		}
+
+		final boolean onTarget = !onMe && actor == opponent && event.getHitsplat().isMine();
+		combat.hit(onTarget, Instant.now());
 	}
 
 	/**
@@ -258,6 +292,10 @@ public class CombatVitalsPlugin extends Plugin
 	 * Hides the game's chat line for each actor the overlay redrew it for last
 	 * frame, and gives it back to every other. Every client tick, so turning
 	 * the option off, or the readout moving clear, restores within a frame.
+	 *
+	 * The set only ever holds actors with a readout, and a readout only exists
+	 * for a real fight ({@link CombatState#showTarget()}), so a skilling NPC's
+	 * chat is never moved or hidden: no readout means no chat move.
 	 */
 	private void updateChatHolds()
 	{
@@ -344,29 +382,53 @@ public class CombatVitalsPlugin extends Plugin
 
 	private void expireOpponent()
 	{
-		if (opponent == null || interactionEnded == null)
+		if (opponent == null)
 		{
 			return;
 		}
 
+		// Only interacting with the opponent itself holds it; interacting with
+		// anything else, a fishing spot included, lets the timeout run.
 		final Player self = client.getLocalPlayer();
-		if (self != null && self.getInteracting() != null)
-		{
-			return;
-		}
+		final boolean stillOnTarget = self != null && self.getInteracting() == opponent;
 
-		final Duration timeout = Duration.ofSeconds(Math.max(1, config.opponentTimeout()));
-		if (Duration.between(interactionEnded, Instant.now()).compareTo(timeout) > 0)
+		if (combat.expire(Instant.now(), timeout(), stillOnTarget))
 		{
 			opponent = null;
-			interactionEnded = null;
 		}
+	}
+
+	private Duration timeout()
+	{
+		return Duration.ofSeconds(Math.max(1, config.opponentTimeout()));
+	}
+
+	/** Players can always be fought; an NPC only if its menu or combat level says so. */
+	private static boolean attackable(Actor target)
+	{
+		if (!(target instanceof NPC))
+		{
+			return true;
+		}
+
+		final NPC npc = (NPC) target;
+		NPCComposition composition = npc.getTransformedComposition();
+		if (composition == null)
+		{
+			composition = npc.getComposition();
+		}
+		if (composition == null)
+		{
+			return false;
+		}
+
+		return CombatState.attackable(composition.getActions(), composition.getCombatLevel());
 	}
 
 	private Readout buildReadout()
 	{
 		final Actor actor = opponent;
-		if (actor == null || actor.getName() == null)
+		if (actor == null || actor.getName() == null || !combat.showTarget())
 		{
 			return null;
 		}
@@ -451,12 +513,14 @@ public class CombatVitalsPlugin extends Plugin
 	 * would print a guess in place of a fact, which would be absurd on its own
 	 * terms and would undermine the one claim this plugin actually makes.
 	 *
-	 * Only while engaged: a permanent readout over your own head is clutter,
-	 * and the orb already covers the out-of-combat case.
+	 * Only while fighting: a permanent readout over your own head is clutter,
+	 * and the orb already covers the out-of-combat case. Fighting means an
+	 * attackable target or a recent hitsplat, so being attacked while skilling
+	 * shows it and clicking a fishing spot does not.
 	 */
 	private Readout buildSelfReadout()
 	{
-		if (!config.showOwnHealth() || opponent == null)
+		if (!config.showOwnHealth() || !combat.inCombat(Instant.now(), timeout()))
 		{
 			return null;
 		}
