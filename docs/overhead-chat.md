@@ -64,6 +64,12 @@ Only two actors can ever be held: your tracked opponent and you. Bystanders,
 NPC dialogue on other NPCs and anyone the readout does not cover are never
 touched.
 
+The set follows the readout, and the readout follows `CombatState` (PR #4):
+a target gets a readout only if it can be fought (`Attack` option, combat
+level, or a hit you dealt it), and your own only while in combat. So a fishing
+spot, banker or pet never gets a chat move or a hidden line, and your own
+chat is only ever touched while your own readout is up.
+
 ### Never dropping a message
 
 - A hold exists only while the copy is being drawn. Any frame where the copy
@@ -119,3 +125,7 @@ reflection, no new network use. Compliance otherwise unchanged from
 8. With Chat Filter on and a filtered word typed by a player you are fighting:
    expect the filtered form, shown once.
 9. A bystander's chat, not your opponent: unaffected.
+10. Click a fishing spot or banker (no readout, per PR #4) and type a message.
+    Expect: no readout, the game's own line drawn as normal over your head,
+    nothing moved or hidden. Then attack an NPC: your readout appears and the
+    next message you type moves above it.
