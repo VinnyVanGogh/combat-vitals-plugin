@@ -1,0 +1,13 @@
+# Full-suite regression gate for the Ship Review card.
+#
+# One stack: a Gradle/Java RuneLite plugin. The JUnit 4 tests live in
+# src/test/java/com/vinnyvangogh/combatvitals/ and need no services, secrets or
+# a game client, so `./gradlew test` is the whole suite. The timeout allows for
+# a cold Gradle home, where the first run downloads the wrapper distribution
+# and the pinned net.runelite:client dependency before compiling.
+suite = "required"
+
+[[commands]]
+name      = "gradle"
+runner    = "gradle_test"
+timeout_s = 900
