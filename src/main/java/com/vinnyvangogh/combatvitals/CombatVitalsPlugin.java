@@ -3,24 +3,46 @@ package com.vinnyvangogh.combatvitals;
 import com.google.inject.Provides;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 import javax.inject.Inject;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
+import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.EquipmentInventorySlot;
+import net.runelite.api.GameState;
+import net.runelite.api.Item;
+import net.runelite.api.ItemContainer;
+import net.runelite.api.MenuAction;
 import net.runelite.api.NPC;
 import net.runelite.api.NPCComposition;
 import net.runelite.api.ParamID;
 import net.runelite.api.Player;
+import net.runelite.api.Prayer;
 import net.runelite.api.Skill;
+import net.runelite.api.SpritePixels;
+import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.HitsplatApplied;
 import net.runelite.api.events.InteractingChanged;
+import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.events.MenuOptionClicked;
+import net.runelite.api.events.NpcDespawned;
+import net.runelite.api.events.StatChanged;
+import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.gameval.VarbitID;
+import net.runelite.client.Notifier;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.game.FishingSpot;
 import net.runelite.client.game.NPCManager;
 import net.runelite.client.hiscore.HiscoreEndpoint;
 import net.runelite.client.hiscore.HiscoreManager;
@@ -55,6 +77,9 @@ public class CombatVitalsPlugin extends Plugin
 	private Client client;
 
 	@Inject
+	private ClientThread clientThread;
+
+	@Inject
 	private CombatVitalsConfig config;
 
 	@Inject
@@ -75,6 +100,9 @@ public class CombatVitalsPlugin extends Plugin
 	@Inject
 	private CombatVitalsOverheadOverlay overheadOverlay;
 
+	@Inject
+	private Notifier notifier;
+
 	/** Replaced wholesale each tick, never mutated, so the overlay thread sees a consistent view. */
 	@Getter
 	private volatile Readout readout;
@@ -82,6 +110,13 @@ public class CombatVitalsPlugin extends Plugin
 	/** Your own health. Exact, because the client knows it — never recovered. */
 	@Getter
 	private volatile Readout selfReadout;
+
+	/**
+	 * The skilling badge, while a fishing spot or other skilling NPC is being
+	 * worked. Drawn over the local player, never over the NPC.
+	 */
+	@Getter
+	private volatile SkillingReadout skillingReadout;
 
 	private Actor opponent;
 
@@ -91,8 +126,33 @@ public class CombatVitalsPlugin extends Plugin
 	 */
 	private final CombatState combat = new CombatState();
 
+	/** The skilling NPC being worked, when the interaction is not a fight. */
+	private NPC skillingTarget;
+
+	private final SkillingState skilling = new SkillingState();
+	private final InventoryCatches inventoryCatches = new InventoryCatches();
+	private final BoostTracker boosts = new BoostTracker();
+	private final BoostTimer boostTimer = new BoostTimer();
+
+	/** Boost levels are seeded from the client once, for a plugin enabled mid-session. */
+	private boolean boostsSeeded;
+
+	/** Ticks until the next boost drop, computed once per tick for the snapshot. */
+	private int ticksUntilDrop = -1;
+
+	private int lastSpecEnergy = -1;
+
 	private HiscoreEndpoint hiscoreEndpoint = HiscoreEndpoint.NORMAL;
 	private Plugin stockPlugin;
+
+	/** Client thread only. Null until the plugin starts. */
+	private volatile NativeHealthBarHider<SpritePixels> healthBarHider;
+
+	/** Client thread only, the overlay included. Null until the plugin starts. */
+	private volatile OverheadChatHolder<Actor> chatHolder;
+
+	/** Actors whose readout covered their chat line in the latest frame, published by the overlay. */
+	private volatile Set<Actor> chatCovered = Collections.emptySet();
 
 	@Provides
 	CombatVitalsConfig provideConfig(ConfigManager configManager)
@@ -110,6 +170,28 @@ public class CombatVitalsPlugin extends Plugin
 			.filter(p -> STOCK_PLUGIN_NAME.equals(p.getName()))
 			.findFirst()
 			.orElse(null);
+
+		healthBarHider = new NativeHealthBarHider<>(client.getSpriteOverrides(), this::blankSprite);
+		chatHolder = new OverheadChatHolder<>(new OverheadChatHolder.Access<Actor>()
+		{
+			@Override
+			public String text(Actor actor)
+			{
+				return actor.getOverheadText();
+			}
+
+			@Override
+			public int cyclesRemaining(Actor actor)
+			{
+				return actor.getOverheadCycle();
+			}
+
+			@Override
+			public void setText(Actor actor, String text)
+			{
+				actor.setOverheadText(text);
+			}
+		});
 	}
 
 	@Override
@@ -118,10 +200,28 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.remove(panelOverlay);
 		overlayManager.remove(overheadOverlay);
 
+		// shutDown runs off the client thread; the sprite map belongs to it.
+		final NativeHealthBarHider<SpritePixels> hider = healthBarHider;
+		healthBarHider = null;
+		if (hider != null)
+		{
+			clientThread.invoke(() -> restoreHealthBars(hider));
+		}
+
+		// Every hidden chat line goes back to the game, with the time it has left.
+		final OverheadChatHolder<Actor> holder = chatHolder;
+		chatHolder = null;
+		chatCovered = Collections.emptySet();
+		if (holder != null)
+		{
+			clientThread.invoke(holder::releaseAll);
+		}
+
 		readout = null;
 		selfReadout = null;
 		opponent = null;
 		combat.clear();
+		clearSkilling();
 		stockPlugin = null;
 	}
 
@@ -132,6 +232,9 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			case LOGGED_IN:
 				hiscoreEndpoint = HiscoreEndpoint.fromWorldTypes(client.getWorldType());
+				// Logging in restarts the drain segment (OSRS wiki, "Temporary
+				// skill boost"): the one anchor available before a drop is seen.
+				boostTimer.anchorLogin(client.getTickCount());
 				break;
 			case LOGIN_SCREEN:
 			case HOPPING:
@@ -139,10 +242,30 @@ public class CombatVitalsPlugin extends Plugin
 				combat.clear();
 				readout = null;
 				selfReadout = null;
+				clearSkilling();
+				chatCovered = Collections.emptySet();
+				final OverheadChatHolder<Actor> holder = chatHolder;
+				if (holder != null)
+				{
+					holder.releaseAll();
+				}
 				break;
 			default:
 				break;
 		}
+	}
+
+	private void clearSkilling()
+	{
+		skillingTarget = null;
+		skillingReadout = null;
+		skilling.clear();
+		inventoryCatches.clear();
+		boosts.clear();
+		boostTimer.clear();
+		boostsSeeded = false;
+		ticksUntilDrop = -1;
+		lastSpecEnergy = -1;
 	}
 
 	@Subscribe
@@ -161,13 +284,206 @@ public class CombatVitalsPlugin extends Plugin
 			// Held even when it cannot be fought, so that a later hitsplat can
 			// prove otherwise; the readouts below check attackability first.
 			opponent = target;
-			combat.engage(attackable(target));
+			final boolean fight = attackable(target);
+			combat.engage(fight);
+
+			// Not a fight: perhaps a fishing spot. The badge takes the NPC only
+			// when its menu names a skill; anything else drops the badge at once.
+			final Skill trained = fight ? null : skillingSkill(target);
+			if (trained != null)
+			{
+				skillingTarget = (NPC) target;
+				skilling.engage(trained);
+			}
+			else
+			{
+				skillingTarget = null;
+				skilling.release();
+			}
 		}
 		else
 		{
 			// Keep the opponent: the health bar lingers after combat and the
 			// readout should too. The timeout below retires it.
-			combat.disengage(Instant.now());
+			final Instant now = Instant.now();
+			combat.disengage(now);
+			skilling.disengage(now);
+		}
+	}
+
+	/** The skill a non-attackable NPC trains, from its menu, or null. */
+	private static Skill skillingSkill(Actor target)
+	{
+		if (!(target instanceof NPC))
+		{
+			return null;
+		}
+
+		final NPC npc = (NPC) target;
+		NPCComposition composition = npc.getTransformedComposition();
+		if (composition == null)
+		{
+			composition = npc.getComposition();
+		}
+		if (composition == null)
+		{
+			return null;
+		}
+
+		return SkillingActions.skill(composition.getActions(), composition.getName());
+	}
+
+	/**
+	 * The badge's boost tracking. Every skill is watched, not only the one on
+	 * the badge: the usual order is drink, then click the spot, and a drop in
+	 * any non-combat skill fixes the phase of the shared drain timer.
+	 */
+	@Subscribe
+	public void onStatChanged(StatChanged event)
+	{
+		final Skill skill = event.getSkill();
+		final int tick = client.getTickCount();
+		final int real = event.getLevel();
+		final int boosted = event.getBoostedLevel();
+
+		final BoostTracker.Change change = boosts.observe(skill, real, boosted);
+		if ((change == BoostTracker.Change.DROP || change == BoostTracker.Change.EXPIRED)
+			&& BoostTimer.onSkillingTimer(skill))
+		{
+			boostTimer.anchorDrop(tick);
+		}
+
+		final SkillingState.Warning warning = skilling.boostChanged(skill, change, tick);
+		if (warning != SkillingState.Warning.NONE)
+		{
+			final String message = warning == SkillingState.Warning.EXPIRED
+				? skill.getName() + " boost has worn off"
+				: skill.getName() + " boost dropped to +" + (boosted - real);
+			notifier.notify(config.skillingBoostNotify(), message);
+		}
+	}
+
+	/**
+	 * Drink or Eat on an item: remembered so a boost that follows can be
+	 * named. An option on an NPC (Net, Bait, Harpoon...): remembered so the
+	 * badge knows which method the spot is worked with. The event is read,
+	 * never changed.
+	 */
+	@Subscribe
+	public void onMenuOptionClicked(MenuOptionClicked event)
+	{
+		final String option = event.getMenuOption();
+
+		if (event.isItemOp())
+		{
+			if ("Drink".equalsIgnoreCase(option) || "Eat".equalsIgnoreCase(option))
+			{
+				skilling.consumed(client.getItemDefinition(event.getItemId()).getName(), client.getTickCount());
+			}
+			return;
+		}
+
+		if (isNpcOption(event.getMenuAction()))
+		{
+			skilling.clicked(option);
+		}
+	}
+
+	private static boolean isNpcOption(MenuAction action)
+	{
+		if (action == null)
+		{
+			return false;
+		}
+
+		switch (action)
+		{
+			case NPC_FIRST_OPTION:
+			case NPC_SECOND_OPTION:
+			case NPC_THIRD_OPTION:
+			case NPC_FOURTH_OPTION:
+			case NPC_FIFTH_OPTION:
+				return true;
+			default:
+				return false;
+		}
+	}
+
+	/** "You catch some shrimps.": the fish the badge highlights. */
+	@Subscribe
+	public void onChatMessage(ChatMessage event)
+	{
+		if (event.getType() != ChatMessageType.GAMEMESSAGE && event.getType() != ChatMessageType.SPAM)
+		{
+			return;
+		}
+
+		final FishingCatches.Fish fish = FishingCatches.fromCatchMessage(Text.removeTags(event.getMessage()));
+		if (fish != null)
+		{
+			skilling.caught(fish.getItemId());
+		}
+	}
+
+	/**
+	 * A fish landing in the inventory, for when the catch message is filtered
+	 * out of the chat or the fish stacks. The inventory is read once per
+	 * change, never per tick.
+	 */
+	@Subscribe
+	public void onItemContainerChanged(ItemContainerChanged event)
+	{
+		if (event.getContainerId() != InventoryID.INV || event.getItemContainer() == null)
+		{
+			return;
+		}
+
+		final Item[] items = event.getItemContainer().getItems();
+		final int[] ids = new int[items.length];
+		final int[] quantities = new int[items.length];
+		for (int i = 0; i < items.length; i++)
+		{
+			ids[i] = items[i].getId();
+			quantities[i] = items[i].getQuantity();
+		}
+
+		final int caught = inventoryCatches.observe(ids, quantities);
+		if (caught != -1)
+		{
+			skilling.caught(caught);
+		}
+	}
+
+	/** Special attack energy falling while a skilling spec tool is wielded is that tool's special. */
+	@Subscribe
+	public void onVarbitChanged(VarbitChanged event)
+	{
+		if (event.getVarpId() != VarPlayerID.SA_ENERGY)
+		{
+			return;
+		}
+
+		final int energy = event.getValue();
+		if (lastSpecEnergy != -1 && energy < lastSpecEnergy)
+		{
+			final String weapon = weaponName();
+			final Skill toolSkill = SkillingTools.specSkill(weapon);
+			if (toolSkill != null)
+			{
+				skilling.specUsed(weapon, toolSkill, client.getTickCount());
+			}
+		}
+		lastSpecEnergy = energy;
+	}
+
+	/** Fishing spots move by despawning; the badge has nothing left to sit over. */
+	@Subscribe
+	public void onNpcDespawned(NpcDespawned event)
+	{
+		if (event.getNpc() == skillingTarget)
+		{
+			skillingTarget = null;
+			skilling.release();
 		}
 	}
 
@@ -196,12 +512,263 @@ public class CombatVitalsPlugin extends Plugin
 		combat.hit(onTarget, Instant.now());
 	}
 
+	/**
+	 * Every client tick rather than on config change, so that when Interface
+	 * Styles rewrites or clears the same sprite ids ours is back within a
+	 * frame, and so that turning the option off restores without a separate
+	 * listener.
+	 */
+	@Subscribe
+	public void onClientTick(ClientTick tick)
+	{
+		updateChatHolds();
+
+		final NativeHealthBarHider<SpritePixels> hider = healthBarHider;
+		if (hider == null)
+		{
+			return;
+		}
+
+		if (config.hideGameHealthBar())
+		{
+			if (hider.apply())
+			{
+				client.resetHealthBarCaches();
+			}
+		}
+		else
+		{
+			restoreHealthBars(hider);
+		}
+	}
+
+	/**
+	 * Hides the game's chat line for each actor the overlay redrew it for last
+	 * frame, and gives it back to every other. Every client tick, so turning
+	 * the option off, or the readout moving clear, restores within a frame.
+	 *
+	 * The set only ever holds actors the overlay drew over: the opponent, whose
+	 * readout only exists for a real fight ({@link CombatState#showTarget()}),
+	 * and you, under your own bar or the skilling badge. A skilling NPC is
+	 * never drawn over, so its chat is never moved or hidden.
+	 */
+	private void updateChatHolds()
+	{
+		final OverheadChatHolder<Actor> holder = chatHolder;
+		if (holder == null)
+		{
+			return;
+		}
+
+		if (config.hideGameOverheadChat() && config.showOverhead())
+		{
+			holder.update(chatCovered);
+		}
+		else
+		{
+			holder.releaseAll();
+		}
+	}
+
+	/**
+	 * The actor's overhead chat as the overlay should draw it, including a line
+	 * this plugin has taken off the game. Client thread only.
+	 *
+	 * @return the text, or null when no chat is up
+	 */
+	String overheadChat(Actor actor)
+	{
+		final OverheadChatHolder<Actor> holder = chatHolder;
+		if (holder != null)
+		{
+			return holder.chat(actor);
+		}
+
+		final String text = actor.getOverheadText();
+		return OverheadChat.showing(text, actor.getOverheadCycle()) ? text : null;
+	}
+
+	/** Called by the overlay once per frame with the actors whose chat it redrew. */
+	void setChatCovered(Set<Actor> covered)
+	{
+		chatCovered = covered;
+	}
+
+	private void restoreHealthBars(NativeHealthBarHider<SpritePixels> hider)
+	{
+		if (hider.restore())
+		{
+			client.resetHealthBarCaches();
+		}
+	}
+
+	/**
+	 * A fully transparent sprite the size of the one it replaces. Keeping the
+	 * size keeps the client's overhead stacking unchanged, so head icons and
+	 * the like stay exactly where they were. Null while the sprite cannot be
+	 * read yet; {@link NativeHealthBarHider} retries next tick.
+	 */
+	private SpritePixels blankSprite(int spriteId)
+	{
+		final SpritePixels[] original = client.getSprites(client.getIndexSprites(), spriteId, 0);
+		if (original == null || original.length == 0 || original[0] == null)
+		{
+			return null;
+		}
+
+		final int width = original[0].getWidth();
+		final int height = original[0].getHeight();
+		if (width <= 0 || height <= 0)
+		{
+			return null;
+		}
+
+		// Pixel value 0 is transparent to the client's sprite rasteriser.
+		return client.createSpritePixels(new int[width * height], width, height);
+	}
+
 	@Subscribe
 	public void onGameTick(GameTick tick)
 	{
 		expireOpponent();
+		expireSkillingTarget();
+		seedBoosts();
+		tickBoostTimer();
 		readout = buildReadout();
 		selfReadout = buildSelfReadout();
+		skillingReadout = buildSkillingReadout();
+	}
+
+	private void expireSkillingTarget()
+	{
+		if (skillingTarget == null)
+		{
+			return;
+		}
+
+		final Player self = client.getLocalPlayer();
+		final boolean stillOnTarget = self != null && self.getInteracting() == skillingTarget;
+
+		if (skilling.expire(Instant.now(), timeout(), stillOnTarget))
+		{
+			skillingTarget = null;
+		}
+	}
+
+	/**
+	 * A plugin enabled mid-session has seen no stat updates. Seed from the
+	 * client so the first real change is classified rather than swallowed.
+	 */
+	private void seedBoosts()
+	{
+		if (boostsSeeded || client.getGameState() != GameState.LOGGED_IN)
+		{
+			return;
+		}
+
+		for (Skill skill : Skill.values())
+		{
+			if (!boosts.isSeeded(skill))
+			{
+				boosts.seed(skill, client.getBoostedSkillLevel(skill));
+			}
+		}
+		lastSpecEnergy = client.getVarpValue(VarPlayerID.SA_ENERGY);
+		boostsSeeded = true;
+	}
+
+	/**
+	 * Advances the drain timer every tick, badge or no badge, so its phase
+	 * survives long stretches with nothing boosted. Preserve is read here, on
+	 * the client thread, the same way the Boosts plugin does.
+	 */
+	private void tickBoostTimer()
+	{
+		final int tick = client.getTickCount();
+		ticksUntilDrop = boostTimer.ticksUntilDrop(tick, client.isPrayerActive(Prayer.PRESERVE));
+		if (ticksUntilDrop <= 0 && boostTimer.isKnown())
+		{
+			boostTimer.roll(tick);
+			ticksUntilDrop = boostTimer.ticksUntilDrop(tick, client.isPrayerActive(Prayer.PRESERVE));
+		}
+	}
+
+	/**
+	 * The skilling badge. Only while the interaction is not a fight: a hit
+	 * landing on the held NPC promotes it to an opponent, and the health bar
+	 * takes over. The NPC decides whether the badge is up and what it can
+	 * catch; it is not where the badge is drawn.
+	 */
+	private SkillingReadout buildSkillingReadout()
+	{
+		final Skill skill = skilling.skill();
+		final NPC target = skillingTarget;
+		if (!config.skillingEnabled() || skill == null || target == null || combat.showTarget())
+		{
+			return null;
+		}
+
+		final int tick = client.getTickCount();
+		final int real = client.getRealSkillLevel(skill);
+		final int boosted = client.getBoostedSkillLevel(skill);
+
+		int specPercent = -1;
+		if (config.skillingSpecEnergy() && SkillingTools.specSkill(weaponName()) == skill)
+		{
+			// SA_ENERGY is in tenths of a percent.
+			specPercent = client.getVarpValue(VarPlayerID.SA_ENERGY) / 10;
+		}
+
+		return new SkillingReadout(
+			skill,
+			real,
+			boosted,
+			config.skillingBoostTimer() ? ticksUntilDrop : -1,
+			boostTimer.cycleLength(),
+			boostTimer.isConfirmed(),
+			specPercent,
+			config.skillingBoostSource() ? skilling.source() : null,
+			skilling.warning(tick),
+			catches(skill, target, boosted),
+			skilling.lastCatch(),
+			System.currentTimeMillis());
+	}
+
+	/**
+	 * The fish the clicked method can land at the boosted level, the last
+	 * catch first. The spot type comes from the base client's
+	 * {@link FishingSpot} table of spot NPC ids; an unknown spot, an unknown
+	 * method, or any skill but fishing gives nothing, and the badge shows the
+	 * skill and level alone.
+	 */
+	private List<FishingCatches.Fish> catches(Skill skill, NPC target, int boosted)
+	{
+		if (!config.skillingCatches() || skill != Skill.FISHING)
+		{
+			return Collections.emptyList();
+		}
+
+		final FishingSpot spot = FishingSpot.findSpot(target.getId());
+		final List<FishingCatches.Fish> all = FishingCatches.forOption(spot, skilling.method());
+		return FishingCatches.highlightFirst(FishingCatches.catchable(all, boosted), skilling.lastCatch());
+	}
+
+	/** The wielded weapon's name, or null with nothing in the slot. */
+	private String weaponName()
+	{
+		final ItemContainer worn = client.getItemContainer(InventoryID.WORN);
+		if (worn == null)
+		{
+			return null;
+		}
+
+		final Item weapon = worn.getItem(EquipmentInventorySlot.WEAPON.getSlotIdx());
+		if (weapon == null)
+		{
+			return null;
+		}
+
+		return client.getItemDefinition(weapon.getId()).getName();
 	}
 
 	private void expireOpponent()

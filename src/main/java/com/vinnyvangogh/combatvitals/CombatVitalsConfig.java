@@ -6,6 +6,7 @@ import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
+import net.runelite.client.config.Notification;
 import net.runelite.client.config.Range;
 
 /**
@@ -32,9 +33,16 @@ public interface CombatVitalsConfig extends Config
 	String targetSection = "targets";
 
 	@ConfigSection(
+		name = "Skilling vitals",
+		description = "A badge over your head while you work a fishing spot or other skilling NPC",
+		position = 2
+	)
+	String skillingSection = "skilling";
+
+	@ConfigSection(
 		name = "Advanced",
 		description = "Timeouts and diagnostics",
-		position = 2,
+		position = 3,
 		closedByDefault = true
 	)
 	String advancedSection = "advanced";
@@ -195,6 +203,38 @@ public interface CombatVitalsConfig extends Config
 		return 0;
 	}
 
+	@ConfigItem(
+		keyName = "hideGameHealthBar",
+		name = "Hide game health bar",
+		description =
+			"Hide the game's own green and red health bar over every player and NPC, yours included, "
+				+ "so it no longer jumps up when someone talks. Hitsplats and overhead chat stay. "
+				+ "Overrides Interface Styles' HD health bars while on, and gives them back when off.",
+		section = displaySection,
+		position = 12
+	)
+	default boolean hideGameHealthBar()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "hideGameOverheadChat",
+		name = "Hide game chat under readout",
+		description =
+			"While the readout or skilling badge covers someone's overhead chat and the plugin redraws it "
+				+ "above, hide the game's own line so only one copy shows. Only for you and your opponent, "
+				+ "only while covered; the message keeps its full time on screen and goes back to the game "
+				+ "otherwise. The badge is over your own head, so a skilling NPC is never touched.",
+		section = displaySection,
+		position = 13
+	)
+	default boolean hideGameOverheadChat()
+	{
+		// Off until checked in game (Board, 2026-10-22): it edits the actor's
+		// chat text, which other plugins can read.
+		return false;
+	}
 
 	@ConfigItem(
 		keyName = "showOwnHealth",
@@ -207,7 +247,8 @@ public interface CombatVitalsConfig extends Config
 	)
 	default boolean showOwnHealth()
 	{
-		return false;
+		// On by default: "Hide game health bar" hides your own bar too (Board, 2026-10-20).
+		return true;
 	}
 
 	@ConfigItem(
@@ -275,6 +316,95 @@ public interface CombatVitalsConfig extends Config
 	default boolean showStatComparison()
 	{
 		return false;
+	}
+
+	@ConfigItem(
+		keyName = "skillingEnabled",
+		name = "Skilling badge",
+		description =
+			"When you work a fishing spot or another skilling NPC, draw a badge over your head, where "
+				+ "your own health bar sits, in the health bar's style: the skill's icon, your level, "
+				+ "and your boost.",
+		section = skillingSection,
+		position = 0
+	)
+	default boolean skillingEnabled()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingCatches",
+		name = "Show what you can catch",
+		description =
+			"On a fishing spot, show the fish the method you clicked (Net, Bait, Lure, Cage, Harpoon...) "
+				+ "can land at your current boosted level, as small icons beside the level: up to three, "
+				+ "then +N. The fish you last caught leads. Spots the plugin does not know show the "
+				+ "level alone.",
+		section = skillingSection,
+		position = 1
+	)
+	default boolean skillingCatches()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingBoostTimer",
+		name = "Show boost timer",
+		description =
+			"While boosted, show the seconds until the boost drops by one. The game never reports where "
+				+ "it is in its drain cycle, so the timer is an estimate (marked ~) from login until a drop "
+				+ "is seen, and exact after that. Preserve is accounted for.",
+		section = skillingSection,
+		position = 2
+	)
+	default boolean skillingBoostTimer()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingBoostSource",
+		name = "Show boost source",
+		description =
+			"Name what the boost came from, when it can be known: the potion or food you just drank or "
+				+ "ate, or the special attack of the tool you are wielding. Otherwise nothing is shown "
+				+ "rather than a guess.",
+		section = skillingSection,
+		position = 3
+	)
+	default boolean skillingBoostSource()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingSpecEnergy",
+		name = "Show spec energy",
+		description =
+			"When the wielded tool has a special attack that boosts the skill (dragon, infernal, crystal "
+				+ "and 3rd age axes, pickaxes and harpoons), show the remaining special attack energy.",
+		section = skillingSection,
+		position = 4
+	)
+	default boolean skillingSpecEnergy()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingBoostNotify",
+		name = "Notify on boost drop",
+		description =
+			"Send a RuneLite notification when the badge's boost drops by one or wears off. The badge "
+				+ "itself always shows the cue.",
+		section = skillingSection,
+		position = 5
+	)
+	default Notification skillingBoostNotify()
+	{
+		return Notification.OFF;
 	}
 
 	@ConfigItem(
