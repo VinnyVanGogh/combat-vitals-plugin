@@ -8,13 +8,14 @@ import net.runelite.api.Skill;
  * Decides whether the skilling badge is up, and what it can honestly say
  * about where a boost came from and what just happened to it.
  *
- * Engagement mirrors {@link CombatState}: clicking a skilling NPC raises the
- * badge, and it lingers for the timeout after the interaction ends unless
- * the game still has the player on that NPC.
+ * Engagement mirrors {@link CombatState}: working a skilling NPC or object
+ * raises the badge, and it lingers for the timeout after the work stops
+ * unless the game still has the player on it.
  *
- * The boost source is attributed, never guessed. A rise that follows a
- * Drink or Eat within a few ticks is that item; one that follows a special
- * attack from a recognised tool is that tool; anything else has no source.
+ * The boost source is attributed from what was seen. A rise that follows a
+ * Drink or Eat within a few ticks is likely that item, and labelled
+ * "likely"; one that follows a special attack from a recognised tool is
+ * that tool; anything else has no source.
  * Attribution is kept per skill, because the usual order is drink, then
  * click the spot, and the badge is not up yet when the boost lands.
  *
@@ -258,7 +259,9 @@ final class SkillingState
 
 		if (itemRecent && (!specRecent || consumedTick >= specTick))
 		{
-			return consumedItem;
+			// Any Drink or Eat counts, so a rise after a stew is only a
+			// correlation; the label says as much.
+			return "likely " + consumedItem;
 		}
 		if (specRecent)
 		{

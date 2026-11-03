@@ -57,10 +57,35 @@ public class SkillingActionsTest
 	@Test
 	public void pickpocketIsThieving()
 	{
-		// A Man is attackable and pickpocketable. The plugin asks attackability
-		// first, so this only matters for NPCs that cannot be fought, but the
-		// table itself should still answer.
 		assertEquals(Skill.THIEVING, SkillingActions.skill(MAN, "Man"));
+	}
+
+	@Test
+	public void theClickedOptionDecidesForAnAttackableNpc()
+	{
+		// A Man can be fought and pickpocketed. The option clicked says which.
+		assertEquals(Skill.THIEVING, SkillingActions.forOption("Pickpocket", "Man"));
+		assertNull("Attack is a fight, not a skill", SkillingActions.forOption("Attack", "Man"));
+		assertNull(SkillingActions.forOption("Talk-to", "Man"));
+	}
+
+	@Test
+	public void objectOptionsNameTheirSkill()
+	{
+		assertEquals(Skill.WOODCUTTING, SkillingActions.forOption("Chop down", "Yew tree"));
+		assertEquals(Skill.WOODCUTTING, SkillingActions.forOption("Chop", "Redwood tree"));
+		assertEquals(Skill.MINING, SkillingActions.forOption("Mine", "Iron rocks"));
+		assertEquals(Skill.THIEVING, SkillingActions.forOption("Steal-from", "Silk stall"));
+		assertEquals(Skill.RUNECRAFT, SkillingActions.forOption("Craft-rune", "Altar"));
+	}
+
+	@Test
+	public void unknownObjectOptionsAreNothing()
+	{
+		assertNull(SkillingActions.forOption("Bank", "Bank booth"));
+		assertNull(SkillingActions.forOption("Open", "Door"));
+		assertNull(SkillingActions.forOption("Prospect", "Iron rocks"));
+		assertNull(SkillingActions.forOption(null, "Yew tree"));
 	}
 
 	@Test

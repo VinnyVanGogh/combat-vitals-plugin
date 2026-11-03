@@ -142,7 +142,7 @@ public class SkillingStateTest
 
 		// Drink first, click the spot second: the usual order.
 		state.engage(Skill.FISHING);
-		assertEquals("Fishing potion", state.source());
+		assertEquals("likely Fishing potion", state.source());
 	}
 
 	@Test
@@ -153,7 +153,8 @@ public class SkillingStateTest
 		state.consumed("Admiral pie", 50);
 		state.boostChanged(Skill.FISHING, BoostTracker.Change.RISE, 50);
 
-		assertEquals("Admiral pie", state.source());
+		// A Drink or Eat then a rise is a correlation, not proof: the label says so.
+		assertEquals("likely Admiral pie", state.source());
 	}
 
 	@Test
@@ -191,7 +192,7 @@ public class SkillingStateTest
 		assertFalse(state.expire(T0.plusSeconds(60), TIMEOUT, false));
 
 		state.engage(Skill.FISHING);
-		assertEquals("back on the spot, the potion is still the source", "Fishing potion", state.source());
+		assertEquals("back on the spot, the potion is still the source", "likely Fishing potion", state.source());
 	}
 
 	@Test
@@ -225,7 +226,7 @@ public class SkillingStateTest
 		state.consumed("Fishing potion(3)", 50);
 		state.boostChanged(Skill.FISHING, BoostTracker.Change.RISE, 50);
 		state.boostChanged(Skill.FISHING, BoostTracker.Change.DROP, 150);
-		assertEquals("a drop keeps the source", "Fishing potion", state.source());
+		assertEquals("a drop keeps the source", "likely Fishing potion", state.source());
 
 		state.boostChanged(Skill.FISHING, BoostTracker.Change.EXPIRED, 250);
 		assertNull(state.source());

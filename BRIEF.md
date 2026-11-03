@@ -146,11 +146,15 @@ precedent that shows it is allowed:
 | Fish landing in the inventory read from `ItemContainerChanged` for `InventoryID.INV` | None | Base client `fishing` plugin and countless hub plugins read inventory changes this way; only the fish in the table are counted | Allowed |
 | Item icons via `ItemManager.getImage` | None | Base client overlays everywhere | Allowed |
 | Badge anchored on the local player (`Client.getLocalPlayer`), never the NPC | None | Same anchor as this plugin's own-health readout | Allowed |
+| Object option clicked (`Chop down`, `Mine`, `Steal-from`, `Craft-rune`) read from `MenuOptionClicked`, with `Client.getObjectDefinition` for the name and footprint (task-fb282112, 2026-11-03) | Menu Restrictions: adding or removing entries | Read only, never modified or consumed; the same event and read this plugin already makes for NPC options and Drink/Eat. Base client `woodcutting` and `mining` plugins show session overlays for the same activity | Allowed |
+| Own animation (`Player.getAnimation`) and own tile, read once per tick, to tell chopping from walking | None: own-player state | Base client `idlenotifier` reads the local player's animation to tell skilling from idle | Allowed |
+| Pickpocket vs Attack on the same NPC decided by the clicked option (task-fb282112) | None | Same read-only `MenuOptionClicked` use as above | Allowed |
 
-Not done, deliberately: no tile objects (trees, rocks) in this pass, by Board
-decision 2026-11-02; they follow as task-fb282112. No guessing a boost source:
-a rise with nothing recently drunk, eaten or spec'd shows no source. No
-automation of any kind, and no change to any menu.
+Not done, deliberately: no highlighting or marking of any tree, rock or
+object, and nothing drawn over one; the badge stays over the player. No
+guessing a boost source: a rise with nothing recently drunk, eaten or spec'd
+shows no source, and a Drink or Eat is labelled `likely`. No automation of
+any kind, and no change to any menu.
 
 ### Inventory fill and activity alerts, compliance (added 2026-11-03)
 
