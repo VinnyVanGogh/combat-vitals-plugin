@@ -4,7 +4,9 @@ import com.google.inject.Provides;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import javax.inject.Inject;
 import lombok.Getter;
@@ -15,6 +17,7 @@ import net.runelite.api.Client;
 import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.GameState;
 import net.runelite.api.Item;
+import net.runelite.api.ItemComposition;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.MenuAction;
 import net.runelite.api.NPC;
@@ -44,6 +47,7 @@ import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.Notifier;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.config.Notification;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.FishingSpot;
 import net.runelite.client.game.NPCManager;
@@ -164,6 +168,23 @@ public class CombatVitalsPlugin extends Plugin
 	private int ticksUntilDrop = -1;
 
 	private int lastSpecEnergy = -1;
+
+	/** Every alert is pure state here; the plugin only feeds it and sends what it returns. */
+	private final ActivityAlerts activityAlerts = new ActivityAlerts();
+
+	/** The coin pouch item's name, shared by every pouch variant. */
+	private static final String COIN_POUCH = "Coin pouch";
+
+	/** Inventory slot counts from the last change; -1 until the inventory is seen. */
+	private int inventoryFilling = -1;
+	private int inventoryEmpty = -1;
+	private int coinPouches;
+
+	/** Slot class per item id: definitions never change within a session. */
+	private final Map<Integer, InventoryFill.Slot> slotClasses = new HashMap<>();
+
+	/** Your tile last tick, so walking away reads as stopping on purpose. */
+	private WorldPoint lastPosition;
 
 	private HiscoreEndpoint hiscoreEndpoint = HiscoreEndpoint.NORMAL;
 	private Plugin stockPlugin;
@@ -293,6 +314,11 @@ public class CombatVitalsPlugin extends Plugin
 		boostsSeeded = false;
 		ticksUntilDrop = -1;
 		lastSpecEnergy = -1;
+		activityAlerts.clear();
+		inventoryFilling = -1;
+		inventoryEmpty = -1;
+		coinPouches = 0;
+		lastPosition = null;
 	}
 
 	@Subscribe
@@ -388,6 +414,8 @@ public class CombatVitalsPlugin extends Plugin
 		final int tick = client.getTickCount();
 		final int real = event.getLevel();
 		final int boosted = event.getBoostedLevel();
+
+		activityAlerts.xp(skill, event.getXp());
 
 		final BoostTracker.Change change = boosts.observe(skill, real, boosted);
 		if ((change == BoostTracker.Change.DROP || change == BoostTracker.Change.EXPIRED)
@@ -557,7 +585,17 @@ public class CombatVitalsPlugin extends Plugin
 			return;
 		}
 
-		final FishingCatches.Fish fish = FishingCatches.fromCatchMessage(Text.removeTags(event.getMessage()));
+		final String message = Text.removeTags(event.getMessage());
+		if (ActivityAlerts.isStunMessage(message))
+		{
+			activityAlerts.stunned();
+		}
+		else if (ActivityAlerts.isNecklaceBreakMessage(message))
+		{
+			activityAlerts.necklaceBroke();
+		}
+
+		final FishingCatches.Fish fish = FishingCatches.fromCatchMessage(message);
 		if (fish != null)
 		{
 			skilling.caught(fish.getItemId());
@@ -572,10 +610,19 @@ public class CombatVitalsPlugin extends Plugin
 	@Subscribe
 	public void onItemContainerChanged(ItemContainerChanged event)
 	{
+		if (event.getContainerId() == InventoryID.BANK)
+		{
+			// The bank's contents arrive when it opens: you stopped on purpose.
+			activityAlerts.banked();
+			return;
+		}
+
 		if (event.getContainerId() != InventoryID.INV || event.getItemContainer() == null)
 		{
 			return;
 		}
+
+		countInventory(event.getItemContainer());
 
 		final Item[] items = event.getItemContainer().getItems();
 		final int[] ids = new int[items.length];
@@ -615,12 +662,25 @@ public class CombatVitalsPlugin extends Plugin
 		lastSpecEnergy = energy;
 	}
 
-	/** Fishing spots move by despawning; the badge has nothing left to sit over. */
+	/**
+	 * Fishing spots move by despawning; the badge has nothing left to sit
+	 * over. While you were still on it (interacting, or fishing without having
+	 * walked off) that is the spot moving, not you leaving, and the alert says
+	 * so. Logging out and hopping unload every NPC, so only while logged in.
+	 */
 	@Subscribe
 	public void onNpcDespawned(NpcDespawned event)
 	{
 		if (event.getNpc() == skillingTarget)
 		{
+			final Player self = client.getLocalPlayer();
+			final boolean onIt = self != null && self.getInteracting() == skillingTarget;
+			if (client.getGameState() == GameState.LOGGED_IN && skilling.skill() == Skill.FISHING
+				&& (onIt || activityAlerts.active() == Skill.FISHING))
+			{
+				activityAlerts.spotMoved(Skill.FISHING);
+			}
+
 			skillingTarget = null;
 			skilling.release();
 		}
@@ -774,6 +834,7 @@ public class CombatVitalsPlugin extends Plugin
 		expireSkillingTarget();
 		seedBoosts();
 		tickBoostTimer();
+		tickAlerts();
 		readout = buildReadout();
 		selfReadout = buildSelfReadout();
 		skillingReadout = buildSkillingReadout();
@@ -854,6 +915,8 @@ public class CombatVitalsPlugin extends Plugin
 			{
 				boosts.seed(skill, client.getBoostedSkillLevel(skill));
 			}
+			// The alerts' experience baseline; a repeat of a known value is no gain.
+			activityAlerts.xp(skill, client.getSkillExperience(skill));
 		}
 		lastSpecEnergy = client.getVarpValue(VarPlayerID.SA_ENERGY);
 		boostsSeeded = true;
@@ -914,7 +977,117 @@ public class CombatVitalsPlugin extends Plugin
 			skilling.warning(tick),
 			catches(skill, target, boosted),
 			skilling.lastCatch(),
-			System.currentTimeMillis());
+			System.currentTimeMillis(),
+			config.skillingInventoryBar() && inventoryEmpty >= 0
+				? InventoryFill.fraction(inventoryFilling, inventoryEmpty)
+				: -1);
+	}
+
+	/**
+	 * Counts the inventory's slots for the fill bar and the alerts: filling,
+	 * empty, and coin pouches held. Item definitions are read on the client
+	 * thread, where container events arrive, and cached per id.
+	 */
+	private void countInventory(ItemContainer inventory)
+	{
+		final Item[] items = inventory.getItems();
+		int filling = 0;
+		int empty = 0;
+		int pouches = 0;
+		for (int i = 0; i < InventoryFill.SLOTS; i++)
+		{
+			final Item item = i < items.length ? items[i] : null;
+			if (item == null || item.getId() <= 0 || item.getQuantity() <= 0)
+			{
+				empty++;
+				continue;
+			}
+
+			final ItemComposition definition = client.getItemDefinition(item.getId());
+			if (COIN_POUCH.equalsIgnoreCase(definition.getName()))
+			{
+				pouches += item.getQuantity();
+			}
+
+			final InventoryFill.Slot slot = slotClasses.computeIfAbsent(item.getId(), id ->
+				InventoryFill.classify(definition.isStackable() || definition.getNote() != -1,
+					definition.getName(), definition.getInventoryActions()));
+			if (slot == InventoryFill.Slot.FILLING)
+			{
+				filling++;
+			}
+		}
+		inventoryFilling = filling;
+		inventoryEmpty = empty;
+		coinPouches = pouches;
+	}
+
+	/**
+	 * Feeds the tick to the activity alerts and sends what they decide. Every
+	 * alert goes through {@link Notifier} with its own toggle, so the user's
+	 * RuneLite notification settings (tray, sound, focus) decide how it looks.
+	 */
+	private void tickAlerts()
+	{
+		final Player self = client.getLocalPlayer();
+		if (self == null || client.getGameState() != GameState.LOGGED_IN)
+		{
+			return;
+		}
+
+		if (inventoryEmpty < 0)
+		{
+			final ItemContainer inventory = client.getItemContainer(InventoryID.INV);
+			if (inventory != null)
+			{
+				countInventory(inventory);
+			}
+		}
+
+		final WorldPoint position = self.getWorldLocation();
+		final ActivityAlerts.Tick now = new ActivityAlerts.Tick();
+		now.tick = client.getTickCount();
+		now.animating = self.getAnimation() != -1;
+		now.moved = lastPosition != null && position != null && !position.equals(lastPosition);
+		now.filling = inventoryFilling;
+		now.empty = inventoryEmpty;
+		now.coinPouches = inventoryEmpty < 0 ? -1 : coinPouches;
+		// Hundredths of a percent, as the base client's Idle Notifier reads it.
+		now.runEnergy = client.getEnergy() / 100;
+		lastPosition = position;
+
+		final int pouchCap = config.alertCoinPouchCap();
+		for (ActivityAlerts.Alert alert : activityAlerts.tick(now, ActivityAlerts.ticks(config.alertStopSeconds()),
+			pouchCap, config.alertRunEnergyThreshold()))
+		{
+			notifier.notify(notification(alert.type), ActivityAlerts.message(alert, pouchCap));
+		}
+	}
+
+	private Notification notification(ActivityAlerts.Type type)
+	{
+		switch (type)
+		{
+			case INVENTORY_FULL:
+				return config.alertInventoryFull();
+			case GATHERING_STOPPED:
+				return config.alertGatheringStopped();
+			case THIEVING_STOPPED:
+				return config.alertThievingStopped();
+			case PRODUCTION_FINISHED:
+				return config.alertMakeFinished();
+			case SPOT_MOVED:
+				return config.alertSpotMoved();
+			case STUNNED:
+				return config.alertStunned();
+			case COIN_POUCH_CAP:
+				return config.alertCoinPouch();
+			case NECKLACE_BROKE:
+				return config.alertNecklaceBroke();
+			case LOW_RUN_ENERGY:
+			default:
+				return config.alertLowRunEnergy();
+		}
 	}
 
 	/**

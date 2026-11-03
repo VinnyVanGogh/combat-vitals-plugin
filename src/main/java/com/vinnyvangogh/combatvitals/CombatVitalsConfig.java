@@ -40,9 +40,16 @@ public interface CombatVitalsConfig extends Config
 	String skillingSection = "skilling";
 
 	@ConfigSection(
+		name = "Activity alerts",
+		description = "RuneLite notifications for gathering, thieving and make-X: inventory full, stopped, and more",
+		position = 3
+	)
+	String alertsSection = "alerts";
+
+	@ConfigSection(
 		name = "Advanced",
 		description = "Timeouts and diagnostics",
-		position = 3,
+		position = 4,
 		closedByDefault = true
 	)
 	String advancedSection = "advanced";
@@ -405,6 +412,179 @@ public interface CombatVitalsConfig extends Config
 	default Notification skillingBoostNotify()
 	{
 		return Notification.OFF;
+	}
+
+	@ConfigItem(
+		keyName = "skillingInventoryBar",
+		name = "Show inventory fill",
+		description =
+			"Draw a thin bar under the badge that runs from green to yellow to red as your inventory "
+				+ "fills. Stackables (feathers, bait, coin pouches), tools and equipment hold their slot "
+				+ "and do not count as filling; red means no free slot is left.",
+		section = skillingSection,
+		position = 6
+	)
+	default boolean skillingInventoryBar()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "alertInventoryFull",
+		name = "Inventory full",
+		description = "Notify when the last free slot fills while you are fishing, woodcutting, mining, hunting "
+			+ "or thieving.",
+		section = alertsSection,
+		position = 0
+	)
+	default Notification alertInventoryFull()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "alertGatheringStopped",
+		name = "Stopped gathering",
+		description = "Notify when you have had no gathering animation or experience for the delay below. "
+			+ "Not sent when you walk away, bank, drop or deposit, log out, or when the inventory filled "
+			+ "or the spot moved (those have their own alerts).",
+		section = alertsSection,
+		position = 1
+	)
+	default Notification alertGatheringStopped()
+	{
+		return Notification.ON;
+	}
+
+	@Range(min = 1, max = 60)
+	@ConfigItem(
+		keyName = "alertStopSeconds",
+		name = "Stopped after (s)",
+		description = "How long with no animation or experience counts as stopped, for gathering, thieving and "
+			+ "make-X.",
+		section = alertsSection,
+		position = 2
+	)
+	default int alertStopSeconds()
+	{
+		return 5;
+	}
+
+	@ConfigItem(
+		keyName = "alertSpotMoved",
+		name = "Fishing spot moved",
+		description = "Notify when the fishing spot you are working moves away.",
+		section = alertsSection,
+		position = 3
+	)
+	default Notification alertSpotMoved()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "alertThievingStopped",
+		name = "Stopped thieving",
+		description = "Notify when pickpocketing or stealing from stalls has stopped for the delay above. A "
+			+ "stun does not count as stopping.",
+		section = alertsSection,
+		position = 4
+	)
+	default Notification alertThievingStopped()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "alertStunned",
+		name = "Pickpocket stun",
+		description = "Notify when a failed pickpocket stuns you.",
+		section = alertsSection,
+		position = 5
+	)
+	default Notification alertStunned()
+	{
+		// Off: at most levels it fires every few pickpockets.
+		return Notification.OFF;
+	}
+
+	@ConfigItem(
+		keyName = "alertCoinPouch",
+		name = "Coin pouches at cap",
+		description = "Notify when the coin pouches you hold reach the number below, so you open them before "
+			+ "pickpocketing stops paying out.",
+		section = alertsSection,
+		position = 6
+	)
+	default Notification alertCoinPouch()
+	{
+		return Notification.ON;
+	}
+
+	@Range(min = 1, max = 140)
+	@ConfigItem(
+		keyName = "alertCoinPouchCap",
+		name = "Coin pouch cap",
+		description = "Pouches held before the alert. 28 is the cap without Ardougne Diary rewards; raise this "
+			+ "to match yours if the diary has lifted it.",
+		section = alertsSection,
+		position = 7
+	)
+	default int alertCoinPouchCap()
+	{
+		return 28;
+	}
+
+	@ConfigItem(
+		keyName = "alertNecklaceBroke",
+		name = "Dodgy necklace broke",
+		description = "Notify when your dodgy necklace uses its last charge. RuneLite's Item Charges plugin can "
+			+ "send the same alert; turn one of them off if you get two.",
+		section = alertsSection,
+		position = 8
+	)
+	default Notification alertNecklaceBroke()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "alertMakeFinished",
+		name = "Make-X finished",
+		description = "Notify when cooking, fletching, crafting or smithing has stopped for the delay above, "
+			+ "usually because you ran out of materials or levelled up.",
+		section = alertsSection,
+		position = 9
+	)
+	default Notification alertMakeFinished()
+	{
+		// Off: RuneLite's Idle Notifier already covers this for many users.
+		return Notification.OFF;
+	}
+
+	@ConfigItem(
+		keyName = "alertLowRunEnergy",
+		name = "Low run energy",
+		description = "Notify when run energy drops below the threshold.",
+		section = alertsSection,
+		position = 10
+	)
+	default Notification alertLowRunEnergy()
+	{
+		return Notification.OFF;
+	}
+
+	@Range(min = 1, max = 99)
+	@ConfigItem(
+		keyName = "alertRunEnergyThreshold",
+		name = "Low run energy (%)",
+		description = "Run energy below which the low run energy alert fires.",
+		section = alertsSection,
+		position = 11
+	)
+	default int alertRunEnergyThreshold()
+	{
+		return 10;
 	}
 
 	@ConfigItem(

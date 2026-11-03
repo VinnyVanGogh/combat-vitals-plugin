@@ -112,6 +112,36 @@ message or from it landing in your inventory, leads and the others fade. The
 spot type comes from RuneLite's own fishing spot table and the levels from the
 OSRS wiki; a spot the plugin does not know shows the skill and level alone.
 
+**Inventory fill.** Under the badge sits a thin bar that runs from green
+through yellow to red as your inventory fills. Only what you are gathering
+counts: feathers, bait, coin pouches and anything else that stacks, your tools
+(net, rod, pot, axe, pickaxe, hammer...) and anything you can wield or wear
+hold their slot for the whole trip, so they shrink the capacity instead. A
+harpoon and 27 fish is solid red. It uses the health colours from Display,
+run backwards.
+
+**Activity alerts.** RuneLite notifications for the moments you would
+otherwise miss while looking at something else, each with its own toggle in
+the *Activity alerts* section. They go through RuneLite's notifier, so your
+RuneLite notification settings (tray, flash, sound, focus) decide how they
+arrive; the plugin plays nothing of its own.
+
+- *Inventory full* while fishing, woodcutting, mining, hunting or thieving.
+- *Stopped gathering*: no gathering animation or experience for five seconds
+  (configurable). It knows the difference between stopping and stopping on
+  purpose: walking off (to the next spot, or the bank), opening the bank,
+  dropping or depositing, logging out or hopping never fire it, and neither
+  does a full inventory or a moved spot, which have their own alerts.
+- *Fishing spot moved*, when the spot you are on disappears from under you.
+- Thieving: *stopped thieving* (a stun is not stopping), *coin pouches at
+  cap* (28 by default; raise it if the Ardougne Diary lifted yours),
+  *pickpocket stun*, and *dodgy necklace broke*.
+- *Make-X finished* for cooking, fletching, crafting and smithing, and *low
+  run energy*, both off by default.
+
+Woodcutting and mining alerts work from your experience drops, so they fire
+even though the badge does not come up for trees and rocks yet.
+
 The timer is honest about what it knows. The game never tells the client where
 it is in its one-minute drain cycle, so from login the badge shows an estimate
 marked `~`, and once it has seen a boost actually drop the mark goes away and
@@ -243,6 +273,41 @@ the case that broke every earlier iteration of this overlay.
 | Show boost source | On | Name the potion, food or special attack the boost came from, when seen |
 | Show spec energy | On | Remaining special attack energy when wielding a spec skilling tool |
 | Notify on boost drop | Off | RuneLite notification when the badge's boost drops or wears off |
+| Show inventory fill | On | Thin bar under the badge, green to red as the inventory fills; stackables, tools and equipment do not count |
+
+### Activity alerts
+
+Every alert is a RuneLite notification with its own toggle, and follows your
+RuneLite notification settings.
+
+| Setting | Default | What it does |
+|---|---|---|
+| Inventory full | On | The last free slot fills while fishing, woodcutting, mining, hunting or thieving |
+| Stopped gathering | On | No gathering animation or experience for the delay below. Not when you walk off, bank, drop or deposit, log out or hop |
+| Stopped after (s) | 5 | How long counts as stopped, for gathering, thieving and make-X |
+| Fishing spot moved | On | The spot you are working moves away |
+| Stopped thieving | On | Pickpocketing or stalls stopped for the delay; a stun does not count |
+| Pickpocket stun | **Off** | A failed pickpocket stuns you. Off because at most levels it fires every few attempts |
+| Coin pouches at cap | On | The coin pouches you hold reach the cap below |
+| Coin pouch cap | 28 | Pouches before the alert; raise it if the Ardougne Diary lifted your cap |
+| Dodgy necklace broke | On | Your dodgy necklace uses its last charge. RuneLite's Item Charges plugin can send the same one: keep one of the two |
+| Make-X finished | **Off** | Cooking, fletching, crafting or smithing stopped for the delay. Off because RuneLite's Idle Notifier already covers it for many players |
+| Low run energy | **Off** | Run energy drops below the threshold below |
+| Low run energy (%) | 10 | The threshold for that alert |
+
+Known limits, until they are checked in game: eating or otherwise using up
+items counts as stopping on purpose, so stopping right after eating does not
+alert; when pickpocketing a wandering NPC, walking after it without a success
+does the same.
+
+<!-- Screenshots still to take in game, for docs/images/:
+  1. inventory-fill-empty.png  : badge on a fishing spot, inventory empty, green bar.
+  2. inventory-fill-half.png   : same, about 14 fish, yellow bar.
+  3. inventory-fill-full.png   : harpoon plus 27 fish, red bar.
+  4. inventory-fill-stack.png  : badge with your health bar up too, fill bar between them.
+  5. alerts-settings.png       : the Activity alerts section of the config panel.
+  6. alert-notification.png    : a "You have stopped fishing" tray notification.
+-->
 
 ### Advanced
 

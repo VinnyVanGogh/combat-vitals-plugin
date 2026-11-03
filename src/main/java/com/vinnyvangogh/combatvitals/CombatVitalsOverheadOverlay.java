@@ -53,6 +53,10 @@ class CombatVitalsOverheadOverlay extends Overlay
 	/** Fish icons drawn on the badge before the count takes over. */
 	static final int MAX_FISH_ICONS = 3;
 
+	/** The inventory fill bar under the skilling badge, and the space above it. */
+	private static final int FILL_BAR_HEIGHT = 4;
+	private static final int FILL_BAR_GAP = 1;
+
 	/** Fish that are not the last catch are faded, so the current one reads as current. */
 	private static final float OTHER_FISH_ALPHA = 0.55f;
 
@@ -207,7 +211,12 @@ class CombatVitalsOverheadOverlay extends Overlay
 		// block on the same point, and lift it clear of the health bar below.
 		final int contentWidth = iconWidth + textWidth + fishWidth + overflowWidth;
 		final int left = centred.getX() + textWidth / 2 - contentWidth / 2;
-		final int baseline = centred.getY() - OverheadStack.liftAbove(below);
+
+		// The inventory bar hangs under the badge, so the badge rises by its
+		// height to keep the pair clear of the health bar below.
+		final boolean hasFill = readout.getInventoryFill() >= 0;
+		final int fillLift = hasFill ?FILL_BAR_HEIGHT + FILL_BAR_GAP : 0;
+		final int baseline = centred.getY() - OverheadStack.liftAbove(below) - fillLift;
 		final Point location = new Point(left + iconWidth, baseline);
 
 		final boolean warning = readout.getWarning() != SkillingState.Warning.NONE;
@@ -260,7 +269,20 @@ class CombatVitalsOverheadOverlay extends Overlay
 			OverlayUtil.renderTextLocation(graphics, new Point(x + ICON_GAP, baseline), overflow, textColour);
 		}
 
-		return bounds;
+		if (!hasFill)
+		{
+			return bounds;
+		}
+
+		// Drawn in every style: it is the only place the fill shows. The
+		// health colours run backwards, green while empty to red when full.
+		final double fill = readout.getInventoryFill();
+		final Rectangle fillBounds = new Rectangle(bounds.x, bounds.y + bounds.height + FILL_BAR_GAP,
+			bounds.width, FILL_BAR_HEIGHT);
+		fillBar(graphics, fillBounds.x, fillBounds.y, fillBounds.width, fillBounds.height, fill,
+			InventoryFill.colour(fill, config.healthFullColour(), config.healthMidColour(),
+				config.healthLowColour()));
+		return OverheadStack.union(bounds, fillBounds);
 	}
 
 	/**
