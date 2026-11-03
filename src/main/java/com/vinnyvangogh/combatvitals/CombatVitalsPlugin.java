@@ -73,8 +73,9 @@ import net.runelite.client.util.Text;
 @Slf4j
 @PluginDescriptor(
 	name = "Combat Vitals",
-	description = "Health for your target and for you, drawn over the target or in a panel",
-	tags = {"combat", "vitals", "health", "hitpoints", "hp", "overlay", "overhead", "opponent", "pvp", "pvm"}
+	description = "Health for your target and for you, plus a skilling badge and activity alerts",
+	tags = {"combat", "vitals", "health", "hitpoints", "hp", "overlay", "overhead", "opponent", "pvp", "pvm",
+		"skilling", "boost", "fishing", "thieving", "inventory", "alerts", "notifications"}
 )
 public class CombatVitalsPlugin extends Plugin
 {

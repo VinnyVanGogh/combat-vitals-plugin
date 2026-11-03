@@ -4,6 +4,9 @@ Opponent health for NPC and player targets, drawn over the target instead of
 only in a corner panel, and honest about what the number is worth.
 
 A standalone replacement for RuneLite's built-in **Opponent Information**.
+The same badge also rides over your head while you skill (boosted level, boost
+timer, what you can catch, inventory fill), and optional activity alerts tell
+you when gathering, thieving or make-X stops.
 
 <p align="center">
   <img src="docs/images/hero.png" alt="Overhead health readout on a player target, showing 30 / 91 (33%)" width="640">
@@ -22,6 +25,7 @@ the bar is sized to the text so the two never collide.</em></p>
 - [Watching it work](#watching-it-work)
 - [How it compares to Opponent Information](#how-it-compares-to-opponent-information)
 - [Settings](#settings)
+- [Screenshots](#screenshots)
 - [Compatibility](#compatibility)
 - [Privacy and network use](#privacy-and-network-use)
 - [How it works](#how-it-works)
@@ -301,15 +305,6 @@ items counts as stopping on purpose, so stopping right after eating does not
 alert; when pickpocketing a wandering NPC, walking after it without a success
 does the same.
 
-<!-- Screenshots still to take in game, for docs/images/:
-  1. inventory-fill-empty.png  : badge on a fishing spot, inventory empty, green bar.
-  2. inventory-fill-half.png   : same, about 14 fish, yellow bar.
-  3. inventory-fill-full.png   : harpoon plus 27 fish, red bar.
-  4. inventory-fill-stack.png  : badge with your health bar up too, fill bar between them.
-  5. alerts-settings.png       : the Activity alerts section of the config panel.
-  6. alert-notification.png    : a "You have stopped fishing" tray notification.
--->
-
 ### Advanced
 
 | Setting | Default | What it does |
@@ -317,6 +312,26 @@ does the same.
 | Opponent timeout | 5s | How long the readout stays after combat ends, and how long the skilling badge lingers after you stop |
 | Hide behind boss HP bar | On | Stand down when the game's boss bar shows the same target |
 | Hide panel if stock plugin is on | On | Avoid stacking two panels in one corner |
+
+## Screenshots
+
+Every feature and the image that shows it. Images in `docs/images/`; the ones
+marked *to take* do not exist yet and are captured in game.
+
+| Feature | Image |
+|---|---|
+| Overhead readout on a player target | `hero.png` |
+| Your health and your opponent's, same style | `both-sides.png` |
+| Readout in PvP context | `pvp-context.png` |
+| Low-health colour change | `low-health.png` |
+| Everything at once | `full-picture.jpg` |
+| Settings panel | `settings.png` |
+| Skilling badge with boost timer and source | `skilling-badge.png` (*to take*) |
+| What you can catch icons on a fishing spot | `skilling-catches.png` (*to take*) |
+| Inventory fill, empty / half / full | `inventory-fill-empty.png`, `inventory-fill-half.png`, `inventory-fill-full.png` (*to take*) |
+| Inventory fill with your health bar up too | `inventory-fill-stack.png` (*to take*) |
+| Activity alerts settings section | `alerts-settings.png` (*to take*) |
+| A "You have stopped fishing" notification | `alert-notification.png` (*to take*) |
 
 ## Compatibility
 
