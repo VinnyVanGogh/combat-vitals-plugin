@@ -2,8 +2,8 @@
 
 Why the native overhead health bar moves up when the opponent talks, what a
 plugin can and cannot do about it, and how the *Hide game health bar* option
-works. Researched against RuneLite `runelite-parent-1.13.2`, the version
-`build.gradle` pins.
+works. Researched against RuneLite `runelite-parent-1.13.2` (`build.gradle` now pins
+`1.13.5` after #8).
 
 ## Why the bar moves
 

@@ -89,9 +89,10 @@ ends. Opponent Information fixes this at five seconds; here it is 1–60.
 showing the same target, and hides its panel while Opponent Information is
 enabled so the two never stack in the same corner. Both are switchable.
 
-**Skilling vitals.** Click a fishing spot, or any other skilling NPC that
-cannot be fought, and the same badge appears over your own head, where your
-health bar sits, with the skill's icon in place of a health number:
+**Skilling vitals.** Work a fishing spot, tree, rock, stall, runecrafting
+altar, or any other skilling NPC or object, and the same badge appears over
+your own head, where your health bar sits, with the skill's icon in place of a
+health number:
 `Fishing 79 (+3) 45s`. Your boosted level, the boost, and the seconds until it
 drops by one, with the bar draining alongside. It is drawn over you, never over
 the spot: the spot moves, and the level is yours. If your health bar is up at
@@ -139,8 +140,8 @@ arrive; the plugin plays nothing of its own.
 - *Make-X finished* for cooking, fletching, crafting and smithing, and *low
   run energy*, both off by default.
 
-Woodcutting and mining alerts work from your experience drops, so they fire
-even though the badge does not come up for trees and rocks yet.
+Woodcutting and mining alerts work from your experience drops and gathering
+animations alongside the object skilling badge.
 
 The timer is honest about what it knows. The game never tells the client where
 it is in its one-minute drain cycle, so from login the badge shows an estimate

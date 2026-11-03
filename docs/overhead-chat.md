@@ -69,10 +69,11 @@ plugin draws nothing over are never touched.
 The set follows what the overlay draws. The readout follows `CombatState`
 (PR #4): a target gets a readout only if it can be fought (`Attack` option,
 combat level, or a hit you dealt it), and your own only while in combat. The
-badge follows `SkillingActions` (PR #7, moved over your own head in PR #9):
-only while a non-attackable NPC whose menu names a skill is being worked. So
-a banker or a pet never gets a chat move or a hidden line, and your own chat
-is only ever touched while your own bar or the badge is up.
+badge follows `SkillingActions` and `ObjectSkilling` (PR #7, moved over your
+own head in PR #9, extended to skilling objects and clicked-option NPCs in
+PR #12): only while a skilling NPC or object is being worked. So a banker or a
+pet never gets a chat move or a hidden line, and your own chat is only ever
+touched while your own bar or the badge is up.
 
 ### The skilling badge
 
