@@ -2,6 +2,31 @@
 
 Merged bug fixes in reverse chronological order (newest first). Pre-PR bootstrap commits on `main` are cited by short commit hash.
 
+## 2026-11-03 — Pickpocketing an attackable NPC skipped the Thieving badge (#12)
+- **What broke:** NPCs that offer both `Attack` and a skilling option such as `Pickpocket` (for example, a Man) were classified by `CombatState.isAttackable` before checking the clicked menu option, so pickpocketing them never showed the Thieving skilling badge.
+- **How it was found:** Review of RUNELITE-40 (#7).
+- **Fix:** Updated `SkillingActions` and `CombatVitalsPlugin` so the clicked menu option decides between skilling and combat on dual-option NPCs, while landing a combat hitsplat on the NPC still switches to the combat health bar (#12).
+
+## 2026-11-03 — Consumed boost sources shown without uncertainty qualifier (#12)
+- **What broke:** `BoostTracker` attributes a boost rise to any `Drink` or `Eat` menu action within three ticks, so an unrelated food or potion consumed just before a boost rose was displayed on the skilling badge as a definitive source.
+- **How it was found:** Review of RUNELITE-40 (#7).
+- **Fix:** Prefixed `Drink` and `Eat` boost attributions with `likely ` (for example, `likely Fishing potion`) while keeping recognised tool special attacks unqualified (#12).
+
+## 2026-11-02 — Overhead readout and skilling badge painted over overhead chat (#10)
+- **What broke:** The game draws an actor's overhead chat at the same logical height anchor as the plugin's overhead health readout and local-player skilling badge, so the overlay painted on top of active chat lines, and when the overlay redrew the chat above, the game's original line remained visible underneath.
+- **How it was found:** In-game testing reported by the Board.
+- **Fix:** Added `OverheadChat` and `OverheadStack.union` to redraw a covered actor's chat line once above the readout or bar-and-badge stack when `Actor#getOverheadCycle() > 0`, and added `OverheadChatHolder` (`Hide game chat under readout`, default off) to blank the game's underlying line with `" "` while covered and restore it when uncovered, disabled, or shut down (#10).
+
+## 2026-11-02 — Skilling badge drew over the fishing spot instead of the player (#9)
+- **What broke:** The initial skilling badge (#7) anchored its overlay to the target fishing spot NPC (`SkillingReadout#getActor`), drawing the player's own skill level over a small NPC that moves or despawns and separating it from the player's own overhead readout.
+- **How it was found:** In-game testing of #7 with a screenshot from the Board showing `Fishing 10` drawn on the fishing spot.
+- **Fix:** Removed the NPC actor from `SkillingReadout`, anchored the skilling badge to `client.getLocalPlayer()` at the same `zOffset` as the self-health readout, and added `OverheadStack` so the badge stacks above the self-health bar when both are active (#9).
+
+## 2026-11-02 — Developer client on RuneLite 1.12.37 rejected by game server after update (#8)
+- **What broke:** Launching `./gradlew run` against the pinned `1.12.37` RuneLite dependency failed before login with `error_game_js5connect_outofdate` after an Old School RuneScape game update.
+- **How it was found:** Running `./gradlew run` to test in game.
+- **Fix:** Bumped `runeLiteVersion` in `build.gradle` to `1.13.5` (#8).
+
 ## 2026-11-02 — Clicking skilling NPCs popped self-health bar and held stale opponents (#4)
 - **What broke:** Interacting with a non-combat NPC such as a fishing spot triggered the player's overhead health bar and kept any previous opponent from expiring, because `onInteractingChanged` accepted any non-null target as combat and expiration waited while `getInteracting()` was non-null.
 - **How it was found:** In-game testing reported by the Board when clicking a fishing spot.
