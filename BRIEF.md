@@ -152,6 +152,30 @@ decision 2026-11-02; they follow as task-fb282112. No guessing a boost source:
 a rise with nothing recently drunk, eaten or spec'd shows no source. No
 automation of any kind, and no change to any menu.
 
+### Inventory fill and activity alerts, compliance (added 2026-11-03)
+
+Board, 2026-11-03: "the bar to go from green to red as your inventory fills
+up, and notify you when it gets full or when you stop fishing", and the same
+for thieving and similar. Everything below reads the local player's own state
+and sends a notification through RuneLite's `Notifier`; nothing acts on the
+game, nothing is sent off the machine, no sound is the plugin's own.
+
+| Element | Nearest rule | Precedent | Verdict |
+|---|---|---|---|
+| Inventory slots counted from `ItemContainerChanged` for `InventoryID.INV`, item definitions via `Client.getItemDefinition` | None | Base client `fishing` and countless hub plugins read the inventory this way | Allowed |
+| Notification when you stop (no animation or experience for N ticks), make-X finished | Input Restrictions: nothing is clicked or queued; a notification only | Base client `idlenotifier` notifies on animation idle and interaction idle | Allowed |
+| Inventory full notification | None | Inventory-full notifiers are common on the Plugin Hub; base `idlenotifier` covers the idle that follows | Allowed |
+| Fishing spot moved, from `NpcDespawned` of the spot you are on | None | Base client `idlenotifier` "interaction idle" fires on the same moment, less specifically | Allowed |
+| Low run energy | None | Base client `idlenotifier` `getLowEnergyThreshold` / "You have low run energy!" (read 2026-11-03 from runelite master) | Allowed |
+| Dodgy necklace broke, from the game message | None | Base client `itemcharges` `DODGY_BREAK_PATTERN`, same regex (read 2026-11-03 from runelite master) | Allowed |
+| Pickpocket stun from "You've been stunned!", coin pouch count from the inventory | None: own-account state, no automation | Hub thieving helpers notify on the same; unverified by name in this pass | Allowed |
+| Bank opening read from `ItemContainerChanged` for `InventoryID.BANK`, your tile from `Player.getWorldLocation` | None | Read only; the same events the base client's bank and idle plugins read | Allowed |
+
+Not done, deliberately: no sound of the plugin's own, no auto-anything, no
+menu changes, no prompt to click. Woodcutting and mining alerts run on
+experience drops, so they work before task-fb282112 brings the badge to trees
+and rocks.
+
 ---
 
 ## Phase 0.5, Measure before building

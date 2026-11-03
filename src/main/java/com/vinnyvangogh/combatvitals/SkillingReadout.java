@@ -46,10 +46,15 @@ final class SkillingReadout
 	/** Wall clock of the tick this was built on, for counting down between ticks. */
 	private final long tickMillis;
 
+	/** How full the inventory is, 0 to 1 ({@link InventoryFill}), or -1 when the bar is off or unknown. */
+	private final double inventoryFill;
+
 	SkillingReadout(Skill skill, int real, int boosted, int ticksUntilDrop,
 		int cycleLength, boolean timerConfirmed, int specPercent, String source,
-		SkillingState.Warning warning, List<FishingCatches.Fish> fish, int lastCatch, long tickMillis)
+		SkillingState.Warning warning, List<FishingCatches.Fish> fish, int lastCatch, long tickMillis,
+		double inventoryFill)
 	{
+		this.inventoryFill = inventoryFill;
 		this.skill = skill;
 		this.real = real;
 		this.boosted = boosted;
