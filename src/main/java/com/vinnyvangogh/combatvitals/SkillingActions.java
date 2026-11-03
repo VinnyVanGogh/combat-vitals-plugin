@@ -6,7 +6,7 @@ import java.util.Map;
 import net.runelite.api.Skill;
 
 /**
- * Works out which skill a non-attackable NPC trains, from its menu options.
+ * Works out which skill an NPC or object trains, from its menu options.
  *
  * A fishing spot's menu says "Net" or "Harpoon"; a pickpocket target's says
  * "Pickpocket". The option is the only thing the client exposes that ties the
@@ -36,10 +36,13 @@ final class SkillingActions
 		// are told apart by name below.
 		BY_ACTION.put("catch", Skill.HUNTER);
 
-		// Rare as NPCs, but harmless to recognise.
+		// Trees, rocks, stalls and altars are objects, matched by the clicked
+		// option alone; rare as NPCs, but harmless there too.
 		BY_ACTION.put("mine", Skill.MINING);
 		BY_ACTION.put("chop down", Skill.WOODCUTTING);
 		BY_ACTION.put("chop", Skill.WOODCUTTING);
+		BY_ACTION.put("steal-from", Skill.THIEVING);
+		BY_ACTION.put("craft-rune", Skill.RUNECRAFT);
 	}
 
 	private SkillingActions()
@@ -61,24 +64,37 @@ final class SkillingActions
 
 		for (String action : actions)
 		{
-			if (action == null)
+			final Skill skill = forOption(action, name);
+			if (skill != null)
 			{
-				continue;
+				return skill;
 			}
-
-			final Skill skill = BY_ACTION.get(action.toLowerCase(Locale.ROOT));
-			if (skill == null)
-			{
-				continue;
-			}
-
-			if (skill == Skill.HUNTER && name != null
-				&& name.toLowerCase(Locale.ROOT).contains("shoal"))
-			{
-				return Skill.FISHING;
-			}
-			return skill;
 		}
 		return null;
+	}
+
+	/**
+	 * The skill one clicked menu option trains. This is what decides an NPC
+	 * that can be both fought and skilled, a Man that can be pickpocketed,
+	 * and every object: a tree's "Chop down", a rock's "Mine".
+	 *
+	 * @param option the menu option, e.g. "Pickpocket"
+	 * @param name   the target's name, used only to split "Catch"
+	 * @return the skill, or null when the option is not a skilling one
+	 */
+	static Skill forOption(String option, String name)
+	{
+		if (option == null)
+		{
+			return null;
+		}
+
+		final Skill skill = BY_ACTION.get(option.toLowerCase(Locale.ROOT));
+		if (skill == Skill.HUNTER && name != null
+			&& name.toLowerCase(Locale.ROOT).contains("shoal"))
+		{
+			return Skill.FISHING;
+		}
+		return skill;
 	}
 }

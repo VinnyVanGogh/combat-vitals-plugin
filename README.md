@@ -237,7 +237,7 @@ the case that broke every earlier iteration of this overlay.
 
 | Setting | Default | What it does |
 |---|---|---|
-| Skilling badge | On | Draw the badge over your head while you work a fishing spot or other skilling NPC |
+| Skilling badge | On | Draw the badge over your head while you work a fishing spot, tree, rock, stall or other skilling NPC or object |
 | Show what you can catch | On | On a fishing spot, icons of the fish the clicked method lands at your level, up to three then `+N` |
 | Show boost timer | On | Seconds until the boost drops by one, `~` while estimated from login |
 | Show boost source | On | Name the potion, food or special attack the boost came from, when seen |
@@ -326,7 +326,16 @@ show your own health, if that option is on, until the opponent timeout passes.
 Correct. Those are NPCs, but they cannot be fought, so they are never a combat
 target. A fishing spot, or any NPC whose menu names a skill (Net, Harpoon,
 Pickpocket, Catch…), gets the skilling badge instead. A banker or a pet gets
-nothing.
+nothing. An NPC you can both fight and skill, like a Man, is decided by the
+option you clicked: Pickpocket shows the Thieving badge, Attack the health
+bar. Landing a hit on it makes it a fight either way.
+
+**The badge for a tree or rock.** Trees, rocks, stalls and altars are objects,
+not NPCs, so the plugin goes by the option you clicked (Chop down, Mine,
+Steal-from, Craft-rune) and then waits until you are animating beside it. It
+lingers for the opponent timeout after you stop in place (the tree fell, the
+rock emptied), and goes at once when you walk away or click something else.
+Attacking anything ends it and shows the health bar.
 
 **The skilling badge shows no timer.** Either *Show boost timer* is off, the
 skill is not boosted, or the plugin was enabled mid-session and has not yet
@@ -335,8 +344,10 @@ without a login. The timer appears at the first drop.
 
 **The skilling badge shows no source for my boost.** The plugin only names a
 source it saw: a Drink or Eat, or a special attack from a recognised tool,
-within a couple of ticks of the boost rising. A boost from anything else, or
-one applied before the plugin was enabled, shows no source rather than a guess.
+within a couple of ticks of the boost rising. A Drink or Eat is labelled
+`likely`, because any item drunk or eaten just before a rise is named. A boost
+from anything else, or one applied before the plugin was enabled, shows no
+source rather than a guess.
 
 **The badge shows no fish on a fishing spot.** Either *Show what you can catch*
 is off, your level is below the first fish for that method, or the spot is one

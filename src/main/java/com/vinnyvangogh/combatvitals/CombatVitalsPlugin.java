@@ -19,11 +19,14 @@ import net.runelite.api.ItemContainer;
 import net.runelite.api.MenuAction;
 import net.runelite.api.NPC;
 import net.runelite.api.NPCComposition;
+import net.runelite.api.ObjectComposition;
 import net.runelite.api.ParamID;
 import net.runelite.api.Player;
 import net.runelite.api.Prayer;
 import net.runelite.api.Skill;
 import net.runelite.api.SpritePixels;
+import net.runelite.api.WorldView;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.GameStateChanged;
@@ -112,8 +115,9 @@ public class CombatVitalsPlugin extends Plugin
 	private volatile Readout selfReadout;
 
 	/**
-	 * The skilling badge, while a fishing spot or other skilling NPC is being
-	 * worked. Drawn over the local player, never over the NPC.
+	 * The skilling badge, while a fishing spot, tree, rock or other skilling
+	 * NPC or object is being worked. Drawn over the local player, never over
+	 * the target.
 	 */
 	@Getter
 	private volatile SkillingReadout skillingReadout;
@@ -130,6 +134,25 @@ public class CombatVitalsPlugin extends Plugin
 	private NPC skillingTarget;
 
 	private final SkillingState skilling = new SkillingState();
+
+	/** The tree, rock or stall being worked, when the badge is for an object. */
+	private final ObjectSkilling objectSkilling = new ObjectSkilling();
+
+	/**
+	 * The badge is up for an object rather than an NPC. Outlives the object
+	 * itself: clicking the next rock keeps the badge lingering until the new
+	 * swing starts, instead of flickering off for the walk.
+	 */
+	private boolean objectBadge;
+
+	/**
+	 * The NPC the last menu click was on, and the skill its option trains,
+	 * until the interaction it starts takes them. This is what tells a
+	 * pickpocket from an attack on the same Man.
+	 */
+	private NPC clickedNpc;
+	private Skill clickedNpcSkill;
+
 	private final InventoryCatches inventoryCatches = new InventoryCatches();
 	private final BoostTracker boosts = new BoostTracker();
 	private final BoostTimer boostTimer = new BoostTimer();
@@ -260,6 +283,10 @@ public class CombatVitalsPlugin extends Plugin
 		skillingTarget = null;
 		skillingReadout = null;
 		skilling.clear();
+		objectSkilling.forget();
+		objectBadge = false;
+		clickedNpc = null;
+		clickedNpcSkill = null;
 		inventoryCatches.clear();
 		boosts.clear();
 		boostTimer.clear();
@@ -284,12 +311,23 @@ public class CombatVitalsPlugin extends Plugin
 			// Held even when it cannot be fought, so that a later hitsplat can
 			// prove otherwise; the readouts below check attackability first.
 			opponent = target;
-			final boolean fight = attackable(target);
+
+			// The option clicked on this NPC decides first: Pickpocket on a Man
+			// is thieving even though a Man can be fought. A hit the player
+			// lands on it still proves a fight (CombatState#hit).
+			final Skill clicked = target == clickedNpc ? clickedNpcSkill : null;
+			clickedNpc = null;
+			clickedNpcSkill = null;
+
+			final boolean fight = clicked == null && attackable(target);
 			combat.engage(fight);
 
 			// Not a fight: perhaps a fishing spot. The badge takes the NPC only
 			// when its menu names a skill; anything else drops the badge at once.
-			final Skill trained = fight ? null : skillingSkill(target);
+			// Either way any tree or rock is over.
+			objectSkilling.forget();
+			objectBadge = false;
+			final Skill trained = clicked != null ? clicked : fight ? null : skillingSkill(target);
 			if (trained != null)
 			{
 				skillingTarget = (NPC) target;
@@ -307,7 +345,12 @@ public class CombatVitalsPlugin extends Plugin
 			// readout should too. The timeout below retires it.
 			final Instant now = Instant.now();
 			combat.disengage(now);
-			skilling.disengage(now);
+			// An object badge follows the animation, not the interaction: the
+			// end of an earlier NPC interaction must not start its linger.
+			if (skillingTarget != null)
+			{
+				skilling.disengage(now);
+			}
 		}
 	}
 
@@ -365,9 +408,11 @@ public class CombatVitalsPlugin extends Plugin
 
 	/**
 	 * Drink or Eat on an item: remembered so a boost that follows can be
-	 * named. An option on an NPC (Net, Bait, Harpoon...): remembered so the
-	 * badge knows which method the spot is worked with. The event is read,
-	 * never changed.
+	 * named. An option on an NPC (Net, Bait, Pickpocket...): remembered so the
+	 * badge knows which method the spot is worked with, and whether a Man was
+	 * pickpocketed or attacked. An option on an object (Chop down, Mine...):
+	 * holds the object until the swing starts. Walk here ends an object
+	 * badge. The event is read, never changed.
 	 */
 	@Subscribe
 	public void onMenuOptionClicked(MenuOptionClicked event)
@@ -383,9 +428,103 @@ public class CombatVitalsPlugin extends Plugin
 			return;
 		}
 
+		clickedNpc = null;
+		clickedNpcSkill = null;
+
 		if (isNpcOption(event.getMenuAction()))
 		{
 			skilling.clicked(option);
+			final NPC npc = event.getMenuEntry().getNpc();
+			if (npc != null)
+			{
+				clickedNpc = npc;
+				clickedNpcSkill = SkillingActions.forOption(option, Text.removeTags(event.getMenuTarget()));
+			}
+			return;
+		}
+
+		if (isObjectOption(event.getMenuAction()))
+		{
+			clickedObject(event, option);
+			return;
+		}
+
+		if (event.getMenuAction() == MenuAction.WALK)
+		{
+			// Walking off a tree clears its badge at once, no linger.
+			endObjectBadge();
+		}
+	}
+
+	/** Drops an object badge at once, and any object waiting for its swing. */
+	private void endObjectBadge()
+	{
+		if (objectBadge)
+		{
+			skilling.release();
+			objectBadge = false;
+		}
+		objectSkilling.forget();
+	}
+
+	/**
+	 * An option on a tree, rock or stall. A skilling option holds the object
+	 * until the swing starts; any other option (Bank, Open) ends an object
+	 * badge, the way clicking a banker ends a fishing one.
+	 */
+	private void clickedObject(MenuOptionClicked event, String option)
+	{
+		final WorldView view = client.getTopLevelWorldView();
+		ObjectComposition composition = client.getObjectDefinition(event.getId());
+		if (composition != null && composition.getImpostorIds() != null)
+		{
+			final ObjectComposition impostor = composition.getImpostor();
+			if (impostor != null)
+			{
+				composition = impostor;
+			}
+		}
+
+		final Skill skill = composition == null || view == null
+			? null
+			: SkillingActions.forOption(option, composition.getName());
+		if (skill == null)
+		{
+			endObjectBadge();
+			return;
+		}
+
+		// On to the next rock: the badge lingers through the walk, and the
+		// new swing cancels the linger.
+		if (objectBadge)
+		{
+			skilling.disengage(Instant.now());
+		}
+
+		// The menu gives the object's scene tile; its footprint may be rotated,
+		// so take the larger side both ways and let REACH absorb the rest.
+		final WorldPoint at = WorldPoint.fromScene(view, event.getParam0(), event.getParam1(), view.getPlane());
+		final int size = Math.max(composition.getSizeX(), composition.getSizeY());
+		objectSkilling.clicked(skill, at.getX(), at.getY(), at.getPlane(), size, size, client.getTickCount());
+	}
+
+	private static boolean isObjectOption(MenuAction action)
+	{
+		if (action == null)
+		{
+			return false;
+		}
+
+		switch (action)
+		{
+			case GAME_OBJECT_FIRST_OPTION:
+			case GAME_OBJECT_SECOND_OPTION:
+			case GAME_OBJECT_THIRD_OPTION:
+			case GAME_OBJECT_FOURTH_OPTION:
+			case GAME_OBJECT_FIFTH_OPTION:
+				return true;
+			default:
+				return false;
 		}
 	}
 
@@ -631,12 +770,55 @@ public class CombatVitalsPlugin extends Plugin
 	public void onGameTick(GameTick tick)
 	{
 		expireOpponent();
+		stepSkillingObject();
 		expireSkillingTarget();
 		seedBoosts();
 		tickBoostTimer();
 		readout = buildReadout();
 		selfReadout = buildSelfReadout();
 		skillingReadout = buildSkillingReadout();
+	}
+
+	/**
+	 * A clicked tree or rock: the badge comes up when the player is animating
+	 * beside it, lingers when the animation stops, and goes when they walk
+	 * off. The player's animation and tile are read once per tick.
+	 */
+	private void stepSkillingObject()
+	{
+		final Player self = client.getLocalPlayer();
+		if (self == null || (!objectSkilling.held() && !objectBadge))
+		{
+			return;
+		}
+
+		final WorldPoint at = self.getWorldLocation();
+		// -1 is the idle animation.
+		final boolean animating = self.getAnimation() != -1;
+		final Instant now = Instant.now();
+		switch (objectSkilling.tick(client.getTickCount(), at.getX(), at.getY(), at.getPlane(), animating))
+		{
+			case ENGAGE:
+				skillingTarget = null;
+				skilling.engage(objectSkilling.skill());
+				objectBadge = true;
+				break;
+			case DISENGAGE:
+				skilling.disengage(now);
+				break;
+			case RELEASE:
+				skilling.release();
+				objectBadge = false;
+				break;
+			default:
+				break;
+		}
+
+		if (objectBadge && skilling.expire(now, timeout(), objectSkilling.working()))
+		{
+			objectBadge = false;
+			objectSkilling.forget();
+		}
 	}
 
 	private void expireSkillingTarget()
@@ -703,7 +885,8 @@ public class CombatVitalsPlugin extends Plugin
 	{
 		final Skill skill = skilling.skill();
 		final NPC target = skillingTarget;
-		if (!config.skillingEnabled() || skill == null || target == null || combat.showTarget())
+		if (!config.skillingEnabled() || skill == null || (target == null && !objectBadge)
+			|| combat.showTarget())
 		{
 			return null;
 		}
@@ -743,7 +926,7 @@ public class CombatVitalsPlugin extends Plugin
 	 */
 	private List<FishingCatches.Fish> catches(Skill skill, NPC target, int boosted)
 	{
-		if (!config.skillingCatches() || skill != Skill.FISHING)
+		if (!config.skillingCatches() || skill != Skill.FISHING || target == null)
 		{
 			return Collections.emptyList();
 		}
