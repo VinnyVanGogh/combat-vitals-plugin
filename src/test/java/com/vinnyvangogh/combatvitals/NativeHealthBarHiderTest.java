@@ -28,12 +28,13 @@ public class NativeHealthBarHiderTest
 	}
 
 	@Test
-	public void optionIsOffByDefault()
+	public void optionIsOnByDefault()
 	{
+		// On by default since the Board's first in-game test (2026-11-04).
 		final CombatVitalsConfig config = new CombatVitalsConfig()
 		{
 		};
-		assertFalse(config.hideGameHealthBar());
+		assertTrue(config.hideGameHealthBar());
 	}
 
 	@Test

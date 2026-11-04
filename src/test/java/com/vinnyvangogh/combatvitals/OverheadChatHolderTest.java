@@ -243,6 +243,9 @@ public class OverheadChatHolderTest
 		final FakeActor actor = new FakeActor(null, 0);
 		int posts;
 
+		/** Whether the readout covers this actor; the plugin only holds covered actors. */
+		boolean covered = true;
+
 		PostingActor()
 		{
 			actor.onWrite = this::posted;
@@ -259,7 +262,10 @@ public class OverheadChatHolderTest
 		void posted(String text)
 		{
 			posts++;
-			holder.hold(actor, text);
+			if (covered)
+			{
+				holder.hold(actor, text);
+			}
 		}
 	}
 
@@ -303,7 +309,9 @@ public class OverheadChatHolderTest
 		assertNull(me.actor.gameDraws());
 		assertEquals("Bye", holder.heldText(me.actor));
 
-		// Given back, it is the newest message that returns.
+		// Given back, it is the newest message that returns. The readout has
+		// moved off this actor, so the write-back is not held again.
+		me.covered = false;
 		holder.update(Collections.emptySet());
 		assertEquals("Bye", me.actor.gameDraws());
 	}
