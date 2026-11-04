@@ -6,13 +6,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Fixed
-- Overhead chat drawn twice (Board's in-game test, 2026-11-04). With `Hide game chat under readout` off the plugin no longer draws its own copy, so the game's line is the only one. With it on, a new message over you or your opponent is blanked inside `OverheadTextChanged`, before any frame is drawn, instead of on the next client tick, so the game's copy no longer flashes under the readout. The overlay now marks every actor it draws a readout over, chat or not, and only draws a line the plugin is holding (`OverheadChatHolder.hold`, `heldText`, `OverheadChat.baseline`).
-
-### Changed
-- `Hide game chat under readout` and `Hide game health bar` default on. Saved values are kept: the key names are unchanged (`ConfigDefaultsTest`).
-- Skilling badge v3: coloured by skill (`SkillColours`, each colour at least 3:1 against white and black); a second row with XP progress to the next level, `Lv 12 -> 13: 64% (1,234 xp)`, counting toward 200m at 99 (`XpProgress`); the bottom row is labelled as the inventory, `Inv 26/28 free`, on the fill bar; the catch icons move into that row and show every fish the method can give, the ones above your level dimmed with the level they need (`FishingCatches.options`). The three-icon cap and `+N` are gone.
-
 ### Added
 - Skilling badge on objects: chopping a tree, mining a rock, stealing from a stall or crafting runes at an altar shows the same badge (skill icon, level, boost, timer, tool spec energy). Objects never fire `InteractingChanged`, so the badge needs both the clicked option (`Chop down`, `Chop`, `Mine`, `Steal-from`, `Craft-rune`) and the player animating within reach of the object; it lingers for the timeout when the animation stops in place, and clears at once on walking away, `Walk here`, a non-skilling object option, or engaging any NPC. Attacking still wins. Pure, unit-tested `ObjectSkilling` (#12).
 - Inventory fill bar under the skilling badge, green through yellow to red by the share of free capacity filled; stackables, noted items, tools and wieldable or wearable items hold their slot and do not count (`InventoryFill`, `skillingInventoryBar`, #11).
@@ -31,12 +24,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `Hide game chat under readout` option (default off): while the overlay redraws an actor's overhead chat above the readout, the game's own line is blanked the way the base client's Chat Filter blanks a message, countdown untouched, and handed back when the readout moves clear, the option is off, or the plugin shuts down (`OverheadChatHolder`, `OverheadChatHolderTest`, `docs/overhead-chat.md`, `0aad7b8`, #10).
 
 ### Changed
+- `Hide game chat under readout` and `Hide game health bar` default on. Saved values are kept: the key names are unchanged (`ConfigDefaultsTest`, #14).
+- Skilling badge v3: coloured by skill (`SkillColours`, each colour at least 3:1 against white and black); a second row with XP progress to the next level, `Lv 12 -> 13: 64% (1,234 xp)`, counting toward 200m at 99 (`XpProgress`); the bottom row is labelled as the inventory, `Inv 26/28 free`, on the fill bar; the catch icons move into that row and show every fish the method can give, the ones above your level dimmed with the level they need (`FishingCatches.options`). The three-icon cap and `+N` are gone (#14).
 - Bumped the pinned RuneLite dependency from 1.12.37 to 1.13.5 so the developer client connects after the game update (#8).
 - Enabled `Show your own health` (`showSelf`) by default so your own health bar stays visible when `Hide game health bar` is turned on (`92eacfd`, #10).
 - Renamed plugin, package (`com.vinnyvangogh.combatvitals`), config group (`combat-vitals`), classes, and Gradle project from Combat Info to Combat Vitals (`4673b53`).
 - Raised `Text above health bar` (`ABOVE_BAR`) vertical clearance from 18 px to 34 px so overhead text clears the native health bar (`6da65b6`).
 
 ### Fixed
+- Overhead chat drawn twice (Board's in-game test, 2026-11-04). With `Hide game chat under readout` off the plugin no longer draws its own copy, so the game's line is the only one. With it on, a new message over you or your opponent is blanked inside `OverheadTextChanged`, before any frame is drawn, instead of on the next client tick, so the game's copy no longer flashes under the readout. The overlay now marks every actor it draws a readout over, chat or not, and only draws a line the plugin is holding (`OverheadChatHolder.hold`, `heldText`, `OverheadChat.baseline`, #14).
 - Pickpocketing an attackable NPC (a Man) now shows the Thieving badge: the clicked option decides before attackability, and a hit you land on it still makes it a fight (#12).
 - The boost source for a Drink or Eat is labelled `likely` (`likely Fishing potion`), since any item consumed within three ticks of a rise is named (#12).
 - The overhead readout no longer paints over the target's overhead chat: while an actor's chat is showing (`Actor#getOverheadCycle() > 0`) and the readout covers the game's line, the overlay redraws the line just above the readout in the game's bold font; the readout keeps its configured position and nothing is drawn when the two do not overlap, so a message never shows twice. Only actors this plugin draws over qualify: the opponent (readout) and you (readout, skilling badge, or both stacked), with one copy of your chat lifted above the whole stack (`OverheadStack.union`) so the badge and a chat line never overlap. A skilling NPC, or any bystander, is never touched (`OverheadChat`, `OverheadChatTest`, `88b5d70`, `1358522`, #10).

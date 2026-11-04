@@ -145,7 +145,7 @@ reflection, no new network use. Compliance otherwise unchanged from
 
 ## In-game check (`./gradlew run`)
 
-1. Enable *Display > Hide game chat under readout* (default off). Keep *Style:
+1. Ensure *Display > Hide game chat under readout* is on (default on since #14). Keep *Style:
    Bar behind text*, *Position: Top*, *Offset 0*.
 2. Attack a training dummy or NPC so your own readout shows. Type a public chat
    message. Expect: one yellow line above your readout, nothing showing through
@@ -155,8 +155,8 @@ reflection, no new network use. Compliance otherwise unchanged from
 4. While a message is up, set *Overhead offset* to +60 so the readout clears
    the chat. Expect: the game's own line reappears immediately with its time
    left, and no copy.
-5. Turn the option off mid-message. Expect: the game's line comes back
-   underneath, our copy stays above (old behaviour).
+5. Turn the option off mid-message. Expect: the game's line comes back and our
+   copy above is removed so only the game's line is drawn (#14).
 6. Turn the plugin off mid-message. Expect: the game's line comes back.
 7. Type two messages quickly. Expect: the second replaces the first and is
    shown once, never the first coming back afterwards.
