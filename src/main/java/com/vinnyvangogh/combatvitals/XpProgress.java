@@ -48,12 +48,33 @@ final class XpProgress
 	/** e.g. "Lv 12 -> 13: 64% (1,234 xp)", "Lv 99 -> 200m: 6%", "Lv 99: 200m xp". */
 	String text()
 	{
+		return text(XpDisplay.BOTH);
+	}
+
+	/**
+	 * The XP row in the chosen form: "Lv 12 -> 13: 64%", "Lv 12 -> 13: 1,234 xp"
+	 * or both. Past 99 Both stays the percentage alone, as it always has.
+	 */
+	String text(XpDisplay display)
+	{
+		if (nextLevel < 0 && xpLeft <= 0)
+		{
+			return "Lv " + level + ": 200m xp";
+		}
+
 		// Rounded down, so 1 xp short of a level reads 99%, never 100%.
 		final int percent = (int) Math.floor(fraction * 100);
-		if (nextLevel > 0)
+		final String head = nextLevel > 0 ? "Lv " + level + " -> " + nextLevel : "Lv " + level + " -> 200m";
+		final String left = String.format("%,d xp", xpLeft);
+		switch (display)
 		{
-			return String.format("Lv %d -> %d: %d%% (%,d xp)", level, nextLevel, percent, xpLeft);
+			case PERCENT:
+				return head + ": " + percent + "%";
+			case XP_LEFT:
+				return head + ": " + left;
+			case BOTH:
+			default:
+				return nextLevel > 0 ? head + ": " + percent + "% (" + left + ")" : head + ": " + percent + "%";
 		}
-		return xpLeft > 0 ? String.format("Lv %d -> 200m: %d%%", level, percent) : "Lv " + level + ": 200m xp";
 	}
 }

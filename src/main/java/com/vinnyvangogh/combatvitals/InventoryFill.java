@@ -98,7 +98,19 @@ final class InventoryFill
 	 */
 	static String label(int empty)
 	{
-		return empty < 0 ? null : "Inv " + empty + "/" + SLOTS + " free";
+		return label(empty, InventoryCount.FREE);
+	}
+
+	/** "Inv 26/28 free", or the same inventory counted the other way, "Inv 2/28 used". */
+	static String label(int empty, InventoryCount count)
+	{
+		if (empty < 0)
+		{
+			return null;
+		}
+		return count == InventoryCount.USED
+			? "Inv " + (SLOTS - empty) + "/" + SLOTS + " used"
+			: "Inv " + empty + "/" + SLOTS + " free";
 	}
 
 	/**

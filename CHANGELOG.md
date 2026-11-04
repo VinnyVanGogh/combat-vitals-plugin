@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- Skilling badge round 3 (Board's in-game test, 2026-11-04, after #14):
+  - A fish above your level reads `Lv 15` in red instead of a bare `15`, with `Needs Fishing 15` on hover (`SkillingText.lockedLabel`, `lockedTooltip`, `LOCKED_LEVEL`).
+  - Idle state: when you stop, the badge stays with a red `Not fishing` header (generic `Not <activity>`) and keeps the level, XP and inventory rows. New `skillingIdleMode` (Off / Show for a while / Until another activity, default Show for a while), `skillingIdleSeconds` (60), `skillingIdleColour`. Another activity or a fight ends it (`IdleBadge`).
+  - Side pillars, like RuneLite's Status Bars: target health while fighting, XP to level and inventory fill while skilling (`pillarMode`, default Off; `pillarCombatSide`, `pillarXpSide`). Placement follows Status Bars' offsets for each side-panel layout; with Status Bars drawing, ours stack to the left of its bars, never over them (`SidePillars`, `PillarOverlay`).
+  - New `Skilling badge` config section: per-skill on/off and colour overrides (defaulting to the palette), header and XP rows on/off, XP as percent / XP left / both, inventory count free or used, session count and XP and actions per hour with a reset tick box (`SkillingSession`), badge position over your head / over the spot / fixed on screen (draggable `SkillingBadgeOverlay`), vertical offset, size, dim or hide fish above your level, hide during combat. Defaults keep the previous look.
+- `SkillingBadgeRenderer` draws the badge for every position; `Bars` is the one bar painter.
+
 ### Fixed
 - Overhead chat drawn twice (Board's in-game test, 2026-11-04). With `Hide game chat under readout` off the plugin no longer draws its own copy, so the game's line is the only one. With it on, a new message over you or your opponent is blanked inside `OverheadTextChanged`, before any frame is drawn, instead of on the next client tick, so the game's copy no longer flashes under the readout. The overlay now marks every actor it draws a readout over, chat or not, and only draws a line the plugin is holding (`OverheadChatHolder.hold`, `heldText`, `OverheadChat.baseline`).
 

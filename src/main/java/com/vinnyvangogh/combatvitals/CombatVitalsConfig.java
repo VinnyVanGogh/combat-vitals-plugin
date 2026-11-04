@@ -1,6 +1,7 @@
 package com.vinnyvangogh.combatvitals;
 
 import java.awt.Color;
+import net.runelite.api.Skill;
 import net.runelite.client.config.Alpha;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
@@ -40,16 +41,32 @@ public interface CombatVitalsConfig extends Config
 	String skillingSection = "skilling";
 
 	@ConfigSection(
+		name = "Skilling badge",
+		description = "What the skilling badge shows, for which skills, where, and once you stop",
+		position = 3,
+		closedByDefault = true
+	)
+	String skillingBadgeSection = "skillingBadge";
+
+	@ConfigSection(
+		name = "Side pillars",
+		description = "Vitals on the bars beside the side panel, like RuneLite's Status Bars",
+		position = 4,
+		closedByDefault = true
+	)
+	String pillarsSection = "pillars";
+
+	@ConfigSection(
 		name = "Activity alerts",
 		description = "RuneLite notifications for gathering, thieving and make-X: inventory full, stopped, and more",
-		position = 3
+		position = 5
 	)
 	String alertsSection = "alerts";
 
 	@ConfigSection(
 		name = "Advanced",
 		description = "Timeouts and diagnostics",
-		position = 4,
+		position = 6,
 		closedByDefault = true
 	)
 	String advancedSection = "advanced";
@@ -430,6 +447,380 @@ public interface CombatVitalsConfig extends Config
 	default boolean skillingInventoryBar()
 	{
 		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingIdleMode",
+		name = "Once you stop",
+		description =
+			"What the badge does when you stop: Off lets it go as before; Show for a while keeps it up for the "
+				+ "seconds below with the header turned to \"Not fishing\"; Until another activity keeps it until "
+				+ "you start something else or a fight starts. The level, XP and inventory rows stay.",
+		section = skillingBadgeSection,
+		position = 0
+	)
+	default IdleBadgeMode skillingIdleMode()
+	{
+		return IdleBadgeMode.TIMED;
+	}
+
+	@Range(min = 1, max = 600)
+	@ConfigItem(
+		keyName = "skillingIdleSeconds",
+		name = "Idle badge for (s)",
+		description = "How long the \"Not fishing\" badge stays up, with Show for a while.",
+		section = skillingBadgeSection,
+		position = 1
+	)
+	default int skillingIdleSeconds()
+	{
+		return 60;
+	}
+
+	@Alpha
+	@ConfigItem(
+		keyName = "skillingIdleColour",
+		name = "Idle header colour",
+		description = "The header's colour while the badge says \"Not fishing\".",
+		section = skillingBadgeSection,
+		position = 2
+	)
+	default Color skillingIdleColour()
+	{
+		return new Color(199, 26, 26, 230);
+	}
+
+	@ConfigItem(
+		keyName = "skillingFishing",
+		name = "Fishing",
+		description = "Show the badge while fishing.",
+		section = skillingBadgeSection,
+		position = 3
+	)
+	default boolean skillingFishing()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingWoodcutting",
+		name = "Woodcutting",
+		description = "Show the badge while chopping trees.",
+		section = skillingBadgeSection,
+		position = 4
+	)
+	default boolean skillingWoodcutting()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingMining",
+		name = "Mining",
+		description = "Show the badge while mining rocks.",
+		section = skillingBadgeSection,
+		position = 5
+	)
+	default boolean skillingMining()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingThieving",
+		name = "Thieving",
+		description = "Show the badge while pickpocketing or stealing from stalls.",
+		section = skillingBadgeSection,
+		position = 6
+	)
+	default boolean skillingThieving()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingRunecraft",
+		name = "Runecraft",
+		description = "Show the badge while crafting runes at an altar.",
+		section = skillingBadgeSection,
+		position = 7
+	)
+	default boolean skillingRunecraft()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingHunter",
+		name = "Hunter",
+		description = "Show the badge while catching implings and butterflies.",
+		section = skillingBadgeSection,
+		position = 8
+	)
+	default boolean skillingHunter()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingShowHeader",
+		name = "Header row",
+		description = "The top row: the skill's icon, your level, boost, timer and spec energy.",
+		section = skillingBadgeSection,
+		position = 9
+	)
+	default boolean skillingShowHeader()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingShowXp",
+		name = "XP row",
+		description = "The row with your progress to the next level. The inventory row and catch list have their "
+			+ "own switches in Skilling vitals.",
+		section = skillingBadgeSection,
+		position = 10
+	)
+	default boolean skillingShowXp()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingXpDisplay",
+		name = "XP shown as",
+		description = "The XP row as a percentage, the XP left, or both.",
+		section = skillingBadgeSection,
+		position = 11
+	)
+	default XpDisplay skillingXpDisplay()
+	{
+		return XpDisplay.BOTH;
+	}
+
+	@ConfigItem(
+		keyName = "skillingInventoryCount",
+		name = "Inventory count",
+		description = "Count free slots (\"Inv 26/28 free\") or used ones (\"Inv 2/28 used\").",
+		section = skillingBadgeSection,
+		position = 12
+	)
+	default InventoryCount skillingInventoryCount()
+	{
+		return InventoryCount.FREE;
+	}
+
+	@ConfigItem(
+		keyName = "skillingSessionCount",
+		name = "Session count",
+		description = "A row with how many you caught, chopped or mined this session: one per experience drop. "
+			+ "Resets on logout or with Reset session below.",
+		section = skillingBadgeSection,
+		position = 13
+	)
+	default boolean skillingSessionCount()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "skillingRates",
+		name = "XP and actions per hour",
+		description = "XP per hour and actions per hour for the skill, this session, from your first experience "
+			+ "drop. Shown after a minute.",
+		section = skillingBadgeSection,
+		position = 14
+	)
+	default boolean skillingRates()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "skillingSessionReset",
+		name = "Reset session",
+		description = "Tick to zero the session count and rates; it unticks itself.",
+		section = skillingBadgeSection,
+		position = 15
+	)
+	default boolean skillingSessionReset()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "skillingPosition",
+		name = "Badge position",
+		description = "Over your head; over the spot, tree or rock you are working (over your head when idle); or "
+			+ "fixed on screen, where Alt-drag moves it like any other overlay.",
+		section = skillingBadgeSection,
+		position = 16
+	)
+	default BadgePosition skillingPosition()
+	{
+		return BadgePosition.OVER_HEAD;
+	}
+
+	@Range(min = -200, max = 200)
+	@ConfigItem(
+		keyName = "skillingOffset",
+		name = "Badge offset",
+		description = "Pixels to raise the badge (negative lowers it), over your head or the spot.",
+		section = skillingBadgeSection,
+		position = 17
+	)
+	default int skillingOffset()
+	{
+		return 0;
+	}
+
+	@Range(min = 50, max = 200)
+	@ConfigItem(
+		keyName = "skillingScale",
+		name = "Badge size (%)",
+		description = "Scale the whole badge, text and icons included.",
+		section = skillingBadgeSection,
+		position = 18
+	)
+	default int skillingScale()
+	{
+		return 100;
+	}
+
+	@ConfigItem(
+		keyName = "skillingLockedFish",
+		name = "Fish above your level",
+		description = "Dim the fish you cannot catch yet and mark them with the level they need, or leave them out.",
+		section = skillingBadgeSection,
+		position = 19
+	)
+	default LockedFish skillingLockedFish()
+	{
+		return LockedFish.DIM;
+	}
+
+	@ConfigItem(
+		keyName = "skillingHideInCombat",
+		name = "Hide during combat",
+		description = "Hide the badge while you are being hit or hitting back. Fighting a target always replaces it.",
+		section = skillingBadgeSection,
+		position = 20
+	)
+	default boolean skillingHideInCombat()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "skillingFishingColour",
+		name = "Fishing colour",
+		description = "The badge's colour for Fishing.",
+		section = skillingBadgeSection,
+		position = 21
+	)
+	default Color skillingFishingColour()
+	{
+		return SkillColours.of(Skill.FISHING);
+	}
+
+	@ConfigItem(
+		keyName = "skillingWoodcuttingColour",
+		name = "Woodcutting colour",
+		description = "The badge's colour for Woodcutting.",
+		section = skillingBadgeSection,
+		position = 22
+	)
+	default Color skillingWoodcuttingColour()
+	{
+		return SkillColours.of(Skill.WOODCUTTING);
+	}
+
+	@ConfigItem(
+		keyName = "skillingMiningColour",
+		name = "Mining colour",
+		description = "The badge's colour for Mining.",
+		section = skillingBadgeSection,
+		position = 23
+	)
+	default Color skillingMiningColour()
+	{
+		return SkillColours.of(Skill.MINING);
+	}
+
+	@ConfigItem(
+		keyName = "skillingThievingColour",
+		name = "Thieving colour",
+		description = "The badge's colour for Thieving.",
+		section = skillingBadgeSection,
+		position = 24
+	)
+	default Color skillingThievingColour()
+	{
+		return SkillColours.of(Skill.THIEVING);
+	}
+
+	@ConfigItem(
+		keyName = "skillingRunecraftColour",
+		name = "Runecraft colour",
+		description = "The badge's colour for Runecraft.",
+		section = skillingBadgeSection,
+		position = 25
+	)
+	default Color skillingRunecraftColour()
+	{
+		return SkillColours.of(Skill.RUNECRAFT);
+	}
+
+	@ConfigItem(
+		keyName = "skillingHunterColour",
+		name = "Hunter colour",
+		description = "The badge's colour for Hunter.",
+		section = skillingBadgeSection,
+		position = 26
+	)
+	default Color skillingHunterColour()
+	{
+		return SkillColours.of(Skill.HUNTER);
+	}
+
+	@ConfigItem(
+		keyName = "pillarMode",
+		name = "Show on side pillars",
+		description =
+			"Draw vitals on the bars beside the side panel, where RuneLite's Status Bars draws hitpoints and "
+				+ "prayer. Combat: your target's health. Skilling: XP to the next level and inventory fill. "
+				+ "If Status Bars is drawing, these sit beside its bars rather than over them.",
+		section = pillarsSection,
+		position = 0
+	)
+	default PillarMode pillarMode()
+	{
+		return PillarMode.OFF;
+	}
+
+	@ConfigItem(
+		keyName = "pillarCombatSide",
+		name = "Target health on",
+		description = "Which pillar carries your target's health.",
+		section = pillarsSection,
+		position = 1
+	)
+	default PillarSide pillarCombatSide()
+	{
+		return PillarSide.LEFT;
+	}
+
+	@ConfigItem(
+		keyName = "pillarXpSide",
+		name = "Skilling XP on",
+		description = "Which pillar carries XP to the next level; inventory fill takes the other.",
+		section = pillarsSection,
+		position = 2
+	)
+	default PillarSide pillarXpSide()
+	{
+		return PillarSide.LEFT;
 	}
 
 	@ConfigItem(
