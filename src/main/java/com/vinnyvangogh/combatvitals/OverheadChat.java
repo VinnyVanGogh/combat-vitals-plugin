@@ -52,4 +52,19 @@ final class OverheadChat
 
 		return readout.y - GAP - descent;
 	}
+
+	/**
+	 * Where to draw a held line, whose game copy is hidden and so must always
+	 * be drawn by the overlay: above the readout when the readout covers it,
+	 * otherwise exactly where the game would have put it.
+	 *
+	 * @param readout the readout's box on screen; not modified
+	 * @param chat    the game's chat line's box on screen
+	 * @param descent the chat font's descent
+	 */
+	static int baseline(Rectangle readout, Rectangle chat, int descent)
+	{
+		final Integer above = baselineAbove(readout, chat, descent);
+		return above != null ? above : chat.y + chat.height - descent;
+	}
 }

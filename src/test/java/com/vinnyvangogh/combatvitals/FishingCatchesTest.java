@@ -215,6 +215,49 @@ public class FishingCatchesTest
 			names(FishingCatches.highlightFirst(bait, ItemID.RAW_SHRIMP)));
 	}
 
+	/** "Shrimps" for one the player can catch, "Anchovies 15" for one locked behind its level. */
+	private static List<String> shown(List<FishingCatches.Catch> catches)
+	{
+		return catches.stream()
+			.map(c -> c.isCatchable() ? c.getFish().getName() : c.getFish().getName() + " " + c.getFish().getLevel())
+			.collect(Collectors.toList());
+	}
+
+	@Test
+	public void netSpotShowsEveryFishWithTheLockedOnesMarked()
+	{
+		final List<FishingCatches.Fish> net = FishingCatches.forOption(FishingSpot.SHRIMP, "Net");
+		// Below Anchovies: Shrimps now, Anchovies at 15.
+		assertEquals(Arrays.asList("Shrimps", "Anchovies 15"), shown(FishingCatches.options(net, 14, -1)));
+		// On the level: both.
+		assertEquals(Arrays.asList("Shrimps", "Anchovies"), shown(FishingCatches.options(net, 15, -1)));
+	}
+
+	@Test
+	public void baitSpotBelowBetweenAndAboveItsLevels()
+	{
+		final List<FishingCatches.Fish> bait = FishingCatches.forOption(FishingSpot.SHRIMP, "Bait");
+		assertEquals("below both", Arrays.asList("Sardine 5", "Herring 10"), shown(FishingCatches.options(bait, 4, -1)));
+		assertEquals("between", Arrays.asList("Sardine", "Herring 10"), shown(FishingCatches.options(bait, 7, -1)));
+		assertEquals("above both", Arrays.asList("Sardine", "Herring"), shown(FishingCatches.options(bait, 99, -1)));
+	}
+
+	@Test
+	public void lastCatchLeadsTheCatchableAndLockedStayLast()
+	{
+		final List<FishingCatches.Fish> bait = FishingCatches.forOption(FishingSpot.SHRIMP, "Bait");
+		assertEquals(Arrays.asList("Herring", "Sardine"),
+			shown(FishingCatches.options(bait, 10, ItemID.RAW_HERRING)));
+		assertEquals(Arrays.asList("Sardine", "Herring 10"),
+			shown(FishingCatches.options(bait, 9, ItemID.RAW_SARDINE)));
+	}
+
+	@Test
+	public void unknownSpotHasNoOptions()
+	{
+		assertTrue(FishingCatches.options(FishingCatches.forOption(null, "Net"), 50, -1).isEmpty());
+	}
+
 	@Test
 	public void lastCaughtAboveTheShownLevelStillLeadsWhenItIsInTheList()
 	{

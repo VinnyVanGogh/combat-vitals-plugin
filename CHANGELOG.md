@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- Overhead chat drawn twice (Board's in-game test, 2026-11-04). With `Hide game chat under readout` off the plugin no longer draws its own copy, so the game's line is the only one. With it on, a new message over you or your opponent is blanked inside `OverheadTextChanged`, before any frame is drawn, instead of on the next client tick, so the game's copy no longer flashes under the readout. The overlay now marks every actor it draws a readout over, chat or not, and only draws a line the plugin is holding (`OverheadChatHolder.hold`, `heldText`, `OverheadChat.baseline`).
+
+### Changed
+- `Hide game chat under readout` and `Hide game health bar` default on. Saved values are kept: the key names are unchanged (`ConfigDefaultsTest`).
+- Skilling badge v3: coloured by skill (`SkillColours`, each colour at least 3:1 against white and black); a second row with XP progress to the next level, `Lv 12 -> 13: 64% (1,234 xp)`, counting toward 200m at 99 (`XpProgress`); the bottom row is labelled as the inventory, `Inv 26/28 free`, on the fill bar; the catch icons move into that row and show every fish the method can give, the ones above your level dimmed with the level they need (`FishingCatches.options`). The three-icon cap and `+N` are gone.
+
 ### Added
 - Skilling badge on objects: chopping a tree, mining a rock, stealing from a stall or crafting runes at an altar shows the same badge (skill icon, level, boost, timer, tool spec energy). Objects never fire `InteractingChanged`, so the badge needs both the clicked option (`Chop down`, `Chop`, `Mine`, `Steal-from`, `Craft-rune`) and the player animating within reach of the object; it lingers for the timeout when the animation stops in place, and clears at once on walking away, `Walk here`, a non-skilling object option, or engaging any NPC. Attacking still wins. Pure, unit-tested `ObjectSkilling` (#12).
 - Inventory fill bar under the skilling badge, green through yellow to red by the share of free capacity filled; stackables, noted items, tools and wieldable or wearable items hold their slot and do not count (`InventoryFill`, `skillingInventoryBar`, #11).

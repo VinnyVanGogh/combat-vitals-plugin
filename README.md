@@ -104,22 +104,30 @@ tool you spec'd, it says so; otherwise it says nothing rather than guess. When
 the boost drops or wears off the badge flashes red for a moment, and can send a
 RuneLite notification if you turn that on.
 
-**What you can catch.** On a fishing spot the badge also shows the fish the
-method you clicked can land at your current boosted level, as small icons
-beside the level: Net on a shrimp spot at Fishing 10 shows shrimps only, since
-anchovies need 15; Bait on the same spot shows sardine and herring. Up to three
-icons, then `+N`. The fish you last caught, from the `You catch some shrimps.`
-message or from it landing in your inventory, leads and the others fade. The
-spot type comes from RuneLite's own fishing spot table and the levels from the
-OSRS wiki; a spot the plugin does not know shows the skill and level alone.
+The badge is coloured by skill: blue for Fishing, green for Woodcutting,
+brown for Mining, purple for Thieving, orange-brown for Hunter, gold for
+Runecraft, slate grey for anything else. Every colour keeps at least 3:1
+contrast against both white and black, so it reads over snow and in caves.
+Under the level a second row shows your progress to the next level, as a bar
+and as text: `Lv 12 -> 13: 64% (1,234 xp)`. At 99 it counts toward 200m.
 
-**Inventory fill.** Under the badge sits a thin bar that runs from green
-through yellow to red as your inventory fills. Only what you are gathering
-counts: feathers, bait, coin pouches and anything else that stacks, your tools
-(net, rod, pot, axe, pickaxe, hammer...) and anything you can wield or wear
-hold their slot for the whole trip, so they shrink the capacity instead. A
-harpoon and 27 fish is solid red. It uses the health colours from Display,
+**Inventory line.** The bottom row is your inventory: `Inv 26/28 free`, on a
+bar that runs from green through yellow to red as it fills. A stack or a tool
+holds its slot, so it is not free. Only what you are gathering counts toward
+the fill: feathers, bait, coin pouches and anything else that stacks, your
+tools (net, rod, pot, axe, pickaxe, hammer...) and anything you can wield or
+wear hold their slot for the whole trip, so they shrink the capacity instead.
+A harpoon and 27 fish is solid red. It uses the health colours from Display,
 run backwards.
+
+**What you can catch.** On a fishing spot the inventory line also shows every
+fish the method you clicked can give. The ones your boosted level lands now are
+at full strength; the rest are dimmed, with the level they need written over
+them. Net on a shrimp spot at Fishing 12 shows shrimps, and anchovies dimmed
+with a 15. The fish you last caught, from the `You catch some shrimps.` message
+or from it landing in your inventory, leads. The spot type comes from
+RuneLite's own fishing spot table and the levels from the OSRS wiki; a spot the
+plugin does not know shows no fish.
 
 **Activity alerts.** RuneLite notifications for the moments you would
 otherwise miss while looking at something else, each with its own toggle in
@@ -246,8 +254,8 @@ the case that broke every earlier iteration of this overlay.
 | Bar background | Opaque black | Fill behind the health bar. Lower the alpha to let the game's bar show through |
 | Overhead position | Top | Top, Middle or Bottom relative to the target |
 | Overhead offset | 0 | Extra height in pixels, ±200 |
-| Hide game health bar | Off | Hide the game's own health bar over everyone, yours included |
-| Hide game chat under readout | Off | While the readout or skilling badge covers someone's overhead chat and the plugin redraws it above, hide the game's own line so only one shows. You and your opponent only; the badge is over your own head, so a skilling NPC is never touched |
+| Hide game health bar | On | Hide the game's own health bar over everyone, yours included |
+| Hide game chat under readout | On | While the readout or skilling badge is over you or your opponent, take the game's overhead chat line off the moment it is posted and draw it above the readout instead, so it shows once and never under the readout. Off: the game draws its own line and the plugin adds nothing. A skilling NPC is never touched |
 
 ### Targets
 
@@ -269,12 +277,12 @@ the case that broke every earlier iteration of this overlay.
 | Setting | Default | What it does |
 |---|---|---|
 | Skilling badge | On | Draw the badge over your head while you work a fishing spot, tree, rock, stall or other skilling NPC or object |
-| Show what you can catch | On | On a fishing spot, icons of the fish the clicked method lands at your level, up to three then `+N` |
+| Show what you can catch | On | On a fishing spot, icons of every fish the clicked method can give in the inventory line; ones above your level dimmed with the level they need |
 | Show boost timer | On | Seconds until the boost drops by one, `~` while estimated from login |
 | Show boost source | On | Name the potion, food or special attack the boost came from, when seen |
 | Show spec energy | On | Remaining special attack energy when wielding a spec skilling tool |
 | Notify on boost drop | Off | RuneLite notification when the badge's boost drops or wears off |
-| Show inventory fill | On | Thin bar under the badge, green to red as the inventory fills; stackables, tools and equipment do not count |
+| Show inventory fill | On | `Inv 26/28 free` on a bar under the badge, green to red as the inventory fills; stackables, tools and equipment do not count toward the fill |
 
 ### Activity alerts
 

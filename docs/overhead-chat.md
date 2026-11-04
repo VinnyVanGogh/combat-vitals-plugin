@@ -22,7 +22,7 @@ Options considered:
 | Swap the text for `" "`, leave the countdown | **Used.** Exactly what the base client's Chat Filter does to a filtered overhead message (below). The game keeps counting down, so the message lasts its normal time; restoring writes the text back and the game draws it for whatever time is left. The text stays non-null, so the client's 2D stacking (health bar 12 px higher while chat is up, see `native-hp-bar.md`) does not jump on hide or restore. |
 | Zero the countdown and keep our own expiry | Rejected. We would have to reproduce the game's timing (unit of a "cycle", per-message durations) and restore by writing a guessed cycle count back. Any mismatch shortens or lengthens someone's message. |
 | `Client.setDraw2DMask` without `DRAW_2D_OVERHEAD_TEXT` | Rejected. Global: hides every actor's chat, bystanders included. |
-| `OverheadTextChanged` hold-on-arrival | Not needed. Holds are decided from the frame that actually drew the copy, on `ClientTick`; worst case the game's line shows for one frame (~20 ms) before it is taken. |
+| `OverheadTextChanged` hold-on-arrival | **Used** since the Board's in-game test (2026-11-04). Deciding holds only on `ClientTick` from the last frame's copy let the game's line show for a frame or more before it was taken, which read as the message drawn twice. A new message over an actor the readout is drawn over is now blanked inside the event, the same hook Chat Filter uses, before any frame is drawn. `ClientTick` still takes a message that was already up when the readout appeared. |
 
 Precedent, base client
 [`ChatFilterPlugin.onOverheadTextChanged`](https://github.com/runelite/runelite/blob/master/runelite-client/src/main/java/net/runelite/client/plugins/chatfilter/ChatFilterPlugin.java):
@@ -40,26 +40,31 @@ event.getActor().setOverheadText(message);
 
 Code: `OverheadChatHolder.java` (state, unit tested in
 `OverheadChatHolderTest.java`), wired in `CombatVitalsPlugin`
-(`onClientTick` → `updateChatHolds`, `overheadChat`, `setChatCovered`,
-`shutDown`, `onGameStateChanged`) and `CombatVitalsOverheadOverlay.render` /
-`drawChatAbove`.
+(`onOverheadTextChanged`, `onClientTick` → `updateChatHolds`, `heldChat`,
+`setChatCovered`, `shutDown`, `onGameStateChanged`) and
+`CombatVitalsOverheadOverlay.render` / `drawHeldChat`.
 
 1. Every frame the overlay draws the readout for the opponent, and for you
    your own bar and the skilling badge (PR #7, over your own head since PR #9),
-   stacked. For the opponent, and once for you, `drawChatAbove` asks the plugin
-   for the actor's chat (the held text if we hold it, otherwise the game's live
-   text) and draws the copy only if the box just drawn (readout, or your
-   bar-and-badge stack) covers the game's line. Actors that got a copy go into
-   a fresh set, published to the plugin at the end of the frame, in a `finally`
-   so a failing draw still publishes.
-2. Every client tick, with the option on (and *Show over target* on), the
+   stacked. Every actor it drew a box over goes into a fresh set, talking or
+   not, published to the plugin at the end of the frame, in a `finally` so a
+   failing draw still publishes. For each, `drawHeldChat` draws the line the
+   plugin holds, if any: above the box when the box covers the game's line,
+   otherwise in the game's own place. Nothing held, nothing drawn: with the
+   option off the game's line is the only one.
+2. When the game posts a message (`OverheadTextChanged`) over an actor in the
+   latest set, with the option on, the holder takes it at once
+   (`OverheadChatHolder.hold`): it keeps the text and writes the blank inside
+   the event, so no frame ever draws the game's copy. Our own blank posts back
+   through the same event and is ignored.
+3. Every client tick, with the option on (and *Show over target* on), the
    holder:
    - lets go of every held actor not in the latest set, writing the real text
      back;
    - forgets, without writing, any hold whose blank was replaced by a newer
      message from the game or whose countdown ran out;
    - takes the line off every actor in the set that is currently talking.
-3. Option off, overlay off, logout/hop, or plugin shutdown: everything held is
+4. Option off, overlay off, logout/hop, or plugin shutdown: everything held is
    written back (shutdown via `ClientThread.invoke`).
 
 Only two actors can ever be held: your tracked opponent, and you. Bystanders,
@@ -99,9 +104,9 @@ neighbouring actors.
 
 ### Never dropping a message
 
-- A hold exists only while the copy is being drawn. Any frame where the copy
-  is not drawn (readout moved clear, actor off screen, text location null,
-  target despawned or retired) releases it on the next tick.
+- A hold exists only while a box is drawn over the actor. Any frame where it
+  is not (readout gone, actor off screen, target despawned or retired)
+  releases it on the next tick.
 - Release writes the original text back with the countdown untouched, so the
   game draws it for exactly the time it had left.
 - A new message from the game always wins: the stale hold is dropped, never
@@ -119,9 +124,15 @@ neighbouring actors.
   (wave, scroll, etc.), so our copy is plain yellow. With the game's line gone,
   a coloured or animated message now shows only in plain yellow while
   covered.
-- **One frame** of the game's line at the start of each message (see above).
-- Default **off** until checked in game: it writes actor state that other
-  plugins can read.
+- **Event order.** If another plugin rewrites the text in its own
+  `OverheadTextChanged` handler after ours (Chat Filter censoring), its write
+  replaces our blank and posts the event again, and we hold the censored text
+  in turn. Unit tested with a fake that posts back; not yet seen in game.
+- **A message already up when the readout appears** is taken on the next
+  client tick, so it can show under the readout for one frame. Only new
+  messages are held on arrival.
+- Default **on** since 2026-11-04 (Board): it writes actor state that other
+  plugins can read, the way Chat Filter does.
 
 ## Plugin Hub rules
 

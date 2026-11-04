@@ -49,6 +49,18 @@ public class OverheadChatTest
 	}
 
 	@Test
+	public void heldChatClearOfTheReadoutStaysWhereTheGameHadIt()
+	{
+		// The game's line is hidden while held, so the copy is always drawn:
+		// above the readout when it covers the line, else in the line's place.
+		final Rectangle clear = new Rectangle(90, 150, 80, 15);
+		assertEquals(150 + 15 - DESCENT, OverheadChat.baseline(READOUT, clear, DESCENT));
+
+		final Rectangle covered = new Rectangle(90, 205, 80, 15);
+		assertEquals(READOUT.y - OverheadChat.GAP - DESCENT, OverheadChat.baseline(READOUT, covered, DESCENT));
+	}
+
+	@Test
 	public void partlyCoveredChatIsStillRedrawn()
 	{
 		// One pixel row of overlap is enough to mangle the line.

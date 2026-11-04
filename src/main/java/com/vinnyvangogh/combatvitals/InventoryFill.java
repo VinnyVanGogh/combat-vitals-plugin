@@ -90,6 +90,18 @@ final class InventoryFill
 	}
 
 	/**
+	 * The inventory line's label: free slots out of the whole inventory. A
+	 * stack or a tool holds a slot, so it is not free.
+	 *
+	 * @param empty empty slots, or -1 when the inventory has not been read
+	 * @return e.g. "Inv 26/28 free", or null when unknown
+	 */
+	static String label(int empty)
+	{
+		return empty < 0 ? null : "Inv " + empty + "/" + SLOTS + " free";
+	}
+
+	/**
 	 * Green while empty, through yellow at half, to red when full: the health
 	 * ramp run the other way, since a full inventory is the thing to act on.
 	 */
