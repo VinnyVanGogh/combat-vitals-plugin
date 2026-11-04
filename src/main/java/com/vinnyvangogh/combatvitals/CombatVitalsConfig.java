@@ -785,6 +785,19 @@ public interface CombatVitalsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "skillingGearWarning",
+		name = "Warn before fishing without gear",
+		description = "When you click a fishing spot without the tool, bait or level the option needs,"
+			+ " say what is missing on the badge straight away. The click itself is never changed.",
+		section = skillingBadgeSection,
+		position = 27
+	)
+	default boolean skillingGearWarning()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 		keyName = "pillarMode",
 		name = "Show on side pillars",
 		description =

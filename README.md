@@ -307,6 +307,7 @@ A fish above your level is dimmed with `Lv 15` over it in red; hover it for
 | Fish above your level | Dim | Dim them with the level, or hide them |
 | Hide during combat | Off | Hide the badge while you are hit or hitting back; fighting a target always replaces it |
 | Fishing colour … Hunter colour | The palette | Per-skill colour overrides |
+| Warn before fishing without gear | On | Click a fishing option without its tool, bait or level and the badge says `Needs: Fishing rod + bait` in red for 8 seconds, before the game's dialog. Worn or carried tools count, as does barehanded harpooning after Barbarian Training. The click itself is never changed |
 
 ### Side pillars
 

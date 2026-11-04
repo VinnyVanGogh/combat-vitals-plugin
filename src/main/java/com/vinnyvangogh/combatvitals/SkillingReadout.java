@@ -55,6 +55,12 @@ final class SkillingReadout
 	@Builder.Default
 	private final SkillingState.Warning warning = SkillingState.Warning.NONE;
 
+	/**
+	 * "Needs: Fishing rod + bait" after clicking a fishing option without
+	 * what it takes ({@link FishingGear}), or null. Turns the header red.
+	 */
+	private final String gearText;
+
 	/** Progress through the current level, from the skill's XP. */
 	private final XpProgress xp;
 

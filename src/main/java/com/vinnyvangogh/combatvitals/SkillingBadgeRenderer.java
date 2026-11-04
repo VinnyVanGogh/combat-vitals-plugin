@@ -33,6 +33,8 @@ import net.runelite.client.ui.overlay.tooltip.TooltipManager;
  * fishing spot every fish the method can give;</li>
  * <li>the session line: count this session and the hourly rates;</li>
  * <li>the XP line: progress to the next level;</li>
+ * <li>"Needs: Fishing rod + bait" in red, for a few seconds after clicking
+ * a fishing option without what it takes;</li>
  * <li>the header, in the skill's colour: icon, level, boost, timer; or
  * "Not fishing" in the idle colour once you stop.</li>
  * </ol>
@@ -150,11 +152,11 @@ class SkillingBadgeRenderer
 		final int invWidth = (invLabel == null ? 0 : small.stringWidth(invLabel))
 			+ catchesWidth(readout.getCatches(), small);
 
-		final int width = PAD_X * 2 + max(
+		final int width = PAD_X * 2 + Math.max(width(small, readout.getGearText()), max(
 			readout.isHeader() ? iconWidth + metrics.stringWidth(text) : 0,
 			width(small, readout.getXpText()),
 			width(small, readout.getSessionText()),
-			invWidth);
+			invWidth));
 
 		final Rows rows = new Rows(-width / 2, width);
 		final int invHeight = readout.getCatches().isEmpty() ? lineHeight : Math.max(lineHeight, FISH_ICON + 2);
@@ -162,6 +164,7 @@ class SkillingBadgeRenderer
 		layout.inv = rows.add(readout.hasInventoryLine(), invHeight);
 		layout.session = rows.add(readout.getSessionText() != null, lineHeight);
 		layout.xp = rows.add(readout.getXpText() != null, lineHeight);
+		layout.gear = rows.add(readout.getGearText() != null, lineHeight);
 		layout.head = rows.add(readout.isHeader(), headHeight);
 		layout.box = rows.box();
 		return rows.empty() ? null : layout;
@@ -178,7 +181,7 @@ class SkillingBadgeRenderer
 		graphics.setFont(FontManager.getRunescapeSmallFont());
 		try
 		{
-			drawSmallRows(graphics, readout, layout.xp, layout.session, layout.inv);
+			drawSmallRows(graphics, readout, layout);
 		}
 		finally
 		{
@@ -186,9 +189,18 @@ class SkillingBadgeRenderer
 		}
 	}
 
-	private void drawSmallRows(Graphics2D graphics, SkillingReadout readout, Rectangle xp, Rectangle session,
-		Rectangle inv)
+	private void drawSmallRows(Graphics2D graphics, SkillingReadout readout, Layout layout)
 	{
+		final Rectangle gear = layout.gear;
+		final Rectangle xp = layout.xp;
+		final Rectangle session = layout.session;
+		final Rectangle inv = layout.inv;
+		if (gear != null)
+		{
+			// Full in the low colour: something is missing, said before the game says it.
+			Bars.across(graphics, gear, 1.0, config.healthLowColour(), config.barBackground());
+			centredText(graphics, gear, readout.getGearText());
+		}
 		if (xp != null)
 		{
 			Bars.across(graphics, xp, readout.getXp().getFraction(), readout.getColour(), config.barBackground());
@@ -228,9 +240,8 @@ class SkillingBadgeRenderer
 	private void drawHeader(Graphics2D graphics, Rectangle head, SkillingReadout readout, String text,
 		BufferedImage icon)
 	{
-		final boolean warning = readout.getWarning() != SkillingState.Warning.NONE;
-		final Color colour = readout.isIdle() ? config.skillingIdleColour()
-			: warning ? config.healthLowColour() : readout.getColour();
+		final boolean warning = readout.getGearText() != null || readout.getWarning() != SkillingState.Warning.NONE;
+		final Color colour = headerColour(readout, warning);
 		final boolean bar = config.overheadStyle() == OverheadStyle.BAR;
 		if (bar)
 		{
@@ -247,6 +258,20 @@ class SkillingBadgeRenderer
 
 		OverlayUtil.renderTextLocation(graphics, new Point(x + iconWidth, textBaseline(head, metrics)), text,
 			bar ? Color.WHITE : colour);
+	}
+
+	/** Missing gear is red even on an idle badge; otherwise idle, then a boost warning, then the skill. */
+	private Color headerColour(SkillingReadout readout, boolean warning)
+	{
+		if (readout.getGearText() != null)
+		{
+			return config.healthLowColour();
+		}
+		if (readout.isIdle())
+		{
+			return config.skillingIdleColour();
+		}
+		return warning ? config.healthLowColour() : readout.getColour();
 	}
 
 	private static double boostFraction(SkillingReadout readout)
@@ -386,6 +411,7 @@ class SkillingBadgeRenderer
 		private final String text;
 		private final BufferedImage icon;
 		private Rectangle head;
+		private Rectangle gear;
 		private Rectangle xp;
 		private Rectangle session;
 		private Rectangle inv;

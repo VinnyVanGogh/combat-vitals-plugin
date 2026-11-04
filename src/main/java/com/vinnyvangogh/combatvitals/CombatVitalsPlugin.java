@@ -4,6 +4,7 @@ import com.google.inject.Provides;
 import java.awt.Color;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -180,6 +181,13 @@ public class CombatVitalsPlugin extends Plugin
 
 	/** Keeps the badge up as "Not fishing" once you stop. */
 	private final IdleBadge idleBadge = new IdleBadge();
+
+	/** How long "Needs: ..." stays on the badge after the click: about as long as the game's dialog. */
+	private static final long GEAR_WARNING_MILLIS = 8_000;
+
+	/** "Needs: Fishing rod + bait" from the last fishing click, and when; null when nothing was missing. */
+	private String gearWarning;
+	private long gearWarningAt;
 
 	/** This login's counts and rates; outlives a hop, not a logout. */
 	private final SkillingSession session = new SkillingSession();
@@ -396,6 +404,7 @@ public class CombatVitalsPlugin extends Plugin
 		idleBadge.clear();
 		clickedNpc = null;
 		clickedNpcSkill = null;
+		gearWarning = null;
 		inventoryCatches.clear();
 		boosts.clear();
 		boostTimer.clear();
@@ -556,6 +565,7 @@ public class CombatVitalsPlugin extends Plugin
 			{
 				clickedNpc = npc;
 				clickedNpcSkill = SkillingActions.forOption(option, Text.removeTags(event.getMenuTarget()));
+				checkFishingGear(npc, option, clickedNpcSkill);
 			}
 			return;
 		}
@@ -571,6 +581,58 @@ public class CombatVitalsPlugin extends Plugin
 			// Walking off a tree clears its badge at once, no linger.
 			endObjectBadge();
 		}
+	}
+
+	/**
+	 * A fishing option clicked without the tool, bait or level it needs is
+	 * said on the badge at once, rather than after the game's dialog. Only
+	 * read: the click goes through unchanged. Any NPC click replaces the last
+	 * warning, so fetching the rod and clicking again clears it.
+	 */
+	private void checkFishingGear(NPC npc, String option, Skill skill)
+	{
+		gearWarning = null;
+		if (skill != Skill.FISHING || !config.skillingGearWarning())
+		{
+			return;
+		}
+
+		final List<FishingCatches.Fish> fish = FishingCatches.forOption(FishingSpot.findSpot(npc.getId()), option);
+		// BRUT_FISHING_S is Barbarian Training's barehanded stage. What each
+		// value means is not published, so any progress counts as trained:
+		// that can only hide a warning, never show a wrong one.
+		final FishingGear.Kit kit = new FishingGear.Kit(carriedItemNames(),
+			client.getVarbitValue(VarbitID.BRUT_FISHING_S) > 0, client.getBoostedSkillLevel(Skill.FISHING));
+		gearWarning = FishingGear.text(FishingGear.missing(option, fish, kit));
+		gearWarningAt = System.currentTimeMillis();
+	}
+
+	/** The names of everything in the inventory and worn, read on the click. */
+	private List<String> carriedItemNames()
+	{
+		final List<String> names = new ArrayList<>();
+		for (int containerId : new int[] {InventoryID.INV, InventoryID.WORN})
+		{
+			final ItemContainer container = client.getItemContainer(containerId);
+			if (container == null)
+			{
+				continue;
+			}
+			for (Item item : container.getItems())
+			{
+				if (item.getId() > 0 && item.getQuantity() > 0)
+				{
+					names.add(client.getItemDefinition(item.getId()).getName());
+				}
+			}
+		}
+		return names;
+	}
+
+	/** The gear warning while it is fresh, or null. */
+	private String gearWarning(long now)
+	{
+		return gearWarning != null && now - gearWarningAt < GEAR_WARNING_MILLIS ? gearWarning : null;
 	}
 
 	/** Drops an object badge at once, and any object waiting for its swing. */
@@ -690,6 +752,8 @@ public class CombatVitalsPlugin extends Plugin
 		if (fish != null)
 		{
 			skilling.caught(fish.getItemId());
+			// A catch is the proof the gear was there after all.
+			gearWarning = null;
 		}
 	}
 
@@ -1076,7 +1140,20 @@ public class CombatVitalsPlugin extends Plugin
 		}
 
 		final Skill idle = idleBadge.idleSkill(config.skillingIdleMode(), config.skillingIdleSeconds(), now);
-		return idle != null && skillShown(idle) ? baseReadout(idle, now).idle(true).build() : null;
+		if (idle != null && skillShown(idle))
+		{
+			return baseReadout(idle, now).idle(true).build();
+		}
+		return gearOnlyReadout(now);
+	}
+
+	/**
+	 * Clicking Bait without a rod usually never starts fishing at all, so
+	 * with no badge up the warning brings one up of its own.
+	 */
+	private SkillingReadout gearOnlyReadout(long now)
+	{
+		return gearWarning(now) != null && skillShown(Skill.FISHING) ? baseReadout(Skill.FISHING, now).build() : null;
 	}
 
 	/** Off, a fight with a target (its health bar takes over), or any combat with Hide during combat. */
@@ -1122,6 +1199,7 @@ public class CombatVitalsPlugin extends Plugin
 			.real(client.getRealSkillLevel(skill))
 			.boosted(client.getBoostedSkillLevel(skill))
 			.colour(skillColour(skill))
+			.gearText(skill == Skill.FISHING ? gearWarning(now) : null)
 			.header(config.skillingShowHeader())
 			.xp(xp)
 			.xpText(config.skillingShowXp() ? xp.text(config.skillingXpDisplay()) : null)

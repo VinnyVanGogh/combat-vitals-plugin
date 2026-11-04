@@ -194,6 +194,7 @@ the local player's own state; nothing acts on the game.
 | Reading Status Bars' settings with `ConfigManager.getConfiguration("statusbars", ...)` and whether it is enabled with `PluginManager` | Reflection, cross-plugin access: no reflection, no plugin class touched; the config manager is the shared store | Config groups are readable by any plugin; Opponent Information check in this plugin already uses `PluginManager.isPluginEnabled` | Allowed |
 | XP/hour, actions/hour and session count from `StatChanged` | None | Base client `xptracker` | Allowed |
 | Badge over the spot, from the clicked NPC or object's tile | Boss & combat: not applicable, skilling objects only | Base client `fishing` and `woodcutting` draw over spots and trees | Allowed |
+| `Needs: Fishing rod + bait` on a fishing click without the tool, bait or level (Board addition, 2026-11-04): own inventory and worn items, own Fishing level and Barbarian Training varbit `BRUT_FISHING_S`, read in `MenuOptionClicked` | Menu Restrictions: the event is read, never consumed or changed, so the click still reaches the game and the game's own dialog still shows | Same read-only `MenuOptionClicked` use as the rows above; base client `itemcharges`/`inventorytags` read own containers | Allowed |
 
 ---
 

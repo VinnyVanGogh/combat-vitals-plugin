@@ -83,7 +83,7 @@ public class ConfigKeysTest
 		final boolean[] on = {
 			NEW_PROFILE.skillingFishing(), NEW_PROFILE.skillingWoodcutting(), NEW_PROFILE.skillingMining(),
 			NEW_PROFILE.skillingThieving(), NEW_PROFILE.skillingRunecraft(), NEW_PROFILE.skillingHunter(),
-			NEW_PROFILE.skillingShowHeader(), NEW_PROFILE.skillingShowXp(),
+			NEW_PROFILE.skillingShowHeader(), NEW_PROFILE.skillingShowXp(), NEW_PROFILE.skillingGearWarning(),
 		};
 		for (boolean b : on)
 		{
