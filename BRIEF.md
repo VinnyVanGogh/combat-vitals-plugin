@@ -180,6 +180,23 @@ menu changes, no prompt to click. Woodcutting and mining alerts run on
 experience drops, so they work before task-fb282112 brings the badge to trees
 and rocks.
 
+### Path to next fishing spot, compliance (added 2026-11-04)
+
+Board, 2026-11-04: "add shortest path as an option to give you the shortest
+path to the next fishing spot that's active". Off by default.
+
+| Element | Nearest rule | Precedent | Verdict |
+|---|---|---|---|
+| Spot NPCs in the loaded scene read from `WorldView.npcs()` and typed with `FishingSpot.findSpot` | None: public game state any player can see | Base client `fishing` plugin enumerates and highlights every spot NPC in the scene the same way | Allowed |
+| Next spot's tile outlined when Shortest Path is absent | None | Base client `fishing` plugin outlines every fishing spot; this outlines one | Allowed |
+| Target sent to Shortest Path via `PluginMessage` (`shortestpath` / `path`, `clear`) | Plugin Hub: reflection or reaching into another plugin is rejected | `PluginMessage` is RuneLite's own public, sanctioned plugin-to-plugin channel, shipped in `runelite-client`; Shortest Path documents and handles it. Same bridge as QuestPath's | Allowed |
+| `Path to next spot` added to the right-click menu, only over the badge | Menu Restrictions: adding or removing entries | A `RUNELITE` entry of the plugin's own, nothing removed, swapped or reordered; base client `groundmarkers` ("Mark tile") and `npchighlight` ("Tag") add their own entries the same way | Allowed |
+| Bundled list of spot locations from the OSRS wiki | None: public data | Shortest Path itself and many hub plugins ship wiki location tables | Allowed |
+
+Not done, deliberately: no walking, clicking or queuing of any kind; the path
+is drawn by Shortest Path and walked by the player. No route into the
+Wilderness: those locations are left out of the bundled list.
+
 ---
 
 ## Phase 0.5, Measure before building

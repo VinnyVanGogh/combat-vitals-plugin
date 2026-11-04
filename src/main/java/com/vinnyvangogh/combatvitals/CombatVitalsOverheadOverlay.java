@@ -85,6 +85,7 @@ class CombatVitalsOverheadOverlay extends Overlay
 		// Rebuilt every frame and handed over whole: an actor missing from it
 		// gets its chat line back from the plugin on the next client tick.
 		final Set<Actor> covered = new HashSet<>();
+		Rectangle badge = null;
 		try
 		{
 			if (!config.showOverhead())
@@ -105,7 +106,7 @@ class CombatVitalsOverheadOverlay extends Overlay
 
 			// The badge shares the anchor with your own bar and stacks above it
 			// when both are up (hit while fishing).
-			final Rectangle badge = config.skillingEnabled()
+			badge = config.skillingEnabled()
 				? drawSkilling(graphics, plugin.getSkillingReadout(), selfBar)
 				: null;
 
@@ -118,6 +119,8 @@ class CombatVitalsOverheadOverlay extends Overlay
 		finally
 		{
 			plugin.setChatCovered(covered);
+			// Where the badge is, for its right-click "Path to next spot".
+			plugin.setBadgeBounds(badge);
 		}
 	}
 
