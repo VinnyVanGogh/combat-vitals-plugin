@@ -47,6 +47,32 @@ public class InventoryFillTest
 	}
 
 	@Test
+	public void labelCountsFreeSlotsOutOfTwentyEight()
+	{
+		assertEquals("Inv 28/28 free", InventoryFill.label(28));
+		assertEquals("Inv 26/28 free", InventoryFill.label(26));
+		assertEquals("Inv 0/28 free", InventoryFill.label(0));
+	}
+
+	@Test
+	public void stackablesHoldASlotSoTheyAreNotFree()
+	{
+		// Rod, a feather stack and 20 trout: 6 slots free, and the bar reads
+		// 20 of the 26 slots the trip can fill.
+		assertEquals("Inv 6/28 free", InventoryFill.label(6));
+		assertEquals(20.0 / 26, InventoryFill.fraction(20, 6), 1e-9);
+		// Rod, feathers and 26 trout: nothing free, full.
+		assertEquals("Inv 0/28 free", InventoryFill.label(0));
+		assertEquals(1.0, InventoryFill.fraction(26, 0), 0);
+	}
+
+	@Test
+	public void unknownInventoryHasNoLabel()
+	{
+		assertEquals(null, InventoryFill.label(-1));
+	}
+
+	@Test
 	public void fixedSlotsShrinkTheCapacityInsteadOfFilling()
 	{
 		// Harpoon and feathers held: 26 free slots, so 13 fish is half.

@@ -230,6 +230,43 @@ final class FishingCatches
 		return out;
 	}
 
+	/** One fish the spot can give, and whether the player's level lands it now. */
+	@Getter
+	static final class Catch
+	{
+		private final Fish fish;
+		private final boolean catchable;
+
+		Catch(Fish fish, boolean catchable)
+		{
+			this.fish = fish;
+			this.catchable = catchable;
+		}
+	}
+
+	/**
+	 * Every fish the method can give, for the badge's catch icons: the ones
+	 * the level lands first, the last catch leading
+	 * ({@link #highlightFirst}), then the ones still above the level, lowest
+	 * level first.
+	 */
+	static List<Catch> options(List<Fish> fish, int level, int lastCaughtItemId)
+	{
+		final List<Catch> out = new ArrayList<>(fish.size());
+		for (Fish f : highlightFirst(catchable(fish, level), lastCaughtItemId))
+		{
+			out.add(new Catch(f, true));
+		}
+		for (Fish f : fish)
+		{
+			if (f.level > level)
+			{
+				out.add(new Catch(f, false));
+			}
+		}
+		return out;
+	}
+
 	/**
 	 * The last catch first, so the icon the player is actually filling the
 	 * inventory with leads. A catch that is not in the list (another method,

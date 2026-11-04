@@ -222,25 +222,27 @@ public interface CombatVitalsConfig extends Config
 	)
 	default boolean hideGameHealthBar()
 	{
-		return false;
+		// On by default (Board, 2026-11-04). A saved value is kept under the
+		// unchanged key, so only profiles that never set it change.
+		return true;
 	}
 
 	@ConfigItem(
 		keyName = "hideGameOverheadChat",
 		name = "Hide game chat under readout",
 		description =
-			"While the readout or skilling badge covers someone's overhead chat and the plugin redraws it "
-				+ "above, hide the game's own line so only one copy shows. Only for you and your opponent, "
-				+ "only while covered; the message keeps its full time on screen and goes back to the game "
-				+ "otherwise. The badge is over your own head, so a skilling NPC is never touched.",
+			"While the readout or skilling badge is over you or your opponent, take the game's own overhead "
+				+ "chat line off and draw it above the readout instead, so it is never hidden under it. "
+				+ "The message keeps its full time on screen and goes back to the game when the readout goes. "
+				+ "Off: the game draws its own line and the plugin adds nothing. A skilling NPC is never touched.",
 		section = displaySection,
 		position = 13
 	)
 	default boolean hideGameOverheadChat()
 	{
-		// Off until checked in game (Board, 2026-10-22): it edits the actor's
-		// chat text, which other plugins can read.
-		return false;
+		// On by default (Board, 2026-11-04, after the in-game test). It edits
+		// the actor's chat text, the way the base Chat Filter does.
+		return true;
 	}
 
 	@ConfigItem(
@@ -330,8 +332,8 @@ public interface CombatVitalsConfig extends Config
 		name = "Skilling badge",
 		description =
 			"When you work a fishing spot or another skilling NPC, draw a badge over your head, where "
-				+ "your own health bar sits, in the health bar's style: the skill's icon, your level, "
-				+ "and your boost.",
+				+ "your own health bar sits, in the skill's colour: the skill's icon, your level, your "
+				+ "boost, and a line with your progress to the next level.",
 		section = skillingSection,
 		position = 0
 	)
@@ -344,10 +346,10 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingCatches",
 		name = "Show what you can catch",
 		description =
-			"On a fishing spot, show the fish the method you clicked (Net, Bait, Lure, Cage, Harpoon...) "
-				+ "can land at your current boosted level, as small icons beside the level: up to three, "
-				+ "then +N. The fish you last caught leads. Spots the plugin does not know show the "
-				+ "level alone.",
+			"On a fishing spot, show every fish the method you clicked (Net, Bait, Lure, Cage, Harpoon...) "
+				+ "can give, as icons in the badge's inventory line: the ones your boosted level can catch "
+				+ "now at full strength, the rest dimmed with the level they need. The fish you last caught "
+				+ "leads. Spots the plugin does not know show no icons.",
 		section = skillingSection,
 		position = 1
 	)
@@ -418,9 +420,10 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingInventoryBar",
 		name = "Show inventory fill",
 		description =
-			"Draw a thin bar under the badge that runs from green to yellow to red as your inventory "
-				+ "fills. Stackables (feathers, bait, coin pouches), tools and equipment hold their slot "
-				+ "and do not count as filling; red means no free slot is left.",
+			"Draw an inventory line under the badge, \"Inv 26/28 free\", on a bar that fills from green "
+				+ "to yellow to red as your inventory fills. Stackables (feathers, bait, coin pouches), tools "
+				+ "and equipment hold their slot, so they are not free, but do not count as filling; red "
+				+ "means no free slot is left.",
 		section = skillingSection,
 		position = 6
 	)

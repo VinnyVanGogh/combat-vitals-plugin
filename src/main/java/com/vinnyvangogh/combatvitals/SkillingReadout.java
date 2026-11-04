@@ -33,28 +33,30 @@ final class SkillingReadout
 	private final String source;
 	private final SkillingState.Warning warning;
 
-	/**
-	 * What the clicked method can land at the boosted level, the last catch
-	 * first. Empty for an unknown spot or method, and for every skill but
-	 * fishing: the badge then shows the skill and level only.
-	 */
-	private final List<FishingCatches.Fish> fish;
+	/** Progress through the current level, from the skill's XP. */
+	private final XpProgress xp;
 
-	/** Item id of the last fish landed, or -1; when it leads {@link #fish} it is drawn highlighted. */
-	private final int lastCatch;
+	/**
+	 * Every fish the clicked method can give, the catchable ones first
+	 * ({@link FishingCatches#options}). Empty for an unknown spot or method,
+	 * with the catch icons off, and for every skill but fishing.
+	 */
+	private final List<FishingCatches.Catch> catches;
 
 	/** Wall clock of the tick this was built on, for counting down between ticks. */
 	private final long tickMillis;
 
-	/** How full the inventory is, 0 to 1 ({@link InventoryFill}), or -1 when the bar is off or unknown. */
+	/** How full the inventory is, 0 to 1 ({@link InventoryFill}), or -1 when the line is off or unknown. */
 	private final double inventoryFill;
+
+	/** Free inventory slots, or -1 when the line is off or unknown. */
+	private final int inventoryFree;
 
 	SkillingReadout(Skill skill, int real, int boosted, int ticksUntilDrop,
 		int cycleLength, boolean timerConfirmed, int specPercent, String source,
-		SkillingState.Warning warning, List<FishingCatches.Fish> fish, int lastCatch, long tickMillis,
-		double inventoryFill)
+		SkillingState.Warning warning, XpProgress xp, List<FishingCatches.Catch> catches, long tickMillis,
+		double inventoryFill, int inventoryFree)
 	{
-		this.inventoryFill = inventoryFill;
 		this.skill = skill;
 		this.real = real;
 		this.boosted = boosted;
@@ -64,9 +66,11 @@ final class SkillingReadout
 		this.specPercent = specPercent;
 		this.source = source;
 		this.warning = warning;
-		this.fish = fish;
-		this.lastCatch = lastCatch;
+		this.xp = xp;
+		this.catches = catches;
 		this.tickMillis = tickMillis;
+		this.inventoryFill = inventoryFill;
+		this.inventoryFree = inventoryFree;
 	}
 
 	boolean isBoosted()
@@ -74,9 +78,9 @@ final class SkillingReadout
 		return boosted > real;
 	}
 
-	/** The last catch is in the list, so the first icon is the one to highlight. */
-	boolean isLastCatchShown()
+	/** The inventory line has something to show: the fill, the catch icons, or both. */
+	boolean hasInventoryLine()
 	{
-		return !fish.isEmpty() && fish.get(0).getItemId() == lastCatch;
+		return inventoryFree >= 0 || !catches.isEmpty();
 	}
 }

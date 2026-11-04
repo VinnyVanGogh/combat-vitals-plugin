@@ -39,6 +39,7 @@ import net.runelite.api.events.InteractingChanged;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.NpcDespawned;
+import net.runelite.api.events.OverheadTextChanged;
 import net.runelite.api.events.StatChanged;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.gameval.InventoryID;
@@ -195,7 +196,7 @@ public class CombatVitalsPlugin extends Plugin
 	/** Client thread only, the overlay included. Null until the plugin starts. */
 	private volatile OverheadChatHolder<Actor> chatHolder;
 
-	/** Actors whose readout covered their chat line in the latest frame, published by the overlay. */
+	/** Actors the overlay drew a readout over in the latest frame, chat or not, published by the overlay. */
 	private volatile Set<Actor> chatCovered = Collections.emptySet();
 
 	@Provides
@@ -742,9 +743,10 @@ public class CombatVitalsPlugin extends Plugin
 	}
 
 	/**
-	 * Hides the game's chat line for each actor the overlay redrew it for last
-	 * frame, and gives it back to every other. Every client tick, so turning
-	 * the option off, or the readout moving clear, restores within a frame.
+	 * Hides the game's chat line for each actor the overlay drew a readout
+	 * over last frame, and gives it back to every other. Every client tick, so
+	 * turning the option off, or the readout going away, restores within a
+	 * frame.
 	 *
 	 * The set only ever holds actors the overlay drew over: the opponent, whose
 	 * readout only exists for a real fight ({@link CombatState#showTarget()}),
@@ -759,7 +761,7 @@ public class CombatVitalsPlugin extends Plugin
 			return;
 		}
 
-		if (config.hideGameOverheadChat() && config.showOverhead())
+		if (hidingChat())
 		{
 			holder.update(chatCovered);
 		}
@@ -770,24 +772,40 @@ public class CombatVitalsPlugin extends Plugin
 	}
 
 	/**
-	 * The actor's overhead chat as the overlay should draw it, including a line
-	 * this plugin has taken off the game. Client thread only.
-	 *
-	 * @return the text, or null when no chat is up
+	 * A new chat line over an actor the readout is drawn over is taken off the
+	 * game here, inside the text change and before any frame is drawn, so the
+	 * game's copy never flashes under the readout (Board, 2026-11-04). The
+	 * per-tick {@link #updateChatHolds} still covers a message that was
+	 * already up when the readout appeared.
 	 */
-	String overheadChat(Actor actor)
+	@Subscribe
+	public void onOverheadTextChanged(OverheadTextChanged event)
 	{
 		final OverheadChatHolder<Actor> holder = chatHolder;
-		if (holder != null)
+		if (holder != null && hidingChat() && chatCovered.contains(event.getActor()))
 		{
-			return holder.chat(actor);
+			holder.hold(event.getActor(), event.getOverheadText());
 		}
-
-		final String text = actor.getOverheadText();
-		return OverheadChat.showing(text, actor.getOverheadCycle()) ? text : null;
 	}
 
-	/** Called by the overlay once per frame with the actors whose chat it redrew. */
+	private boolean hidingChat()
+	{
+		return config.hideGameOverheadChat() && config.showOverhead();
+	}
+
+	/**
+	 * The chat line the overlay must draw over this actor because the plugin
+	 * has hidden the game's. Client thread only.
+	 *
+	 * @return the text, or null when the game is drawing its own line
+	 */
+	String heldChat(Actor actor)
+	{
+		final OverheadChatHolder<Actor> holder = chatHolder;
+		return holder == null ? null : holder.heldText(actor);
+	}
+
+	/** Called by the overlay once per frame with the actors it drew a readout over. */
 	void setChatCovered(Set<Actor> covered)
 	{
 		chatCovered = covered;
@@ -975,12 +993,17 @@ public class CombatVitalsPlugin extends Plugin
 			specPercent,
 			config.skillingBoostSource() ? skilling.source() : null,
 			skilling.warning(tick),
+			XpProgress.of(client.getSkillExperience(skill)),
 			catches(skill, target, boosted),
-			skilling.lastCatch(),
 			System.currentTimeMillis(),
-			config.skillingInventoryBar() && inventoryEmpty >= 0
-				? InventoryFill.fraction(inventoryFilling, inventoryEmpty)
-				: -1);
+			inventoryFree() < 0 ? -1 : InventoryFill.fraction(inventoryFilling, inventoryEmpty),
+			inventoryFree());
+	}
+
+	/** Free slots for the badge's inventory line, or -1 when the line is off or the inventory unread. */
+	private int inventoryFree()
+	{
+		return config.skillingInventoryBar() ? inventoryEmpty : -1;
 	}
 
 	/**
@@ -1091,13 +1114,13 @@ public class CombatVitalsPlugin extends Plugin
 	}
 
 	/**
-	 * The fish the clicked method can land at the boosted level, the last
-	 * catch first. The spot type comes from the base client's
-	 * {@link FishingSpot} table of spot NPC ids; an unknown spot, an unknown
-	 * method, or any skill but fishing gives nothing, and the badge shows the
-	 * skill and level alone.
+	 * Every fish the clicked method can give, the ones the boosted level
+	 * lands first, the last catch leading. The spot type comes from the base
+	 * client's {@link FishingSpot} table of spot NPC ids; an unknown spot, an
+	 * unknown method, or any skill but fishing gives nothing, and the badge
+	 * shows no catch icons.
 	 */
-	private List<FishingCatches.Fish> catches(Skill skill, NPC target, int boosted)
+	private List<FishingCatches.Catch> catches(Skill skill, NPC target, int boosted)
 	{
 		if (!config.skillingCatches() || skill != Skill.FISHING || target == null)
 		{
@@ -1106,7 +1129,7 @@ public class CombatVitalsPlugin extends Plugin
 
 		final FishingSpot spot = FishingSpot.findSpot(target.getId());
 		final List<FishingCatches.Fish> all = FishingCatches.forOption(spot, skilling.method());
-		return FishingCatches.highlightFirst(FishingCatches.catchable(all, boosted), skilling.lastCatch());
+		return FishingCatches.options(all, boosted, skilling.lastCatch());
 	}
 
 	/** The wielded weapon's name, or null with nothing in the slot. */

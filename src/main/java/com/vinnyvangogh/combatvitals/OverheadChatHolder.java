@@ -49,21 +49,38 @@ final class OverheadChatHolder<A>
 	}
 
 	/**
-	 * The actor's chat line as the overlay should see it: the held text while
-	 * the game's copy is hidden, otherwise whatever the game is showing.
+	 * The line the overlay must draw for this actor: the held text while the
+	 * game's copy is hidden. Nothing held means the game is drawing its own
+	 * line, and a copy would show the message twice.
 	 *
-	 * @return the text, or null when no chat is up
+	 * @return the text, or null when nothing is held
 	 */
-	String chat(A actor)
+	String heldText(A actor)
 	{
-		final String mine = held.get(actor);
-		if (mine != null && stillHeld(actor))
+		return stillHeld(actor) ? held.get(actor) : null;
+	}
+
+	/**
+	 * Takes a new message off the game the moment it is posted, from inside
+	 * the text change ({@code OverheadTextChanged}), so the game never draws
+	 * it for even one frame. Replaces any older hold: the newest message wins.
+	 *
+	 * The countdown is not checked: the client may set it just after the
+	 * text. A message whose countdown never starts is dropped by the next
+	 * {@link #update} without being written back, and the game would not
+	 * have drawn it either.
+	 *
+	 * Our own blank posts back through the same event and is ignored here.
+	 */
+	void hold(A actor, String text)
+	{
+		if (text == null || text.trim().isEmpty())
 		{
-			return mine;
+			return;
 		}
 
-		final String text = access.text(actor);
-		return OverheadChat.showing(text, access.cyclesRemaining(actor)) ? text : null;
+		held.put(actor, text);
+		access.setText(actor, BLANK);
 	}
 
 	/**
