@@ -71,17 +71,44 @@ public class ConfigKeysTest
 	}
 
 	@Test
-	public void round3DefaultsKeepTodaysLook()
+	public void idleBadgeDefaultsToSixtySeconds()
 	{
 		assertEquals(IdleBadgeMode.TIMED, NEW_PROFILE.skillingIdleMode());
 		assertEquals(60, NEW_PROFILE.skillingIdleSeconds());
-		assertTrue(NEW_PROFILE.skillingFishing() && NEW_PROFILE.skillingWoodcutting() && NEW_PROFILE.skillingMining()
-			&& NEW_PROFILE.skillingThieving() && NEW_PROFILE.skillingRunecraft() && NEW_PROFILE.skillingHunter());
-		assertTrue(NEW_PROFILE.skillingShowHeader() && NEW_PROFILE.skillingShowXp());
+	}
+
+	@Test
+	public void everySkillAndRowIsOnByDefault()
+	{
+		final boolean[] on = {
+			NEW_PROFILE.skillingFishing(), NEW_PROFILE.skillingWoodcutting(), NEW_PROFILE.skillingMining(),
+			NEW_PROFILE.skillingThieving(), NEW_PROFILE.skillingRunecraft(), NEW_PROFILE.skillingHunter(),
+			NEW_PROFILE.skillingShowHeader(), NEW_PROFILE.skillingShowXp(),
+		};
+		for (boolean b : on)
+		{
+			assertTrue(b);
+		}
+	}
+
+	@Test
+	public void newRowsAndHidingAreOffByDefault()
+	{
+		final boolean[] off = {
+			NEW_PROFILE.skillingSessionCount(), NEW_PROFILE.skillingRates(),
+			NEW_PROFILE.skillingSessionReset(), NEW_PROFILE.skillingHideInCombat(),
+		};
+		for (boolean b : off)
+		{
+			assertEquals(false, b);
+		}
+	}
+
+	@Test
+	public void round3DefaultsKeepTodaysLook()
+	{
 		assertEquals(XpDisplay.BOTH, NEW_PROFILE.skillingXpDisplay());
 		assertEquals(InventoryCount.FREE, NEW_PROFILE.skillingInventoryCount());
-		assertEquals(false, NEW_PROFILE.skillingSessionCount() || NEW_PROFILE.skillingRates()
-			|| NEW_PROFILE.skillingSessionReset() || NEW_PROFILE.skillingHideInCombat());
 		assertEquals(BadgePosition.OVER_HEAD, NEW_PROFILE.skillingPosition());
 		assertEquals(0, NEW_PROFILE.skillingOffset());
 		assertEquals(100, NEW_PROFILE.skillingScale());
