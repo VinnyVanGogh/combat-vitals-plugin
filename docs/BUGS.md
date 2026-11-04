@@ -2,6 +2,11 @@
 
 Merged bug fixes in reverse chronological order (newest first). Pre-PR bootstrap commits on `main` are cited by short commit hash.
 
+## 2026-11-04 — Overhead chat drawn twice above and below the readout (#14)
+- **What broke:** With `Hide game chat under readout` off, the overlay still drew its own copy of overhead chat above the readout while the game drew the original line below it; with the option on, holds were only acquired on `ClientTick` from the previous frame's copy, letting the game's line flash underneath on the first frame.
+- **How it was found:** In-game testing reported by the Board.
+- **Fix:** Updated `CombatVitalsOverheadOverlay` to mark every actor covered by a rendered readout or badge and draw only chat held by `OverheadChatHolder`, and updated `CombatVitalsPlugin.onOverheadTextChanged` (`OverheadChatHolder.hold`) to blank new overhead messages inside the source event before any frame is drawn (#14).
+
 ## 2026-11-03 — Pickpocketing an attackable NPC skipped the Thieving badge (#12)
 - **What broke:** NPCs that offer both `Attack` and a skilling option such as `Pickpocket` (for example, a Man) were classified by `CombatState.isAttackable` before checking the clicked menu option, so pickpocketing them never showed the Thieving skilling badge.
 - **How it was found:** Review of RUNELITE-40 (#7).

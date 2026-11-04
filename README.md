@@ -424,11 +424,10 @@ from anything else, or one applied before the plugin was enabled, shows no
 source rather than a guess.
 
 **The badge shows no fish on a fishing spot.** Either *Show what you can catch*
-is off, your level is below the first fish for that method, or the spot is one
-the plugin has no table for (aerial fishing, quest spots, the Civitas illa
-Fortis park, squid). It also needs to have seen you click the spot: the method
-comes from the menu option you chose, so a spot engaged without a click shows
-the level alone until you click again.
+is off, or the spot is one the plugin has no table for (aerial fishing, quest
+spots, the Civitas illa Fortis park, squid). It also needs to have seen you
+click the spot: the method comes from the menu option you chose, so a spot
+engaged without a click shows the level alone until you click again.
 
 **The badge is over my head, not the spot.** By design. The spot moves every
 minute or so, it is small, and the level on the badge is yours, not its.

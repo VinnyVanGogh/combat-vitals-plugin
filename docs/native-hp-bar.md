@@ -74,7 +74,7 @@ still has no sprites; the in-game test will show it.
 
 ## The option
 
-*Display > Hide game health bar*, default **off**.
+*Display > Hide game health bar*, default **on** (since #14; initially off in #10).
 
 - **Global**, not per actor (see above). The plugin still shows HP for the
   tracked opponent and you; every other player and NPC shows no bar while it
