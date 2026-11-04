@@ -983,8 +983,6 @@ public class CombatVitalsPlugin extends Plugin
 			specPercent = client.getVarpValue(VarPlayerID.SA_ENERGY) / 10;
 		}
 
-		final boolean inventoryLine = config.skillingInventoryBar() && inventoryEmpty >= 0;
-
 		return new SkillingReadout(
 			skill,
 			real,
@@ -998,8 +996,14 @@ public class CombatVitalsPlugin extends Plugin
 			XpProgress.of(client.getSkillExperience(skill)),
 			catches(skill, target, boosted),
 			System.currentTimeMillis(),
-			inventoryLine ? InventoryFill.fraction(inventoryFilling, inventoryEmpty) : -1,
-			inventoryLine ? inventoryEmpty : -1);
+			inventoryFree() < 0 ? -1 : InventoryFill.fraction(inventoryFilling, inventoryEmpty),
+			inventoryFree());
+	}
+
+	/** Free slots for the badge's inventory line, or -1 when the line is off or the inventory unread. */
+	private int inventoryFree()
+	{
+		return config.skillingInventoryBar() ? inventoryEmpty : -1;
 	}
 
 	/**

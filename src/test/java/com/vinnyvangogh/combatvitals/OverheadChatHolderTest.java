@@ -20,6 +20,9 @@ public class OverheadChatHolderTest
 		int cycles;
 		int writes;
 
+		/** Called on every write, as the client posts {@code OverheadTextChanged}; null for none. */
+		java.util.function.Consumer<String> onWrite;
+
 		FakeActor(String text, int cycles)
 		{
 			this.text = text;
@@ -65,6 +68,10 @@ public class OverheadChatHolderTest
 		{
 			actor.text = text;
 			actor.writes++;
+			if (actor.onWrite != null)
+			{
+				actor.onWrite.accept(text);
+			}
 		}
 	};
 
@@ -236,6 +243,11 @@ public class OverheadChatHolderTest
 		final FakeActor actor = new FakeActor(null, 0);
 		int posts;
 
+		PostingActor()
+		{
+			actor.onWrite = this::posted;
+		}
+
 		/** The game posting a message: text first, then the countdown. */
 		void say(String message)
 		{
@@ -251,39 +263,10 @@ public class OverheadChatHolderTest
 		}
 	}
 
-	private OverheadChatHolder<FakeActor> postingHolder(PostingActor[] ref)
-	{
-		return new OverheadChatHolder<>(new OverheadChatHolder.Access<FakeActor>()
-		{
-			@Override
-			public String text(FakeActor actor)
-			{
-				return actor.text;
-			}
-
-			@Override
-			public int cyclesRemaining(FakeActor actor)
-			{
-				return actor.cycles;
-			}
-
-			@Override
-			public void setText(FakeActor actor, String text)
-			{
-				actor.text = text;
-				actor.writes++;
-				// setOverheadText posts OverheadTextChanged again.
-				ref[0].posted(text);
-			}
-		});
-	}
-
 	@Test
 	public void messageUnderTheReadoutIsNeverDrawnByTheGame()
 	{
-		final PostingActor[] ref = new PostingActor[1];
-		holder = postingHolder(ref);
-		final PostingActor me = ref[0] = new PostingActor();
+		final PostingActor me = new PostingActor();
 
 		me.say("Sup");
 
@@ -299,9 +282,7 @@ public class OverheadChatHolderTest
 	@Test
 	public void heldAtTheSourceSurvivesTheNextFrameUpdate()
 	{
-		final PostingActor[] ref = new PostingActor[1];
-		holder = postingHolder(ref);
-		final PostingActor me = ref[0] = new PostingActor();
+		final PostingActor me = new PostingActor();
 
 		me.say("Sup");
 		holder.update(covered(me.actor));
@@ -314,9 +295,7 @@ public class OverheadChatHolderTest
 	@Test
 	public void secondMessageReplacesTheFirstWithoutAFrameOfEither()
 	{
-		final PostingActor[] ref = new PostingActor[1];
-		holder = postingHolder(ref);
-		final PostingActor me = ref[0] = new PostingActor();
+		final PostingActor me = new PostingActor();
 
 		me.say("Sup");
 		me.say("Bye");
