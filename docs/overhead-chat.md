@@ -145,7 +145,7 @@ reflection, no new network use. Compliance otherwise unchanged from
 
 ## In-game check (`./gradlew run`)
 
-1. Enable *Display > Hide game chat under readout* (default off). Keep *Style:
+1. Enable *Display > Chat above readout* (default on). Keep *Style:
    Bar behind text*, *Position: Top*, *Offset 0*.
 2. Attack a training dummy or NPC so your own readout shows. Type a public chat
    message. Expect: one yellow line above your readout, nothing showing through

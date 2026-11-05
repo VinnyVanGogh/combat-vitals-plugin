@@ -3,15 +3,13 @@ package com.vinnyvangogh.combatvitals;
 import static org.junit.Assert.assertTrue;
 import java.awt.Color;
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.List;
 import net.runelite.client.config.ConfigItem;
 import org.junit.Test;
 
 /**
  * Every setting's name fits beside its control in RuneLite's config panel,
  * so none ends in "..." (Board, in-game 2026-11-04: "Path to next fi...",
- * "Once you...").
+ * "Once you...", and three more outside the skilling sections).
  *
  * The panel is {@code PluginPanel.PANEL_WIDTH} (225 px) less its borders,
  * and each row is a {@code BorderLayout}: the name in the centre, the
@@ -32,30 +30,36 @@ public class ConfigNamesFitTest
 	private static final int SPINNER = 12;
 	private static final int COLOUR = 9;
 
-	private static final List<String> SECTIONS = Arrays.asList(
-		CombatVitalsConfig.skillingSection, CombatVitalsConfig.skillingBadgeSection, CombatVitalsConfig.pillarsSection);
-
 	@Test
 	public void theBudgetWouldHaveCaughtWhatTheBoardSaw()
 	{
 		assertTrue("Path to next fishing spot".length() + "Right-click only".length() > BUDGET);
 		assertTrue("Once you stop".length() + "Until another activity".length() > BUDGET);
+		assertTrue("Hide game chat under readout".length() + CHECKBOX > BUDGET);
+		assertTrue("Opponent timeout (s)".length() + SPINNER > BUDGET);
+		assertTrue("Hide panel if stock plugin is on".length() + CHECKBOX > BUDGET);
 	}
 
+	/** Every section, and any setting outside one. */
 	@Test
-	public void everyNameInTheSkillingAndPillarSectionsFits()
+	public void everyNameFits()
 	{
+		final StringBuilder tooLong = new StringBuilder();
 		for (Method method : CombatVitalsConfig.class.getMethods())
 		{
 			final ConfigItem item = method.getAnnotation(ConfigItem.class);
-			if (item == null || !SECTIONS.contains(item.section()))
+			if (item == null)
 			{
 				continue;
 			}
 			final int used = item.name().length() + control(method.getReturnType());
-			assertTrue("'" + item.name() + "' (" + item.keyName() + ") takes " + used + " of " + BUDGET,
-				used <= BUDGET);
+			if (used > BUDGET)
+			{
+				tooLong.append("\n'").append(item.name()).append("' (").append(item.keyName())
+					.append(") takes ").append(used).append(" of ").append(BUDGET);
+			}
 		}
+		assertTrue(tooLong.toString(), tooLong.length() == 0);
 	}
 
 	private static int control(Class<?> type)
