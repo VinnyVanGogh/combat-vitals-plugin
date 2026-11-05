@@ -8,7 +8,9 @@ import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Supplier;
 import javax.inject.Inject;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
 import net.runelite.api.NPC;
@@ -28,6 +30,7 @@ import net.runelite.client.ui.overlay.OverlayUtil;
  * Draws the readout over the target itself, which is the thing the stock
  * plugin cannot do, and the skilling badge over your head or the spot.
  */
+@Slf4j
 class CombatVitalsOverheadOverlay extends Overlay
 {
 	/** Space between the text and the edge of the bar behind it. */
@@ -158,7 +161,7 @@ class CombatVitalsOverheadOverlay extends Overlay
 		}
 
 		final Player self = client.getLocalPlayer();
-		final Point head = self == null ? null : self.getCanvasTextLocation(graphics, "", zOffset(self));
+		final Point head = self == null ? null : onScreen(() -> self.getCanvasTextLocation(graphics, "", zOffset(self)));
 		if (head == null)
 		{
 			return null;
@@ -177,7 +180,7 @@ class CombatVitalsOverheadOverlay extends Overlay
 		final NPC npc = readout.getSpotNpc();
 		if (npc != null)
 		{
-			return npc.getCanvasTextLocation(graphics, "", zOffset(npc));
+			return onScreen(() -> npc.getCanvasTextLocation(graphics, "", zOffset(npc)));
 		}
 
 		final WorldPoint tile = readout.getSpotTile();
@@ -210,7 +213,7 @@ class CombatVitalsOverheadOverlay extends Overlay
 		}
 
 		final Actor actor = readout.getActor();
-		final Point location = actor.getCanvasTextLocation(graphics, text, zOffset(actor));
+		final Point location = onScreen(() -> actor.getCanvasTextLocation(graphics, text, zOffset(actor)));
 		if (location == null)
 		{
 			return null;
@@ -290,7 +293,8 @@ class CombatVitalsOverheadOverlay extends Overlay
 		graphics.setFont(FontManager.getRunescapeBoldFont());
 		try
 		{
-			final Point chatAt = actor.getCanvasTextLocation(graphics, chat, Math.max(0, actor.getLogicalHeight()));
+			final Point chatAt = onScreen(() -> actor.getCanvasTextLocation(graphics, chat,
+				Math.max(0, actor.getLogicalHeight())));
 			if (chatAt == null)
 			{
 				return;
@@ -309,6 +313,26 @@ class CombatVitalsOverheadOverlay extends Overlay
 		finally
 		{
 			graphics.setFont(previous);
+		}
+	}
+
+	/**
+	 * Where the client puts an actor's text this frame, or null. An actor the
+	 * client is removing (an NPC just killed) can throw from its model or
+	 * scene lookups mid-frame; that frame skips it rather than failing the
+	 * whole overlay, and the plugin drops a despawned opponent before the
+	 * next tick.
+	 */
+	static Point onScreen(Supplier<Point> location)
+	{
+		try
+		{
+			return location.get();
+		}
+		catch (RuntimeException e)
+		{
+			log.debug("Actor not drawable this frame", e);
+			return null;
 		}
 	}
 

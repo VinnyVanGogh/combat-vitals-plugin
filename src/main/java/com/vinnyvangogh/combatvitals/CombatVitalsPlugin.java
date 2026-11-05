@@ -931,8 +931,9 @@ public class CombatVitalsPlugin extends Plugin
 	}
 
 	/**
-	 * Fishing spots move by despawning; the badge has nothing left to sit
-	 * over. While you were still on it (interacting, or fishing without having
+	 * A fishing spot that despawns leaves the badge nothing to sit over (most
+	 * spots relocate as the same NPC instead, which {@link SpotPathing} reads
+	 * from the tile each tick). While you were still on it (interacting, or fishing without having
 	 * walked off) that is the spot moving, not you leaving, and the alert says
 	 * so. Logging out and hopping unload every NPC, so only while logged in.
 	 */
@@ -945,6 +946,16 @@ public class CombatVitalsPlugin extends Plugin
 		if (spotPathing != null && client.getGameState() == GameState.LOGGED_IN)
 		{
 			spotPathing.despawned(event.getNpc());
+		}
+
+		// A kill: the NPC is leaving the scene, and frames drawn before the
+		// next tick must not ask the client where it is on screen (the Board's
+		// in-game test, 2026-11-04: OverlayRenderer error from
+		// getCanvasTextLocation while the dead NPC was being removed).
+		if (event.getNpc() == opponent)
+		{
+			opponent = null;
+			readout = null;
 		}
 
 		if (event.getNpc() == skillingTarget)
@@ -1126,7 +1137,7 @@ public class CombatVitalsPlugin extends Plugin
 	 * A fully transparent sprite the size of the one it replaces. Keeping the
 	 * size keeps the client's overhead stacking unchanged, so head icons and
 	 * the like stay exactly where they were. Null while the sprite cannot be
-	 * read yet; {@link NativeHealthBarHider} retries next tick.
+	 * read yet; {@link NativeHealthBarHider} retries about once a second.
 	 */
 	private SpritePixels blankSprite(int spriteId)
 	{
@@ -1170,8 +1181,15 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			return;
 		}
-		spotPathing.tick(this::pickSpot);
+		spotPathing.tick(this::pickSpot, CombatVitalsPlugin::spotTile);
 		highlightedSpot = (NPC) spotPathing.highlighted();
+	}
+
+	/** Where a spot NPC stands: spots move by relocating, the same NPC on a new tile. */
+	private static long spotTile(Object npc)
+	{
+		final WorldPoint tile = ((NPC) npc).getWorldLocation();
+		return tile == null ? SpotPathing.UNKNOWN : SpotPathing.tile(tile.getX(), tile.getY(), tile.getPlane());
 	}
 
 	/**
@@ -1438,13 +1456,24 @@ public class CombatVitalsPlugin extends Plugin
 			.header(config.skillingShowHeader())
 			.xp(xp)
 			.xpText(config.skillingShowXp() ? xp.text(config.skillingXpDisplay()) : null)
-			.sessionCells(SessionRow.cells(skill, session.actions(skill), session.elapsed(skill, now),
-				session.xpPerHour(skill, now), session.actionsPerHour(skill, now), xp,
-				config.skillingSessionCount(), config.skillingRates(), config.skillingTimeToLevel()))
+			.sessionCells(sessionCells(skill, xp, now))
 			.tickMillis(now)
 			.inventoryFill(free < 0 ? -1 : InventoryFill.fraction(inventoryFilling, inventoryEmpty))
 			.inventoryLabel(InventoryFill.label(free, config.skillingInventoryCount()))
 			.inventoryFree(free);
+	}
+
+	/** The session row's cells in the chosen badge layout. */
+	private List<SessionRow.Cell> sessionCells(Skill skill, XpProgress xp, long now)
+	{
+		if (config.skillingBadgeLayout() == BadgeLayout.COMPACT)
+		{
+			return SessionRow.compactCells(skill, session.actions(skill), session.xpPerHour(skill, now),
+				config.skillingSessionCount(), config.skillingRates());
+		}
+		return SessionRow.cells(skill, session.actions(skill), session.elapsed(skill, now),
+			session.xpPerHour(skill, now), session.actionsPerHour(skill, now), xp,
+			config.skillingSessionCount(), config.skillingRates(), config.skillingTimeToLevel());
 	}
 
 	/** The per-skill switches in Skilling badge. A skill without one is always shown. */

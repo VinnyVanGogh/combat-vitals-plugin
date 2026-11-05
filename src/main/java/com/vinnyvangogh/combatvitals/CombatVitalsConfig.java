@@ -239,9 +239,11 @@ public interface CombatVitalsConfig extends Config
 	)
 	default boolean hideGameHealthBar()
 	{
-		// On by default (Board, 2026-11-04). A saved value is kept under the
-		// unchanged key, so only profiles that never set it change.
-		return true;
+		// Off by default for the Hub release (Board, 2026-11-04 night): it
+		// changes the game's own sprites, so it is something to opt into. A
+		// saved value is kept under the unchanged key, so only profiles that
+		// never set it change.
+		return false;
 	}
 
 	@ConfigItem(
@@ -865,6 +867,19 @@ public interface CombatVitalsConfig extends Config
 	default boolean skillingTimeToLevel()
 	{
 		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingBadgeLayout",
+		name = "Badge layout",
+		description = "Full: every session stat on, wrapping to two lines when the row would be wider than the "
+			+ "badge. Compact: one short line, \"24 caught | 10.6k xp/h\".",
+		section = skillingBadgeSection,
+		position = 29
+	)
+	default BadgeLayout skillingBadgeLayout()
+	{
+		return BadgeLayout.FULL;
 	}
 
 	@ConfigItem(

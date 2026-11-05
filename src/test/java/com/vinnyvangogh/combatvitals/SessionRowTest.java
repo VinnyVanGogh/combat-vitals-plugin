@@ -145,6 +145,21 @@ public class SessionRowTest
 		}
 	}
 
+	@Test
+	public void compactIsOneShortLineOfTheCountAndXpRate()
+	{
+		assertEquals("24 caught | 10.6k xp/h",
+			joined(SessionRow.compactCells(Skill.FISHING, 24, 10_597, true, true)));
+	}
+
+	@Test
+	public void compactFollowsEachSwitch()
+	{
+		assertEquals("24 caught", joined(SessionRow.compactCells(Skill.FISHING, 24, 10_597, true, false)));
+		assertEquals("-- xp/h", joined(SessionRow.compactCells(Skill.FISHING, 24, -1, false, true)));
+		assertTrue(SessionRow.compactCells(Skill.FISHING, 24, 10_597, false, false).isEmpty());
+	}
+
 	private static String joined(List<SessionRow.Cell> cells)
 	{
 		return cells.stream().map(SessionRow.Cell::getText).collect(Collectors.joining(" | "));
