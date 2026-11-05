@@ -9,7 +9,7 @@ public enum IdleBadgeMode
 {
 	OFF("Off"),
 	TIMED("Show for a while"),
-	UNTIL_NEXT("Until another activity");
+	UNTIL_NEXT("Until next activity");
 
 	@Getter
 	private final String name;

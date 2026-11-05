@@ -175,6 +175,14 @@ public class ConfigKeysTest
 	}
 
 	@Test
+	public void pillarLooksDefaultToNativeAndLabelled()
+	{
+		assertEquals(PillarLabels.ICON_AND_NUMBER, NEW_PROFILE.pillarLabels());
+		assertEquals(PillarStyle.STATUS_BARS, NEW_PROFILE.pillarStyle());
+		assertTrue("time to level rides along with the rates", NEW_PROFILE.skillingTimeToLevel());
+	}
+
+	@Test
 	public void skillColoursDefaultToThePalette()
 	{
 		final Color[] colours = {

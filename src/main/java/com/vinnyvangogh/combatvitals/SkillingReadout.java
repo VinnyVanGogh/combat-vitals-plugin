@@ -67,8 +67,9 @@ final class SkillingReadout
 	/** The XP row's text, or null with the row off. */
 	private final String xpText;
 
-	/** The session row's text ({@link SkillingText#session}), or null with it off. */
-	private final String sessionText;
+	/** The session row's columns ({@link SessionRow#cells}), empty with it off. */
+	@Builder.Default
+	private final List<SessionRow.Cell> sessionCells = Collections.emptyList();
 
 	/**
 	 * Every fish the clicked method can give, the catchable ones first
@@ -87,6 +88,10 @@ final class SkillingReadout
 
 	/** "Inv 26/28 free", or null when the line is off or the inventory unread. */
 	private final String inventoryLabel;
+
+	/** Empty slots, for the inventory pillar's number, or -1 when the line is off or unread. */
+	@Builder.Default
+	private final int inventoryFree = -1;
 
 	/** The fishing spot or other NPC being worked, or null. */
 	private final NPC spotNpc;

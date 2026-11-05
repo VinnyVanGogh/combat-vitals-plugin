@@ -55,63 +55,6 @@ final class SkillingText
 		}
 	}
 
-	/** What one action is called in the session count: "Caught 12". */
-	private static String done(Skill skill)
-	{
-		switch (skill)
-		{
-			case FISHING:
-			case HUNTER:
-				return "Caught";
-			case WOODCUTTING:
-				return "Chopped";
-			case MINING:
-				return "Mined";
-			case THIEVING:
-				return "Stolen";
-			case RUNECRAFT:
-				return "Crafted";
-			default:
-				return "Actions";
-		}
-	}
-
-	/**
-	 * The session row: "Caught 12 | 30,000 xp/h | 600/h".
-	 *
-	 * @param xpPerHour      -1 while not yet known
-	 * @param actionsPerHour -1 while not yet known
-	 * @param count          show the session count
-	 * @param rates          show the hourly rates
-	 * @return the row, or null when both halves are off
-	 */
-	static String session(Skill skill, int actions, int xpPerHour, int actionsPerHour, boolean count, boolean rates)
-	{
-		if (!count && !rates)
-		{
-			return null;
-		}
-
-		final StringBuilder text = new StringBuilder();
-		if (count)
-		{
-			text.append(done(skill)).append(' ').append(actions);
-		}
-		if (rates)
-		{
-			if (text.length() > 0)
-			{
-				text.append(" | ");
-			}
-			text.append(xpPerHour < 0 ? "--" : String.format("%,d", xpPerHour)).append(" xp/h");
-			if (actionsPerHour >= 0)
-			{
-				text.append(" | ").append(String.format("%,d", actionsPerHour)).append("/h");
-			}
-		}
-		return text.toString();
-	}
-
 	/**
 	 * @param skillName   the skill, e.g. "Fishing"
 	 * @param real        base level

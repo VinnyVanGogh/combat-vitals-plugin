@@ -451,10 +451,10 @@ public interface CombatVitalsConfig extends Config
 
 	@ConfigItem(
 		keyName = "skillingIdleMode",
-		name = "Once you stop",
+		name = "Once idle",
 		description =
 			"What the badge does when you stop: Off lets it go as before; Show for a while keeps it up for the "
-				+ "seconds below with the header turned to \"Not fishing\"; Until another activity keeps it until "
+				+ "seconds below with the header turned to \"Not fishing\"; Until next activity keeps it until "
 				+ "you start something else or a fight starts. The level, XP and inventory rows stay.",
 		section = skillingBadgeSection,
 		position = 0
@@ -786,13 +786,26 @@ public interface CombatVitalsConfig extends Config
 
 	@ConfigItem(
 		keyName = "skillingGearWarning",
-		name = "Warn before fishing without gear",
+		name = "Warn if missing gear",
 		description = "When you click a fishing spot without the tool, bait or level the option needs,"
 			+ " say what is missing on the badge straight away. The click itself is never changed.",
 		section = skillingBadgeSection,
 		position = 27
 	)
 	default boolean skillingGearWarning()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingTimeToLevel",
+		name = "Time to level",
+		description = "With XP and actions per hour on, add how long the next level takes at this session's "
+			+ "rate, \"lvl 18 in 6m\", to the session row.",
+		section = skillingBadgeSection,
+		position = 28
+	)
+	default boolean skillingTimeToLevel()
 	{
 		return true;
 	}
@@ -837,8 +850,36 @@ public interface CombatVitalsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "pillarLabels",
+		name = "Pillar labels",
+		description = "What each pillar says at its top, as Status Bars does: an icon for what it is (the skill, "
+			+ "a backpack, a heart) and the number under it (XP percent or XP left, free or used slots, "
+			+ "your target's hitpoints), the icon alone, or nothing. Hover a pillar for the whole story.",
+		section = pillarsSection,
+		position = 3
+	)
+	default PillarLabels pillarLabels()
+	{
+		return PillarLabels.ICON_AND_NUMBER;
+	}
+
+	@ConfigItem(
+		keyName = "pillarStyle",
+		name = "Pillar style",
+		description = "Status Bars: a dark frame with the fill inside, a shine down its left edge, a mark every "
+			+ "25% on XP and one per slot on the inventory, to match RuneLite's own bars beside them. "
+			+ "Flat: one colour on the bar background.",
+		section = pillarsSection,
+		position = 4
+	)
+	default PillarStyle pillarStyle()
+	{
+		return PillarStyle.STATUS_BARS;
+	}
+
+	@ConfigItem(
 		keyName = "fishingSpotPath",
-		name = "Path to next fishing spot",
+		name = "Next spot path",
 		description =
 			"Find the nearest fishing spot of the same kind (net/bait, lure/bait, cage/harpoon...) that you can "
 				+ "catch something at, and send it to the Shortest Path plugin; the path clears when you start "

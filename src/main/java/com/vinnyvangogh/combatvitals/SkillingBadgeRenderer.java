@@ -57,6 +57,12 @@ class SkillingBadgeRenderer
 	/** Height of a catch icon in the inventory line; item sprites are 32 high, so about half. */
 	private static final int FISH_ICON = 18;
 
+	/** Height of the skill icon before the session count, inside a small-font row. */
+	private static final int SESSION_ICON = 11;
+
+	/** The faint rule between the session row's columns. */
+	private static final Color SESSION_RULE = new Color(255, 255, 255, 60);
+
 	private final Client client;
 	private final CombatVitalsConfig config;
 	private final SkillIconManager skillIconManager;
@@ -152,17 +158,17 @@ class SkillingBadgeRenderer
 		final int invWidth = (invLabel == null ? 0 : small.stringWidth(invLabel))
 			+ catchesWidth(readout.getCatches(), small);
 
-		final int width = PAD_X * 2 + Math.max(width(small, readout.getGearText()), max(
+		// The session row's columns carry their own padding.
+		final int width = Math.max(sessionWidth(small, readout), PAD_X * 2 + max(width(small, readout.getGearText()),
 			readout.isHeader() ? iconWidth + metrics.stringWidth(text) : 0,
 			width(small, readout.getXpText()),
-			width(small, readout.getSessionText()),
 			invWidth));
 
 		final Rows rows = new Rows(-width / 2, width);
 		final int invHeight = readout.getCatches().isEmpty() ? lineHeight : Math.max(lineHeight, FISH_ICON + 2);
 		final Layout layout = new Layout(text, icon);
 		layout.inv = rows.add(readout.hasInventoryLine(), invHeight);
-		layout.session = rows.add(readout.getSessionText() != null, lineHeight);
+		layout.session = rows.add(!readout.getSessionCells().isEmpty(), lineHeight);
 		layout.xp = rows.add(readout.getXpText() != null, lineHeight);
 		layout.gear = rows.add(readout.getGearText() != null, lineHeight);
 		layout.head = rows.add(readout.isHeader(), headHeight);
@@ -208,13 +214,74 @@ class SkillingBadgeRenderer
 		}
 		if (session != null)
 		{
-			Bars.across(graphics, session, 0, readout.getColour(), config.barBackground());
-			centredText(graphics, session, readout.getSessionText());
+			drawSession(graphics, session, readout);
 		}
 		if (inv != null)
 		{
 			drawInventoryLine(graphics, inv, readout);
 		}
+	}
+
+	/**
+	 * The session row in equal columns, one stat each in its own shade of the
+	 * skill colour, with a faint rule between; the count leads with the skill
+	 * icon: "[fish] 24 caught in 3m | 10.6k xp/h | 459 fish/h | lvl 18 in 6m".
+	 */
+	private void drawSession(Graphics2D graphics, Rectangle row, SkillingReadout readout)
+	{
+		Bars.across(graphics, row, 0, readout.getColour(), config.barBackground());
+
+		final List<SessionRow.Cell> cells = readout.getSessionCells();
+		final FontMetrics metrics = graphics.getFontMetrics();
+		final int baseline = textBaseline(row, metrics);
+		final int n = cells.size();
+		for (int i = 0; i < n; i++)
+		{
+			final int left = row.x + row.width * i / n;
+			final Rectangle cell = new Rectangle(left, row.y, row.x + row.width * (i + 1) / n - left, row.height);
+			if (i > 0)
+			{
+				graphics.setColor(SESSION_RULE);
+				graphics.drawLine(left, row.y + 3, left, row.y + row.height - 4);
+			}
+			drawSessionCell(graphics, cell, cells.get(i), readout, baseline);
+		}
+	}
+
+	private void drawSessionCell(Graphics2D graphics, Rectangle cell, SessionRow.Cell c, SkillingReadout readout,
+		int baseline)
+	{
+		final BufferedImage icon = c.getKind() == SessionRow.Kind.COUNT
+			? skillIconManager.getSkillImage(readout.getSkill(), true) : null;
+		final int iconWidth = sessionIconWidth(icon);
+		final int x = cell.x + (cell.width - iconWidth - graphics.getFontMetrics().stringWidth(c.getText())) / 2;
+		if (icon != null)
+		{
+			graphics.drawImage(icon, x, cell.y + (cell.height - SESSION_ICON) / 2, iconWidth - ICON_GAP, SESSION_ICON,
+				null);
+		}
+		OverlayUtil.renderTextLocation(graphics, new Point(x + iconWidth, baseline), c.getText(),
+			SessionRow.tint(readout.getColour(), c.getKind()));
+	}
+
+	/** Every column as wide as the widest cell, the count's icon included; 0 with the row off. */
+	private int sessionWidth(FontMetrics metrics, SkillingReadout readout)
+	{
+		final List<SessionRow.Cell> cells = readout.getSessionCells();
+		int widest = 0;
+		for (SessionRow.Cell c : cells)
+		{
+			final int icon = c.getKind() == SessionRow.Kind.COUNT
+				? sessionIconWidth(skillIconManager.getSkillImage(readout.getSkill(), true)) : 0;
+			widest = Math.max(widest, icon + metrics.stringWidth(c.getText()));
+		}
+		return cells.size() * (widest + PAD_X * 2);
+	}
+
+	/** The count's skill icon at {@link #SESSION_ICON} high with the gap after it, or 0 without one. */
+	private static int sessionIconWidth(BufferedImage icon)
+	{
+		return icon == null || icon.getHeight() <= 0 ? 0 : icon.getWidth() * SESSION_ICON / icon.getHeight() + ICON_GAP;
 	}
 
 	/** The header's words: the level and boost while working, "Not fishing" once stopped. */

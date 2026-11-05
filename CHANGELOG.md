@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Side pillars that say what they are (Board's in-game test, 2026-11-04): each carries an icon at its top (the skill's, a backpack, the hitpoints heart) and a number under it (XP percent or XP left, free or used slots, the target's hitpoints), the XP pillar its level at the foot, and a hover text, `Fishing XP: 82% to level 17 (65 xp left)`, `Inventory: 10 of 28 free`, `Target: Rock Crab 12/50`. Drawn like RuneLite's Status Bars (BSD-2, `BarRenderer`'s background, inset and offsets reimplemented): a dark frame, a lit fill with a shine, a mark every 25% on XP and per slot on the inventory, a glide to each new value, dimmed while idle. New `pillarLabels` (Icon and number / Icon only / None) and `pillarStyle` (Status Bars / Flat) (`PillarPainter`, `PillarText`, `PillarAnimation`, `PillarIcons`).
+- Session row redesign: equal columns with a faint rule between, the skill icon before the count, a soft shade of the skill colour per stat, short numbers and the action's noun, a session timer: `24 caught in 3m | 10.6k xp/h | 459 fish/h`. New `skillingTimeToLevel` (default on, shown with the rates): `lvl 18 in 6m` (`SessionRow`).
+
+### Changed
+- Setting names shortened to fit the config panel, keys unchanged: `Next spot path` (was Path to next fishing spot), `Once idle` (Once you stop, its choice `Until next activity`), `Warn if missing gear` (Warn before fishing without gear). `ConfigNamesFitTest` holds every name in Skilling vitals, Skilling badge and Side pillars to the width that fits.
 - Skilling badge round 3 (Board's in-game test, 2026-11-04, after #14):
   - A fish above your level reads `Lv 15` in red instead of a bare `15`, with `Needs Fishing 15` on hover (`SkillingText.lockedLabel`, `lockedTooltip`, `LOCKED_LEVEL`).
   - Idle state: when you stop, the badge stays with a red `Not fishing` header (generic `Not <activity>`) and keeps the level, XP and inventory rows. New `skillingIdleMode` (Off / Show for a while / Until another activity, default Show for a while), `skillingIdleSeconds` (60), `skillingIdleColour`. Another activity or a fight ends it (`IdleBadge`).

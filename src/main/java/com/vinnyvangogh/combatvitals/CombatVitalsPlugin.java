@@ -1438,11 +1438,13 @@ public class CombatVitalsPlugin extends Plugin
 			.header(config.skillingShowHeader())
 			.xp(xp)
 			.xpText(config.skillingShowXp() ? xp.text(config.skillingXpDisplay()) : null)
-			.sessionText(SkillingText.session(skill, session.actions(skill), session.xpPerHour(skill, now),
-				session.actionsPerHour(skill, now), config.skillingSessionCount(), config.skillingRates()))
+			.sessionCells(SessionRow.cells(skill, session.actions(skill), session.elapsed(skill, now),
+				session.xpPerHour(skill, now), session.actionsPerHour(skill, now), xp,
+				config.skillingSessionCount(), config.skillingRates(), config.skillingTimeToLevel()))
 			.tickMillis(now)
 			.inventoryFill(free < 0 ? -1 : InventoryFill.fraction(inventoryFilling, inventoryEmpty))
-			.inventoryLabel(InventoryFill.label(free, config.skillingInventoryCount()));
+			.inventoryLabel(InventoryFill.label(free, config.skillingInventoryCount()))
+			.inventoryFree(free);
 	}
 
 	/** The per-skill switches in Skilling badge. A skill without one is always shown. */
