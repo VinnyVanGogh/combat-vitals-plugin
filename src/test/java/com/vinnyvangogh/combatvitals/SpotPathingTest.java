@@ -58,6 +58,8 @@ public class SpotPathingTest
 		}
 	}
 
+	/** The spot NPC {@link #setUp} starts fishing; its despawning is the spot moving. */
+	private static final Object FISHED = new Object();
 	private static final Object NPC_1 = new Object();
 	private static final Object NPC_2 = new Object();
 	private static final NextFishingSpot.Spot SPOT_1 = NextFishingSpot.Spot.loaded(FishingSpot.LOBSTER, 3001, 3000, 0, NPC_1);
@@ -75,7 +77,7 @@ public class SpotPathingTest
 		router = new FakeRouter();
 		picker = new FakePicker();
 		pathing = new SpotPathing(() -> mode, router);
-		pathing.fishingOn(FishingSpot.LOBSTER, "Cage");
+		pathing.fishingOn(FishingSpot.LOBSTER, "Cage", FISHED);
 	}
 
 	@Test
@@ -83,7 +85,7 @@ public class SpotPathingTest
 	{
 		picker.next.add(SPOT_1);
 
-		pathing.spotMoved();
+		pathing.despawned(FISHED);
 		pathing.tick(picker);
 
 		assertEquals(1, router.routes.size());
@@ -99,7 +101,7 @@ public class SpotPathingTest
 		mode = FishingSpotPath.OFF;
 		picker.next.add(SPOT_1);
 
-		pathing.spotMoved();
+		pathing.despawned(FISHED);
 		pathing.requested();
 		pathing.tick(picker);
 
@@ -113,7 +115,7 @@ public class SpotPathingTest
 		mode = FishingSpotPath.RIGHT_CLICK;
 		picker.next.add(SPOT_1);
 
-		pathing.spotMoved();
+		pathing.despawned(FISHED);
 		pathing.tick(picker);
 		assertEquals(0, router.routes.size());
 
@@ -127,8 +129,8 @@ public class SpotPathingTest
 	{
 		picker.next.add(SPOT_2);
 
-		pathing.spotMoved();
-		pathing.spotMoved();
+		pathing.despawned(FISHED);
+		pathing.despawned(FISHED);
 		pathing.tick(picker);
 		pathing.tick(picker);
 
@@ -143,7 +145,7 @@ public class SpotPathingTest
 		picker.next.add(SPOT_1);
 		picker.next.add(SPOT_2);
 
-		pathing.spotMoved();
+		pathing.despawned(FISHED);
 		pathing.tick(picker);
 		// The spot being walked to moves before the player gets there.
 		pathing.despawned(NPC_1);
@@ -158,7 +160,7 @@ public class SpotPathingTest
 	public void someOtherNpcDespawningIsIgnored()
 	{
 		picker.next.add(SPOT_1);
-		pathing.spotMoved();
+		pathing.despawned(FISHED);
 		pathing.tick(picker);
 
 		pathing.despawned(new Object());
@@ -173,7 +175,7 @@ public class SpotPathingTest
 		router.installed = false;
 		picker.next.add(SPOT_1);
 
-		pathing.spotMoved();
+		pathing.despawned(FISHED);
 		pathing.tick(picker);
 
 		assertEquals(0, router.routes.size());
@@ -186,7 +188,7 @@ public class SpotPathingTest
 		router.installed = false;
 		picker.next.add(NextFishingSpot.Spot.known(FishingSpot.LOBSTER, 2844, 3429, 0, true, 0, "Catherby"));
 
-		pathing.spotMoved();
+		pathing.despawned(FISHED);
 		pathing.tick(picker);
 
 		assertNull(pathing.highlighted());
@@ -196,10 +198,10 @@ public class SpotPathingTest
 	public void startingToFishAgainClearsThePath()
 	{
 		picker.next.add(SPOT_1);
-		pathing.spotMoved();
+		pathing.despawned(FISHED);
 		pathing.tick(picker);
 
-		pathing.fishingOn(FishingSpot.LOBSTER, "Cage");
+		pathing.fishingOn(FishingSpot.LOBSTER, "Cage", new Object());
 
 		assertEquals(1, router.clears);
 		assertNull(pathing.target());
@@ -210,10 +212,10 @@ public class SpotPathingTest
 	{
 		router.installed = false;
 		picker.next.add(SPOT_1);
-		pathing.spotMoved();
+		pathing.despawned(FISHED);
 		pathing.tick(picker);
 
-		pathing.fishingOn(FishingSpot.LOBSTER, "Cage");
+		pathing.fishingOn(FishingSpot.LOBSTER, "Cage", new Object());
 
 		assertNull(pathing.highlighted());
 		assertEquals("nothing was sent, so nothing to clear", 0, router.clears);
@@ -222,7 +224,7 @@ public class SpotPathingTest
 	@Test
 	public void aPathThePluginNeverSentIsNeverCleared()
 	{
-		pathing.fishingOn(FishingSpot.SHRIMP, "Net");
+		pathing.fishingOn(FishingSpot.SHRIMP, "Net", new Object());
 		pathing.reset();
 
 		assertEquals(0, router.clears);
@@ -232,7 +234,7 @@ public class SpotPathingTest
 	public void noNextSpotClearsAnOldPath()
 	{
 		picker.next.add(SPOT_1);
-		pathing.spotMoved();
+		pathing.despawned(FISHED);
 		pathing.tick(picker);
 
 		pathing.despawned(NPC_1);
@@ -246,9 +248,181 @@ public class SpotPathingTest
 	public void nothingFishedYetMeansNothingToFind()
 	{
 		final SpotPathing fresh = new SpotPathing(() -> FishingSpotPath.ON_SPOT_MOVE, router);
-		fresh.spotMoved();
+		fresh.despawned(FISHED);
 		fresh.requested();
 		fresh.tick(picker);
+
+		assertEquals(0, picker.picks);
+	}
+
+	@Test
+	public void fishedSpotDespawningWhileOnItSearches()
+	{
+		picker.next.add(SPOT_1);
+
+		pathing.despawned(FISHED);
+		pathing.tick(picker);
+
+		assertEquals(1, picker.picks);
+		assertSame(SPOT_1, router.routes.get(0));
+	}
+
+	@Test
+	public void interactionEndingBeforeTheDespawnStillSearchesOnce()
+	{
+		picker.next.add(SPOT_1);
+
+		// The game clears the interaction first, then the spot despawns.
+		pathing.interactionEnded();
+		pathing.despawned(FISHED);
+		pathing.interactionEnded();
+		pathing.tick(picker);
+		pathing.tick(picker);
+
+		assertEquals(1, picker.picks);
+		assertEquals(1, router.routes.size());
+	}
+
+	@Test
+	public void despawnBeforeTheInteractionEndsSearchesOnce()
+	{
+		picker.next.add(SPOT_1);
+
+		pathing.despawned(FISHED);
+		pathing.interactionEnded();
+		pathing.tick(picker);
+		pathing.tick(picker);
+
+		assertEquals(1, picker.picks);
+		assertEquals(1, router.routes.size());
+	}
+
+	@Test
+	public void despawnOnTheTickAfterTheInteractionEndsStillSearches()
+	{
+		picker.next.add(SPOT_1);
+
+		pathing.interactionEnded();
+		pathing.tick(picker);
+		pathing.despawned(FISHED);
+		pathing.tick(picker);
+
+		assertEquals(1, picker.picks);
+	}
+
+	@Test
+	public void despawnLongAfterTheInteractionEndedIsNotTheSpotMoving()
+	{
+		picker.next.add(SPOT_1);
+
+		// Stopped fishing (full inventory) and stood there; the spot moves much later.
+		pathing.interactionEnded();
+		for (int i = 0; i < 10; i++)
+		{
+			pathing.tick(picker);
+		}
+		pathing.despawned(FISHED);
+		pathing.tick(picker);
+
+		assertEquals(0, picker.picks);
+	}
+
+	@Test
+	public void walkingAwayBeforeTheDespawnDoesNotSearch()
+	{
+		picker.next.add(SPOT_1);
+
+		// Walk here, or a tree or rock: no NPC.
+		pathing.turnedTo(null);
+		pathing.despawned(FISHED);
+		pathing.tick(picker);
+
+		assertEquals(0, picker.picks);
+	}
+
+	@Test
+	public void clickingTheSameSpotAgainKeepsIt()
+	{
+		picker.next.add(SPOT_1);
+
+		pathing.turnedTo(FISHED);
+		pathing.despawned(FISHED);
+		pathing.tick(picker);
+
+		assertEquals(1, picker.picks);
+	}
+
+	@Test
+	public void clickingElsewhereThenTheInteractionEndingDoesNotSearch()
+	{
+		picker.next.add(SPOT_1);
+
+		// Clicked a banker: a different NPC.
+		pathing.turnedTo(NPC_2);
+		pathing.interactionEnded();
+		pathing.despawned(FISHED);
+		pathing.tick(picker);
+
+		assertEquals(0, picker.picks);
+	}
+
+	@Test
+	public void fishedSpotTurningIntoAnotherSpotTypeSearches()
+	{
+		picker.next.add(SPOT_1);
+
+		pathing.changed(FISHED);
+		pathing.tick(picker);
+
+		assertEquals(1, picker.picks);
+	}
+
+	@Test
+	public void changeThenDespawnOfTheSameSpotSearchesOnce()
+	{
+		picker.next.add(SPOT_1);
+
+		pathing.changed(FISHED);
+		pathing.tick(picker);
+		pathing.despawned(FISHED);
+		pathing.tick(picker);
+
+		assertEquals(1, picker.picks);
+	}
+
+	@Test
+	public void someOtherNpcChangingIsIgnored()
+	{
+
+		pathing.changed(new Object());
+		pathing.tick(picker);
+
+		assertEquals(0, picker.picks);
+	}
+
+	@Test
+	public void rightClickModeIgnoresTheFishedSpotMovingButAnswersTheMenu()
+	{
+		mode = FishingSpotPath.RIGHT_CLICK;
+		picker.next.add(SPOT_1);
+
+		pathing.despawned(FISHED);
+		pathing.tick(picker);
+		assertEquals(0, picker.picks);
+
+		pathing.requested();
+		pathing.tick(picker);
+		assertEquals(1, picker.picks);
+		assertEquals(1, router.routes.size());
+	}
+
+	@Test
+	public void resetForgetsTheFishedSpot()
+	{
+		pathing.reset();
+
+		pathing.despawned(FISHED);
+		pathing.tick(picker);
 
 		assertEquals(0, picker.picks);
 	}
@@ -257,11 +431,11 @@ public class SpotPathingTest
 	public void resetClearsASentPathAndForgetsTheSpot()
 	{
 		picker.next.add(SPOT_1);
-		pathing.spotMoved();
+		pathing.despawned(FISHED);
 		pathing.tick(picker);
 
 		pathing.reset();
-		pathing.spotMoved();
+		pathing.despawned(FISHED);
 		pathing.tick(picker);
 
 		assertEquals(1, router.clears);

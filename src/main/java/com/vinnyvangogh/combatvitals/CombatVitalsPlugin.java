@@ -523,6 +523,8 @@ public class CombatVitalsPlugin extends Plugin
 			// Either way any tree or rock is over.
 			objectSkilling.forget();
 			objectBadge = false;
+			// Turning to anything else (a banker, an attacker) is leaving the spot.
+			turnedTo(target);
 			final Skill trained = clicked != null ? clicked : fight ? null : skillingSkill(target);
 			if (trained != null)
 			{
@@ -548,6 +550,19 @@ public class CombatVitalsPlugin extends Plugin
 			{
 				skilling.disengage(now);
 			}
+			if (spotPathing != null)
+			{
+				spotPathing.interactionEnded();
+			}
+		}
+	}
+
+	/** The player clicked or turned to this NPC, or to a tile or object when null. */
+	private void turnedTo(Object npc)
+	{
+		if (spotPathing != null)
+		{
+			spotPathing.turnedTo(npc);
 		}
 	}
 
@@ -560,7 +575,7 @@ public class CombatVitalsPlugin extends Plugin
 	{
 		if (trained == Skill.FISHING && spotPathing != null)
 		{
-			spotPathing.fishingOn(FishingSpot.findSpot(skillingTarget.getId()), skilling.method());
+			spotPathing.fishingOn(FishingSpot.findSpot(skillingTarget.getId()), skilling.method(), skillingTarget);
 			highlightedSpot = null;
 		}
 	}
@@ -649,6 +664,7 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			skilling.clicked(option);
 			final NPC npc = event.getMenuEntry().getNpc();
+			turnedTo(npc);
 			if (npc != null)
 			{
 				clickedNpc = npc;
@@ -660,13 +676,16 @@ public class CombatVitalsPlugin extends Plugin
 
 		if (isObjectOption(event.getMenuAction()))
 		{
+			turnedTo(null);
 			clickedObject(event, option);
 			return;
 		}
 
 		if (event.getMenuAction() == MenuAction.WALK)
 		{
-			// Walking off a tree clears its badge at once, no linger.
+			// Walking off a tree clears its badge at once, no linger; walking
+			// off a fishing spot means it going later is not it moving.
+			turnedTo(null);
 			endObjectBadge();
 		}
 	}
@@ -914,7 +933,9 @@ public class CombatVitalsPlugin extends Plugin
 	@Subscribe
 	public void onNpcDespawned(NpcDespawned event)
 	{
-		// The spot being walked to moving too: the next search finds the latest one.
+		// The pather decides from its own state whether this was the fished
+		// spot moving, or the spot being walked to moving: the player's
+		// interaction is cleared around this tick and cannot say.
 		if (spotPathing != null && client.getGameState() == GameState.LOGGED_IN)
 		{
 			spotPathing.despawned(event.getNpc());
@@ -925,7 +946,6 @@ public class CombatVitalsPlugin extends Plugin
 			if (fishingSpotLeft())
 			{
 				activityAlerts.spotMoved(Skill.FISHING);
-				spotPathing.spotMoved();
 			}
 
 			skillingTarget = null;
@@ -941,16 +961,13 @@ public class CombatVitalsPlugin extends Plugin
 	public void onNpcChanged(NpcChanged event)
 	{
 		final NPC npc = event.getNpc();
-		if (npc != skillingTarget || event.getOld() == null
+		if (spotPathing == null || event.getOld() == null
 			|| FishingSpot.findSpot(npc.getId()) == FishingSpot.findSpot(event.getOld().getId()))
 		{
 			return;
 		}
 
-		if (fishingSpotLeft())
-		{
-			spotPathing.spotMoved();
-		}
+		spotPathing.changed(npc);
 	}
 
 	/**
@@ -1164,6 +1181,7 @@ public class CombatVitalsPlugin extends Plugin
 		// coordinates, so a path built from them would lead somewhere else.
 		if (self == null || view == null || view.isInstance())
 		{
+			log.debug("No next fishing spot: {}", self == null || view == null ? "no player or world view" : "in an instance");
 			return null;
 		}
 
