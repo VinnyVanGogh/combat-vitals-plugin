@@ -255,7 +255,7 @@ the case that broke every earlier iteration of this overlay.
 | Overhead position | Top | Top, Middle or Bottom relative to the target |
 | Overhead offset | 0 | Extra height in pixels, ±200 |
 | Hide game health bar | On | Hide the game's own health bar over everyone, yours included |
-| Hide game chat under readout | On | While the readout or skilling badge is over you or your opponent, take the game's overhead chat line off the moment it is posted and draw it above the readout instead, so it shows once and never under the readout. Off: the game draws its own line and the plugin adds nothing. A skilling NPC is never touched |
+| Chat above readout | On | While the readout or skilling badge is over you or your opponent, take the game's overhead chat line off the moment it is posted and draw it above the readout instead, so it shows once and never under the readout. Off: the game draws its own line and the plugin adds nothing. A skilling NPC is never touched |
 
 ### Targets
 
@@ -267,6 +267,10 @@ the case that broke every earlier iteration of this overlay.
 | Look up player hitpoints | On | Hiscores lookup for the opponent's max hitpoints |
 | Show your own health | On | Draw your health over your character while engaged. Exact, from the orb |
 | Stat comparison panel | Off | Compare your combat stats to a player opponent's, in the panel |
+| Big targets | Same as Display | Display for bosses and high-HP NPCs, e.g. Percentage |
+| Other targets | Same as Display | Display for every other NPC, e.g. Hitpoints. Players always use Display |
+| Big target is | Bosses + max HP | Bosses only, Bosses + max HP, or Max HP only. A boss is an NPC the game's boss health bar is showing, or one on a bundled list from the OSRS wiki's Boss page. Unknown max HP counts as an other target |
+| Big target max HP | 200 | Max HP at or above which an NPC is a big target, 1–10000 |
 
 <p align="center">
   <img src="docs/images/settings.png" alt="The Combat Vitals settings panel" width="300">
@@ -374,16 +378,16 @@ does the same.
 
 | Setting | Default | What it does |
 |---|---|---|
-| Opponent timeout | 5s | How long the readout stays after combat ends, and how long the skilling badge lingers after you stop |
+| Timeout (s) | 5s | How long the readout stays after combat ends, and how long the skilling badge lingers after you stop |
 | Hide behind boss HP bar | On | Stand down when the game's boss bar shows the same target |
-| Hide panel if stock plugin is on | On | Avoid stacking two panels in one corner |
+| Hide if Opponent Info on | On | Avoid stacking two panels in one corner |
 
 ## Compatibility
 
 **Opponent Information.** Safe to run both. This plugin hides its own panel
 while the stock one is enabled, so you get the stock panel plus this plugin's
 overhead rendering. Turn the stock plugin off to see this one's panel, or turn
-off *Hide panel if stock plugin is on* to force both.
+off *Hide if Opponent Info on* to force both.
 
 **Entity Hider.** If Entity Hider is hiding an actor's 2D layer, the game's
 health bar is already gone and this plugin's overhead readout is unaffected,
@@ -487,7 +491,7 @@ minute or so, it is small, and the level on the badge is yours, not its.
 
 **The panel never shows.** Opponent Information is probably enabled, and this
 plugin hides its panel to avoid stacking. Disable the stock plugin, or turn off
-*Advanced → Hide panel if stock plugin is on*.
+*Advanced → Hide if Opponent Info on*.
 
 **A player shows a percentage instead of a number.** Either the hiscores lookup
 is off, the lookup has not returned yet (the first one is asynchronous and takes

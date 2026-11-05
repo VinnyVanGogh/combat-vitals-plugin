@@ -1690,7 +1690,8 @@ public class CombatVitalsPlugin extends Plugin
 			return null;
 		}
 
-		if (config.hideWhenHpHud() && hasHpHud(actor))
+		final boolean onHud = hasHpHud(actor);
+		if (config.hideWhenHpHud() && onHud)
 		{
 			return null;
 		}
@@ -1698,10 +1699,12 @@ public class CombatVitalsPlugin extends Plugin
 		String name = Text.removeTags(actor.getName());
 		int maxHealth = -1;
 		HiscoreResult hiscore = null;
+		DisplayMode mode = config.displayMode();
 
 		if (npc)
 		{
 			final NPC target = (NPC) actor;
+			final boolean boss = BigTargets.isBoss(onHud, name);
 			final NPCComposition composition = target.getTransformedComposition();
 			if (composition != null)
 			{
@@ -1717,6 +1720,7 @@ public class CombatVitalsPlugin extends Plugin
 			{
 				maxHealth = health;
 			}
+			mode = npcDisplay(boss, maxHealth);
 		}
 		else if (config.showPlayerHitpoints() || config.showStatComparison())
 		{
@@ -1744,7 +1748,18 @@ public class CombatVitalsPlugin extends Plugin
 			? HealthRecovery.recover(ratio, scale, maxHealth)
 			: null;
 
-		return new Readout(actor, name, ratio, scale, maxHealth, range, npc, -1, hiscore);
+		return new Readout(actor, name, ratio, scale, maxHealth, range, npc, -1, hiscore, mode);
+	}
+
+	/**
+	 * Bosses and high-HP NPCs can show a different display from everything
+	 * else. Max HP is NPCManager's, the same number the readout prints, so an
+	 * NPC it has no entry for is never over the threshold.
+	 */
+	private DisplayMode npcDisplay(boolean boss, int maxHealth)
+	{
+		final boolean big = BigTargets.isBig(config.bigTargetRule(), boss, maxHealth, config.bigTargetMaxHp());
+		return BigTargets.mode(big, config.bigTargetDisplay(), config.otherTargetDisplay(), config.displayMode());
 	}
 
 	/**
@@ -1780,7 +1795,8 @@ public class CombatVitalsPlugin extends Plugin
 			return null;
 		}
 
-		return new Readout(self, Text.removeTags(self.getName()), -1, -1, max, null, false, current, null);
+		return new Readout(self, Text.removeTags(self.getName()), -1, -1, max, null, false, current, null,
+			config.displayMode());
 	}
 
 	/** Mirrors the base client: NPC only, and false for players by definition. */
@@ -1822,9 +1838,13 @@ public class CombatVitalsPlugin extends Plugin
 		/** The one cached hiscores result, shared by the readout and comparison. */
 		private final HiscoreResult hiscore;
 
+		/** Display, Big targets or Other targets, whichever applies to this actor. */
+		private final DisplayMode mode;
+
 		Readout(Actor actor, String name, int ratio, int scale, int maxHealth,
-			HealthRecovery.Range range, boolean npc, int exactHealth, HiscoreResult hiscore)
+			HealthRecovery.Range range, boolean npc, int exactHealth, HiscoreResult hiscore, DisplayMode mode)
 		{
+			this.mode = mode;
 			this.actor = actor;
 			this.name = name;
 			this.ratio = ratio;

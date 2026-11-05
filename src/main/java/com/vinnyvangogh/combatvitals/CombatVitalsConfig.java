@@ -246,7 +246,7 @@ public interface CombatVitalsConfig extends Config
 
 	@ConfigItem(
 		keyName = "hideGameOverheadChat",
-		name = "Hide game chat under readout",
+		name = "Chat above readout",
 		description =
 			"While the readout or skilling badge is over you or your opponent, take the game's own overhead "
 				+ "chat line off and draw it above the readout instead, so it is never hidden under it. "
@@ -342,6 +342,63 @@ public interface CombatVitalsConfig extends Config
 	default boolean showStatComparison()
 	{
 		return false;
+	}
+
+	@ConfigItem(
+		keyName = "bigTargetDisplay",
+		name = "Big targets",
+		description =
+			"Display for bosses and high-HP NPCs, as set by Big target is. Same as Display follows the "
+				+ "Display setting above. Players always use Display.",
+		section = targetSection,
+		position = 6
+	)
+	default TargetDisplay bigTargetDisplay()
+	{
+		// Same as Display, so a profile that never sets it is unchanged.
+		return TargetDisplay.SAME;
+	}
+
+	@ConfigItem(
+		keyName = "otherTargetDisplay",
+		name = "Other targets",
+		description =
+			"Display for every NPC that is not a big target. Same as Display follows the Display "
+				+ "setting above.",
+		section = targetSection,
+		position = 7
+	)
+	default TargetDisplay otherTargetDisplay()
+	{
+		return TargetDisplay.SAME;
+	}
+
+	@ConfigItem(
+		keyName = "bigTargetRule",
+		name = "Big target is",
+		description =
+			"What counts as a big target. A boss is any NPC the game's boss health bar is showing, or one "
+				+ "on the plugin's list of bosses. Max HP uses Big target max HP; an NPC whose max HP is "
+				+ "unknown counts as an other target.",
+		section = targetSection,
+		position = 8
+	)
+	default BigTargetRule bigTargetRule()
+	{
+		return BigTargetRule.BOSSES_AND_HP;
+	}
+
+	@Range(min = 1, max = 10000)
+	@ConfigItem(
+		keyName = "bigTargetMaxHp",
+		name = "Big target max HP",
+		description = "An NPC with at least this much max HP is a big target, when Big target is uses max HP.",
+		section = targetSection,
+		position = 9
+	)
+	default int bigTargetMaxHp()
+	{
+		return 200;
 	}
 
 	@ConfigItem(
@@ -1054,8 +1111,8 @@ public interface CombatVitalsConfig extends Config
 
 	@ConfigItem(
 		keyName = "opponentTimeout",
-		name = "Opponent timeout (s)",
-		description = "How long the readout stays up after combat ends. The stock plugin fixes this at 5.",
+		name = "Timeout (s)",
+		description = "How long, in seconds, the readout stays up after combat ends. The stock plugin fixes this at 5.",
 		section = advancedSection,
 		position = 0
 	)
@@ -1078,7 +1135,7 @@ public interface CombatVitalsConfig extends Config
 
 	@ConfigItem(
 		keyName = "hideWhenStockEnabled",
-		name = "Hide panel if stock plugin is on",
+		name = "Hide if Opponent Info on",
 		description =
 			"Hide this plugin's panel while Opponent Information is enabled, so the two do not draw "
 				+ "over each other. The overhead text is unaffected.",

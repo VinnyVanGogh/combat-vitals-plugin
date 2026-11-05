@@ -204,7 +204,7 @@ class CombatVitalsOverheadOverlay extends Overlay
 		}
 
 		final String text = HealthReadout.text(readout.getRange(), readout.getMaxHealth(),
-			readout.getRatio(), readout.getScale(), config.displayMode(), config.percentageDecimals(),
+			readout.getRatio(), readout.getScale(), readout.getMode(), config.percentageDecimals(),
 			readout.getExactHealth());
 		if (text == null)
 		{
