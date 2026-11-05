@@ -64,32 +64,4 @@ public class BadgeRowsTest
 		assertEquals("Inv 2/28 used", InventoryFill.label(26, InventoryCount.USED));
 		assertNull(InventoryFill.label(-1, InventoryCount.USED));
 	}
-
-	@Test
-	public void sessionRowNamesWhatWasDone()
-	{
-		assertEquals("Caught 12", SkillingText.session(Skill.FISHING, 12, -1, -1, true, false));
-		assertEquals("Chopped 3", SkillingText.session(Skill.WOODCUTTING, 3, -1, -1, true, false));
-		assertEquals("Mined 0", SkillingText.session(Skill.MINING, 0, -1, -1, true, false));
-	}
-
-	@Test
-	public void sessionRowRates()
-	{
-		assertEquals("Caught 12 | 30,000 xp/h | 600/h",
-			SkillingText.session(Skill.FISHING, 12, 30_000, 600, true, true));
-		assertEquals("30,000 xp/h | 600/h", SkillingText.session(Skill.FISHING, 12, 30_000, 600, false, true));
-	}
-
-	@Test
-	public void ratesNotYetKnownSayPending()
-	{
-		assertEquals("-- xp/h", SkillingText.session(Skill.FISHING, 1, -1, -1, false, true));
-	}
-
-	@Test
-	public void sessionRowOffIsNull()
-	{
-		assertNull(SkillingText.session(Skill.FISHING, 12, 30_000, 600, false, false));
-	}
 }

@@ -58,6 +58,13 @@ final class SkillingSession
 		return actions[skill.ordinal()];
 	}
 
+	/** Milliseconds since this session's first gain in the skill, or -1 before it. */
+	long elapsed(Skill skill, long nowMillis)
+	{
+		final int i = skill.ordinal();
+		return actions[i] == 0 ? -1 : Math.max(0, nowMillis - firstGain[i]);
+	}
+
 	/** XP per hour since the first gain, or -1 until {@link #MIN_RATE_MILLIS} has passed. */
 	int xpPerHour(Skill skill, long nowMillis)
 	{

@@ -283,6 +283,7 @@ the case that broke every earlier iteration of this overlay.
 | Show spec energy | On | Remaining special attack energy when wielding a spec skilling tool |
 | Notify on boost drop | Off | RuneLite notification when the badge's boost drops or wears off |
 | Show inventory fill | On | `Inv 26/28 free` on a bar under the badge, green to red as the inventory fills; stackables, tools and equipment do not count toward the fill |
+| Next spot path | Off | Send the nearest fishing spot of the same kind to Shortest Path when yours moves, or only from the badge's right-click menu |
 
 A fish above your level is dimmed with `Lv 15` over it in red; hover it for
 `Needs Fishing 15`.
@@ -291,15 +292,15 @@ A fish above your level is dimmed with `Lv 15` over it in red; hover it for
 
 | Setting | Default | What it does |
 |---|---|---|
-| Once you stop | Show for a while | Off: the badge goes as before. Show for a while: it stays for the seconds below with a red `Not fishing` header. Until another activity: it stays until you start something else or a fight starts. The level, XP and inventory rows stay |
+| Once idle | Show for a while | Off: the badge goes as before. Show for a while: it stays for the seconds below with a red `Not fishing` header. Until next activity: it stays until you start something else or a fight starts. The level, XP and inventory rows stay |
 | Idle badge for (s) | 60 | How long `Not fishing` stays up |
 | Idle header colour | Red | The header's colour while idle |
 | Fishing, Woodcutting, Mining, Thieving, Runecraft, Hunter | On | Which skills get a badge |
 | Header row, XP row | On | Turn rows off; the inventory row and catch list are in Skilling vitals |
 | XP shown as | Both | `64%`, `1,234 xp`, or both |
 | Inventory count | Free slots | `Inv 26/28 free` or `Inv 2/28 used` |
-| Session count | Off | A row with what you caught, chopped or mined this session (one per experience drop). Resets on logout |
-| XP and actions per hour | Off | Hourly rates for the skill this session, from your first drop; shown after a minute |
+| Session count | Off | A row with what you caught, chopped or mined this session and for how long, `24 caught in 3m`, after the skill's icon (one per experience drop). Resets on logout |
+| XP and actions per hour | Off | Hourly rates for the skill this session, from your first drop, in short numbers with what was done: `10.6k xp/h`, `459 fish/h`; shown after a minute |
 | Reset session | Off | Tick to zero the session count and rates; unticks itself |
 | Badge position | Over your head | Over your head; over the spot, tree or rock (over your head while idle); or fixed on screen, Alt-drag to move |
 | Badge offset | 0 | Pixels to raise the badge, ±200 |
@@ -307,7 +308,11 @@ A fish above your level is dimmed with `Lv 15` over it in red; hover it for
 | Fish above your level | Dim | Dim them with the level, or hide them |
 | Hide during combat | Off | Hide the badge while you are hit or hitting back; fighting a target always replaces it |
 | Fishing colour … Hunter colour | The palette | Per-skill colour overrides |
-| Warn before fishing without gear | On | Click a fishing option without its tool, bait or level and the badge says `Needs: Fishing rod + bait` in red for 8 seconds, before the game's dialog. Worn or carried tools count, as does barehanded harpooning after Barbarian Training. The click itself is never changed |
+| Warn if missing gear | On | Click a fishing option without its tool, bait or level and the badge says `Needs: Fishing rod + bait` in red for 8 seconds, before the game's dialog. Worn or carried tools count, as does barehanded harpooning after Barbarian Training. The click itself is never changed |
+| Time to level | On | With XP and actions per hour on, how long the next level takes at this session's rate, `lvl 18 in 6m`. Not shown before a rate is known, or at 99 |
+
+The session row's stats sit in equal columns with a faint rule between, each
+in its own soft shade of the skill's colour (`SessionRow`).
 
 ### Side pillars
 
@@ -316,6 +321,14 @@ A fish above your level is dimmed with `Lv 15` over it in red; hover it for
 | Show on side pillars | Off | Vertical bars beside the side panel, where RuneLite's Status Bars draws: Combat, your target's health; Skilling, XP to the next level and inventory fill; or Both |
 | Target health on | Left | The pillar for your target's health |
 | Skilling XP on | Left | The pillar for XP; inventory fill takes the other |
+| Pillar labels | Icon and number | At each pillar's top, as Status Bars: an icon for what it is (the skill, a backpack, a heart) with the number under it (XP percent or XP left per `XP shown as`, free or used slots per `Inventory count`, your target's hitpoints), the icon alone, or nothing |
+| Pillar style | Status Bars | Status Bars: a dark frame, the fill inside with a shine down its left edge, a mark every 25% on XP and one per slot on the inventory. Flat: one colour on the bar background |
+
+Hover a pillar for the whole story: `Fishing XP: 82% to level 17 (65 xp
+left)`, `Inventory: 10 of 28 free`, `Target: Rock Crab 12/50`. The XP pillar
+shows its level at the foot, the inventory runs green to yellow to red as it
+fills, fills glide to a new value, and both skilling pillars dim once you
+stop (`PillarPainter`, `PillarText`).
 
 With Status Bars on, these never overlap it. If it has both its bars set to
 Disabled, ours take the pillars. If it draws either bar, both of ours stack
