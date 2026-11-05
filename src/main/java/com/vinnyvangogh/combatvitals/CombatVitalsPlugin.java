@@ -2,6 +2,7 @@ package com.vinnyvangogh.combatvitals;
 
 import com.google.inject.Provides;
 import java.awt.Color;
+import java.awt.Rectangle;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -30,6 +31,7 @@ import net.runelite.api.Player;
 import net.runelite.api.Prayer;
 import net.runelite.api.Skill;
 import net.runelite.api.SpritePixels;
+import net.runelite.api.WorldType;
 import net.runelite.api.WorldView;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ChatMessage;
@@ -39,7 +41,9 @@ import net.runelite.api.events.GameTick;
 import net.runelite.api.events.HitsplatApplied;
 import net.runelite.api.events.InteractingChanged;
 import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.MenuOptionClicked;
+import net.runelite.api.events.NpcChanged;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.OverheadTextChanged;
 import net.runelite.api.events.StatChanged;
@@ -51,6 +55,7 @@ import net.runelite.client.Notifier;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.Notification;
+import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.game.FishingSpot;
@@ -63,6 +68,7 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.Text;
 
 /**
@@ -127,6 +133,25 @@ public class CombatVitalsPlugin extends Plugin
 
 	@Inject
 	private Notifier notifier;
+
+	@Inject
+	private EventBus eventBus;
+
+	@Inject
+	private NextSpotOverlay nextSpotOverlay;
+
+	/** Finds the next fishing spot and paths to or highlights it. Client thread only; null until started. */
+	private SpotPathing spotPathing;
+
+	/** The bundled fishing spot locations, read once at start-up. */
+	private List<NextFishingSpot.Spot> knownSpots = Collections.emptyList();
+
+	/** The next fishing spot to outline, when it could not go to Shortest Path. */
+	@Getter
+	private volatile NPC highlightedSpot;
+
+	/** Where the overlay drew the skilling badge in the latest frame, or null. */
+	private volatile Rectangle badgeBounds;
 
 	/** Replaced wholesale each tick, never mutated, so the overlay thread sees a consistent view. */
 	@Getter
@@ -250,6 +275,14 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.add(overheadOverlay);
 		overlayManager.add(skillingBadgeOverlay);
 		overlayManager.add(pillarOverlay);
+		overlayManager.add(nextSpotOverlay);
+
+		knownSpots = KnownFishingSpots.load();
+		final ShortestPathBridge bridge = new ShortestPathBridge(
+			() -> pluginManager.getPlugins(),
+			p -> pluginManager.isPluginEnabled((Plugin) p),
+			ShortestPathBridge.clientThreadEventPoster(clientThread::invoke, eventBus::post));
+		spotPathing = new SpotPathing(config::fishingSpotPath, router(bridge));
 
 		stockPlugin = findPlugin(STOCK_PLUGIN_NAME);
 		statusBarsPlugin = findPlugin(STATUS_BARS_NAME);
@@ -284,6 +317,7 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.remove(overheadOverlay);
 		overlayManager.remove(skillingBadgeOverlay);
 		overlayManager.remove(pillarOverlay);
+		overlayManager.remove(nextSpotOverlay);
 
 		// shutDown runs off the client thread; the sprite map belongs to it.
 		final NativeHealthBarHider<SpritePixels> hider = healthBarHider;
@@ -302,6 +336,13 @@ public class CombatVitalsPlugin extends Plugin
 			clientThread.invoke(holder::releaseAll);
 		}
 
+		// Clears a path this sent, on the thread the pather lives on.
+		final SpotPathing pathing = spotPathing;
+		if (pathing != null)
+		{
+			clientThread.invoke(pathing::reset);
+		}
+
 		readout = null;
 		selfReadout = null;
 		opponent = null;
@@ -309,6 +350,7 @@ public class CombatVitalsPlugin extends Plugin
 		clearSkilling();
 		session.clear();
 		stockPlugin = null;
+		badgeBounds = null;
 		statusBarsPlugin = null;
 		statusBars = SidePillars.StatusBars.OFF;
 	}
@@ -360,6 +402,32 @@ public class CombatVitalsPlugin extends Plugin
 		}
 	}
 
+	/** Shortest Path as the pather sees it. */
+	private static SpotPathing.Router router(ShortestPathBridge bridge)
+	{
+		return new SpotPathing.Router()
+		{
+			@Override
+			public boolean available()
+			{
+				return bridge.availability() == ShortestPathBridge.Availability.AVAILABLE;
+			}
+
+			@Override
+			public boolean route(NextFishingSpot.Spot spot)
+			{
+				final WorldPoint target = new WorldPoint(spot.getX(), spot.getY(), spot.getPlane());
+				return bridge.route(target) == ShortestPathBridge.RouteOutcome.SENT;
+			}
+
+			@Override
+			public void clear()
+			{
+				bridge.clear();
+			}
+		};
+	}
+
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged event)
 	{
@@ -381,6 +449,10 @@ public class CombatVitalsPlugin extends Plugin
 				readout = null;
 				selfReadout = null;
 				clearSkilling();
+				if (spotPathing != null)
+				{
+					spotPathing.reset();
+				}
 				chatCovered = Collections.emptySet();
 				final OverheadChatHolder<Actor> holder = chatHolder;
 				if (holder != null)
@@ -416,6 +488,7 @@ public class CombatVitalsPlugin extends Plugin
 		inventoryEmpty = -1;
 		coinPouches = 0;
 		lastPosition = null;
+		highlightedSpot = null;
 	}
 
 	@Subscribe
@@ -455,6 +528,7 @@ public class CombatVitalsPlugin extends Plugin
 			{
 				skillingTarget = (NPC) target;
 				skilling.engage(trained);
+				startedFishing(trained);
 			}
 			else
 			{
@@ -474,6 +548,20 @@ public class CombatVitalsPlugin extends Plugin
 			{
 				skilling.disengage(now);
 			}
+		}
+	}
+
+	/**
+	 * Fishing a spot again ends the walk to it: the path this sent is
+	 * cleared, and the spot's type and method are what the next search looks
+	 * for.
+	 */
+	private void startedFishing(Skill trained)
+	{
+		if (trained == Skill.FISHING && spotPathing != null)
+		{
+			spotPathing.fishingOn(FishingSpot.findSpot(skillingTarget.getId()), skilling.method());
+			highlightedSpot = null;
 		}
 	}
 
@@ -826,19 +914,57 @@ public class CombatVitalsPlugin extends Plugin
 	@Subscribe
 	public void onNpcDespawned(NpcDespawned event)
 	{
+		// The spot being walked to moving too: the next search finds the latest one.
+		if (spotPathing != null && client.getGameState() == GameState.LOGGED_IN)
+		{
+			spotPathing.despawned(event.getNpc());
+		}
+
 		if (event.getNpc() == skillingTarget)
 		{
-			final Player self = client.getLocalPlayer();
-			final boolean onIt = self != null && self.getInteracting() == skillingTarget;
-			if (client.getGameState() == GameState.LOGGED_IN && skilling.skill() == Skill.FISHING
-				&& (onIt || activityAlerts.active() == Skill.FISHING))
+			if (fishingSpotLeft())
 			{
 				activityAlerts.spotMoved(Skill.FISHING);
+				spotPathing.spotMoved();
 			}
 
 			skillingTarget = null;
 			skilling.release();
 		}
+	}
+
+	/**
+	 * Some spots change id in place rather than despawning. Turning into
+	 * anything but the same kind of spot is the spot moving.
+	 */
+	@Subscribe
+	public void onNpcChanged(NpcChanged event)
+	{
+		final NPC npc = event.getNpc();
+		if (npc != skillingTarget || event.getOld() == null
+			|| FishingSpot.findSpot(npc.getId()) == FishingSpot.findSpot(event.getOld().getId()))
+		{
+			return;
+		}
+
+		if (fishingSpotLeft())
+		{
+			spotPathing.spotMoved();
+		}
+	}
+
+	/**
+	 * The fishing spot under the player went while they were still on it
+	 * (interacting, or fishing without having walked off): the spot moved,
+	 * not the player leaving. Logging out and hopping unload every NPC, so
+	 * only while logged in.
+	 */
+	private boolean fishingSpotLeft()
+	{
+		final Player self = client.getLocalPlayer();
+		final boolean onIt = self != null && self.getInteracting() == skillingTarget;
+		return spotPathing != null && client.getGameState() == GameState.LOGGED_IN
+			&& skilling.skill() == Skill.FISHING && (onIt || activityAlerts.active() == Skill.FISHING);
 	}
 
 	/**
@@ -1008,9 +1134,94 @@ public class CombatVitalsPlugin extends Plugin
 		tickBoostTimer();
 		tickAlerts();
 		readStatusBars();
+		tickSpotPathing();
 		readout = buildReadout();
 		selfReadout = buildSelfReadout();
 		skillingReadout = buildSkillingReadout();
+	}
+
+	/** Runs a due next-spot search, at most once a tick, and publishes what to outline. */
+	private void tickSpotPathing()
+	{
+		if (spotPathing == null || client.getGameState() != GameState.LOGGED_IN)
+		{
+			return;
+		}
+		spotPathing.tick(this::pickSpot);
+		highlightedSpot = (NPC) spotPathing.highlighted();
+	}
+
+	/**
+	 * The next spot of this type: the nearest loaded one the player can catch
+	 * something at, never the one being fished, else the nearest bundled
+	 * location their world and level allow.
+	 */
+	private NextFishingSpot.Spot pickSpot(FishingSpot type, String method)
+	{
+		final Player self = client.getLocalPlayer();
+		final WorldView view = client.getTopLevelWorldView();
+		// In an instance (Tempoross, Fishing Trawler) tiles are template
+		// coordinates, so a path built from them would lead somewhere else.
+		if (self == null || view == null || view.isInstance())
+		{
+			return null;
+		}
+
+		final List<NextFishingSpot.Spot> loaded = new ArrayList<>();
+		for (NPC npc : view.npcs())
+		{
+			final FishingSpot spot = FishingSpot.findSpot(npc.getId());
+			if (spot != null)
+			{
+				final WorldPoint tile = npc.getWorldLocation();
+				loaded.add(NextFishingSpot.Spot.loaded(spot, tile.getX(), tile.getY(), tile.getPlane(), npc));
+			}
+		}
+
+		final NextFishingSpot.Need need = new NextFishingSpot.Need(type, method,
+			client.getBoostedSkillLevel(Skill.FISHING), client.getWorldType().contains(WorldType.MEMBERS),
+			skillingTarget);
+		final WorldPoint at = self.getWorldLocation();
+		return NextFishingSpot.choose(loaded, knownSpots, at.getX(), at.getY(), at.getPlane(), need);
+	}
+
+	/**
+	 * Right-clicking the fishing badge offers "Path to next spot". The entry
+	 * is the plugin's own, added only over the badge; no game entry is
+	 * changed or removed.
+	 */
+	@Subscribe
+	public void onMenuOpened(MenuOpened event)
+	{
+		final SkillingReadout badge = skillingReadout;
+		// Fixed on screen the badge is SkillingBadgeOverlay's; otherwise the
+		// overhead overlay reports where it drew it this frame.
+		final Rectangle bounds = config.skillingPosition() == BadgePosition.FIXED && skillingBadgeOverlay != null
+			? skillingBadgeOverlay.getBounds()
+			: badgeBounds;
+		if (spotPathing == null || config.fishingSpotPath() == FishingSpotPath.OFF || badge == null
+			|| badge.getSkill() != Skill.FISHING || bounds == null)
+		{
+			return;
+		}
+
+		final net.runelite.api.Point mouse = client.getMouseCanvasPosition();
+		if (mouse == null || !bounds.contains(mouse.getX(), mouse.getY()))
+		{
+			return;
+		}
+
+		client.getMenu().createMenuEntry(-1)
+			.setOption("Path to next spot")
+			.setTarget(ColorUtil.wrapWithColorTag("Fishing", SkillColours.of(Skill.FISHING)))
+			.setType(MenuAction.RUNELITE)
+			.onClick(e -> spotPathing.requested());
+	}
+
+	/** Called by the overlay once per frame with where it drew the badge, or null. */
+	void setBadgeBounds(Rectangle bounds)
+	{
+		badgeBounds = bounds;
 	}
 
 	/**

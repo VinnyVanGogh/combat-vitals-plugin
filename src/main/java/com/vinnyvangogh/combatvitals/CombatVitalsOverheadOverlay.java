@@ -54,6 +54,8 @@ class CombatVitalsOverheadOverlay extends Overlay
 	private final CombatVitalsPlugin plugin;
 	private final CombatVitalsConfig config;
 	private final SkillingBadgeRenderer badge;
+	/** The badge's box this frame when it was drawn over the spot, else null. */
+	private Rectangle spotBadgeBox;
 
 	@Inject
 	CombatVitalsOverheadOverlay(Client client, CombatVitalsPlugin plugin, CombatVitalsConfig config,
@@ -74,6 +76,8 @@ class CombatVitalsOverheadOverlay extends Overlay
 		// Rebuilt every frame and handed over whole: an actor missing from it
 		// gets its chat line back from the plugin on the next client tick.
 		final Set<Actor> covered = new HashSet<>();
+		spotBadgeBox = null;
+		Rectangle overHead = null;
 		try
 		{
 			if (!config.showOverhead())
@@ -95,7 +99,7 @@ class CombatVitalsOverheadOverlay extends Overlay
 			// Over your head the badge shares the anchor with your own bar and
 			// stacks above it when both are up (hit while fishing). Over the
 			// spot it covers nothing of yours.
-			final Rectangle overHead = drawSkilling(graphics, plugin.getSkillingReadout(), selfBar);
+			overHead = drawSkilling(graphics, plugin.getSkillingReadout(), selfBar);
 
 			// Your own overhead chat goes above whichever of the two is topmost,
 			// once: the bar and the badge are one stack over one actor, so one
@@ -106,6 +110,10 @@ class CombatVitalsOverheadOverlay extends Overlay
 		finally
 		{
 			plugin.setChatCovered(covered);
+			// Where the badge is, over your head or over the spot, for its
+			// right-click "Path to next spot". Fixed on screen is
+			// SkillingBadgeOverlay's own bounds (CombatVitalsPlugin#onMenuOpened).
+			plugin.setBadgeBounds(overHead != null ? overHead : spotBadgeBox);
 		}
 	}
 
@@ -145,7 +153,7 @@ class CombatVitalsOverheadOverlay extends Overlay
 		final Point spot = config.skillingPosition() == BadgePosition.OVER_SPOT ? spotAnchor(graphics, readout) : null;
 		if (spot != null)
 		{
-			badge.drawAt(graphics, readout, spot.getX(), spot.getY() - config.skillingOffset());
+			spotBadgeBox = badge.drawAt(graphics, readout, spot.getX(), spot.getY() - config.skillingOffset());
 			return null;
 		}
 

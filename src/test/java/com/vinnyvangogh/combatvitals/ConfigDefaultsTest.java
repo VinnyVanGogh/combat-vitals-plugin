@@ -30,10 +30,17 @@ public class ConfigDefaultsTest
 	}
 
 	@Test
+	public void newProfileNeverPathsToTheNextFishingSpot()
+	{
+		assertEquals(FishingSpotPath.OFF, NEW_PROFILE.fishingSpotPath());
+	}
+
+	@Test
 	public void savedValuesKeepTheirKeys() throws NoSuchMethodException
 	{
 		assertEquals("hideGameOverheadChat", keyName("hideGameOverheadChat"));
 		assertEquals("hideGameHealthBar", keyName("hideGameHealthBar"));
+		assertEquals("fishingSpotPath", keyName("fishingSpotPath"));
 	}
 
 	private static String keyName(String method) throws NoSuchMethodException

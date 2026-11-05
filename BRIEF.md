@@ -196,6 +196,23 @@ the local player's own state; nothing acts on the game.
 | Badge over the spot, from the clicked NPC or object's tile | Boss & combat: not applicable, skilling objects only | Base client `fishing` and `woodcutting` draw over spots and trees | Allowed |
 | `Needs: Fishing rod + bait` on a fishing click without the tool, bait or level (Board addition, 2026-11-04): own inventory and worn items, own Fishing level and Barbarian Training varbit `BRUT_FISHING_S`, read in `MenuOptionClicked` | Menu Restrictions: the event is read, never consumed or changed, so the click still reaches the game and the game's own dialog still shows | Same read-only `MenuOptionClicked` use as the rows above; base client `itemcharges`/`inventorytags` read own containers | Allowed |
 
+### Path to next fishing spot, compliance (added 2026-11-04)
+
+Board, 2026-11-04: "add shortest path as an option to give you the shortest
+path to the next fishing spot that's active". Off by default.
+
+| Element | Nearest rule | Precedent | Verdict |
+|---|---|---|---|
+| Spot NPCs in the loaded scene read from `WorldView.npcs()` and typed with `FishingSpot.findSpot` | None: public game state any player can see | Base client `fishing` plugin enumerates and highlights every spot NPC in the scene the same way | Allowed |
+| Next spot's tile outlined when Shortest Path is absent | None | Base client `fishing` plugin outlines every fishing spot; this outlines one | Allowed |
+| Target sent to Shortest Path via `PluginMessage` (`shortestpath` / `path`, `clear`) | Plugin Hub: reflection or reaching into another plugin is rejected | `PluginMessage` is RuneLite's own public, sanctioned plugin-to-plugin channel, shipped in `runelite-client`; Shortest Path documents and handles it. Same bridge as QuestPath's | Allowed |
+| `Path to next spot` added to the right-click menu, only over the badge | Menu Restrictions: adding or removing entries | A `RUNELITE` entry of the plugin's own, nothing removed, swapped or reordered; base client `groundmarkers` ("Mark tile") and `npchighlight` ("Tag") add their own entries the same way | Allowed |
+| Bundled list of spot locations from the OSRS wiki | None: public data | Shortest Path itself and many hub plugins ship wiki location tables | Allowed |
+
+Not done, deliberately: no walking, clicking or queuing of any kind; the path
+is drawn by Shortest Path and walked by the player. No route into the
+Wilderness: those locations are left out of the bundled list.
+
 ---
 
 ## Phase 0.5, Measure before building

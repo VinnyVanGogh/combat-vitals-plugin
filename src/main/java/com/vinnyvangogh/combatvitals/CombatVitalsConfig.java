@@ -837,6 +837,23 @@ public interface CombatVitalsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "fishingSpotPath",
+		name = "Path to next fishing spot",
+		description =
+			"Find the nearest fishing spot of the same kind (net/bait, lure/bait, cage/harpoon...) that you can "
+				+ "catch something at, and send it to the Shortest Path plugin; the path clears when you start "
+				+ "fishing again. 'On spot move' does it when your spot moves; either way, right-clicking the badge "
+				+ "offers 'Path to next spot'. With no spot of that kind nearby, the nearest known location is "
+				+ "used. Without Shortest Path installed, the next spot is highlighted instead.",
+		section = skillingSection,
+		position = 7
+	)
+	default FishingSpotPath fishingSpotPath()
+	{
+		return FishingSpotPath.OFF;
+	}
+
+	@ConfigItem(
 		keyName = "alertInventoryFull",
 		name = "Inventory full",
 		description = "Notify when the last free slot fills while you are fishing, woodcutting, mining, hunting "

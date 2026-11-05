@@ -1,0 +1,97 @@
+# Known fishing spot locations, for routing when no spot of the right type is
+# loaded. Read by KnownFishingSpots.
+#
+# Source: the OSRS wiki's spot pages, LocLine / ObjectLocLine coordinates and
+# members flags, read 2026-11-04:
+#   https://oldschool.runescape.wiki/w/Fishing_spot_(small_net,_bait)  -> SHRIMP
+#   https://oldschool.runescape.wiki/w/Rod_Fishing_spot_(lure,_bait)    -> SALMON
+#   https://oldschool.runescape.wiki/w/Fishing_spot_(cage,_harpoon)     -> LOBSTER
+#   https://oldschool.runescape.wiki/w/Fishing_spot_(big_net,_harpoon)  -> SHARK
+#   https://oldschool.runescape.wiki/w/Fishing_spot_(barbarian)         -> BARB_FISH
+# The coordinate is the first one the wiki gives for the location; spots move
+# between a few tiles there, and Shortest Path stops within its own reach.
+# The Fishing Guild needs 68 Fishing to enter (wiki, "Fishing Guild").
+#
+# Left out on purpose:
+#   - Wilderness locations (Bandit Camp, East Coast): never route anyone into
+#     the Wilderness unasked.
+#   - Instanced copies, the Fisher Realm, the Pandemonium, and dungeons.
+#   - Sailing-era island locations (Mistrock, Shimmering Atoll, Lledrith
+#     Island, Drumstick Isle, Anglers' Retreat, Vatrachos Island, The Great
+#     Conch, The Summer Shore, Wyrmscraig, Dognose Island, Chinchompa Island,
+#     Laguna Aurorae): whether they can be walked to was not verified.
+#
+# type	x	y	plane	members	minLevel	name
+SHRIMP	3267	3148	0	free	0	Al Kharid
+SHRIMP	3086	3227	0	free	0	Draynor Village
+SHRIMP	3246	3155	0	free	0	Lumbridge Swamp
+SHRIMP	2924	3181	0	free	0	Musa Point
+SHRIMP	2996	3158	0	free	0	West of Port Sarim
+SHRIMP	1485	3431	0	members	0	West of Land's End
+SHRIMP	1761	3796	0	members	0	Port Piscarilius
+SHRIMP	2498	3547	0	members	0	Barbarian Outpost
+SHRIMP	2838	3431	0	members	0	Catherby
+SHRIMP	2875	3342	0	members	0	Entrana
+SHRIMP	2515	2838	0	members	0	Southern Feldip Hills
+SHRIMP	2790	3273	0	members	0	Fishing Platform
+SHRIMP	1827	3605	0	members	0	Hosidius
+SHRIMP	1536	3414	0	members	0	East of Land's End
+SHRIMP	2633	3687	0	members	0	Rellekka
+SHRIMP	2161	2782	0	members	0	Isle of Souls
+SHRIMP	1776	2984	0	members	0	East of Stonecutter Outpost
+SHRIMP	1565	3327	0	members	0	Shipwreck Cove
+SHRIMP	1313	2962	0	members	0	Aldarin
+SHRIMP	1324	3011	0	members	0	Kastori
+SALMON	3238	3252	0	free	0	Lumbridge
+SALMON	3104	3424	0	free	0	Barbarian Village
+SALMON	2508	3421	0	members	0	South of Baxtorian Falls
+SALMON	2264	3258	0	members	0	East of Iorwerth Camp
+SALMON	2840	3356	0	members	0	Entrana
+SALMON	1271	3707	0	members	0	South-east of the Farming Guild
+SALMON	1714	3607	0	members	0	Hosidius
+SALMON	2210	3237	0	members	0	Iorwerth Camp
+SALMON	2561	3374	0	members	0	North of Ardougne
+SALMON	2714	3532	0	members	0	North of Seers' Village
+SALMON	2461	3150	0	members	0	Observatory
+SALMON	1720	3683	0	members	0	Port Piscarilius
+SALMON	1581	3563	0	members	0	Shayzien
+SALMON	2855	2974	0	members	0	Shilo Village
+SALMON	2382	3414	0	members	0	South-western Tree Gnome Stronghold
+SALMON	1553	3188	0	members	0	Varlamore (river Ortus)
+SALMON	1644	3558	0	members	0	South of Watson's house
+SALMON	1293	3382	0	members	0	Custodia Pass
+SALMON	1263	3131	0	members	0	Tlati Rainforest
+SALMON	1394	3313	0	members	0	Nemus Retreat
+LOBSTER	2923	3180	0	free	0	Musa Point
+LOBSTER	2453	2891	0	free	0	Corsair Cove Resource Area
+LOBSTER	2233	3424	0	members	0	Gwenith
+LOBSTER	1493	3442	0	members	0	West of Land's End
+LOBSTER	1747	3802	0	members	0	Port Piscarilius
+LOBSTER	2163	3365	0	members	0	Prifddinas Coast
+LOBSTER	2599	3419	0	members	68	Fishing Guild
+LOBSTER	1841	3627	0	members	0	Hosidius
+LOBSTER	2401	3781	0	members	0	Jatizso
+LOBSTER	2572	3860	0	members	0	Miscellania
+LOBSTER	2639	3694	0	members	0	Rellekka
+LOBSTER	2844	3429	0	members	0	Catherby
+LOBSTER	3142	2802	0	members	0	South of Ruins of Unkah
+LOBSTER	2278	2976	0	members	0	Isle of Souls
+LOBSTER	1577	2962	0	members	0	East of Sunset Coast
+SHARK	2226	3430	0	members	0	Gwenith
+SHARK	1485	3433	0	members	0	West of Land's End
+SHARK	2166	3347	0	members	0	Prifddinas Coast
+SHARK	2780	2741	0	members	0	Ape Atoll
+SHARK	3471	3199	0	members	0	Burgh de Rott
+SHARK	2846	3429	0	members	0	Catherby
+SHARK	1209	3688	0	members	0	Around the Farming Guild
+SHARK	2601	3422	0	members	68	Fishing Guild
+SHARK	1829	3610	0	members	0	Hosidius
+SHARK	2403	3778	0	members	0	Jatizso
+SHARK	2642	3708	0	members	0	Rellekka
+SHARK	2280	2837	0	members	0	Isle of Souls
+SHARK	1771	2966	0	members	0	East of Stonecutter Outpost
+SHARK	1571	2958	0	members	0	East of Sunset Coast
+SHARK	1594	3296	0	members	0	Shipwreck Cove
+SHARK	1219	3149	0	members	0	Tal Teklan
+BARB_FISH	2504	3497	0	members	0	Barbarian Outpost
+BARB_FISH	1266	3541	0	members	0	Mount Quidamortem
