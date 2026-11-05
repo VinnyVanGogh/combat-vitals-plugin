@@ -25,7 +25,12 @@ import net.runelite.client.events.PluginMessage;
  * {@code "shortestpath"}: {@code "path"} with a {@code "target"} entry that
  * may be a {@code WorldPoint}, a packed int or a {@code Set} of either, and
  * {@code "clear"} to clear. An empty target set does NOT clear; it re-sends
- * the previous targets.</li>
+ * the previous targets. Re-checked against Skretzo/shortest-path master
+ * 4c6595e (2026-11-04): {@code api/PluginMessageHandler#onPluginMessage}
+ * (L90-103) routes {@code "path"} to {@code onPathMessage} (L107-138), which
+ * reads {@code "target"} and hands it to {@code PluginMessageTargets#decode}
+ * (L49-68): a {@code Collection} is decoded element by element, and a
+ * {@code WorldPoint} element is accepted.</li>
  * <li>Its {@code onPluginMessage} asserts it is on the client thread, and
  * {@code EventBus#post} calls subscribers on the posting thread, so the
  * poster must land the post there: build it with
