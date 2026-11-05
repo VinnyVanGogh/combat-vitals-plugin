@@ -284,6 +284,45 @@ the case that broke every earlier iteration of this overlay.
 | Notify on boost drop | Off | RuneLite notification when the badge's boost drops or wears off |
 | Show inventory fill | On | `Inv 26/28 free` on a bar under the badge, green to red as the inventory fills; stackables, tools and equipment do not count toward the fill |
 
+A fish above your level is dimmed with `Lv 15` over it in red; hover it for
+`Needs Fishing 15`.
+
+### Skilling badge
+
+| Setting | Default | What it does |
+|---|---|---|
+| Once you stop | Show for a while | Off: the badge goes as before. Show for a while: it stays for the seconds below with a red `Not fishing` header. Until another activity: it stays until you start something else or a fight starts. The level, XP and inventory rows stay |
+| Idle badge for (s) | 60 | How long `Not fishing` stays up |
+| Idle header colour | Red | The header's colour while idle |
+| Fishing, Woodcutting, Mining, Thieving, Runecraft, Hunter | On | Which skills get a badge |
+| Header row, XP row | On | Turn rows off; the inventory row and catch list are in Skilling vitals |
+| XP shown as | Both | `64%`, `1,234 xp`, or both |
+| Inventory count | Free slots | `Inv 26/28 free` or `Inv 2/28 used` |
+| Session count | Off | A row with what you caught, chopped or mined this session (one per experience drop). Resets on logout |
+| XP and actions per hour | Off | Hourly rates for the skill this session, from your first drop; shown after a minute |
+| Reset session | Off | Tick to zero the session count and rates; unticks itself |
+| Badge position | Over your head | Over your head; over the spot, tree or rock (over your head while idle); or fixed on screen, Alt-drag to move |
+| Badge offset | 0 | Pixels to raise the badge, ±200 |
+| Badge size (%) | 100 | Scale the whole badge, 50 to 200 |
+| Fish above your level | Dim | Dim them with the level, or hide them |
+| Hide during combat | Off | Hide the badge while you are hit or hitting back; fighting a target always replaces it |
+| Fishing colour … Hunter colour | The palette | Per-skill colour overrides |
+| Warn before fishing without gear | On | Click a fishing option without its tool, bait or level and the badge says `Needs: Fishing rod + bait` in red for 8 seconds, before the game's dialog. Worn or carried tools count, as does barehanded harpooning after Barbarian Training. The click itself is never changed |
+
+### Side pillars
+
+| Setting | Default | What it does |
+|---|---|---|
+| Show on side pillars | Off | Vertical bars beside the side panel, where RuneLite's Status Bars draws: Combat, your target's health; Skilling, XP to the next level and inventory fill; or Both |
+| Target health on | Left | The pillar for your target's health |
+| Skilling XP on | Left | The pillar for XP; inventory fill takes the other |
+
+With Status Bars on, these never overlap it. If it has both its bars set to
+Disabled, ours take the pillars. If it draws either bar, both of ours stack
+to the left of its leftmost bar, out over the game view. Placement follows
+Status Bars' own offsets for fixed, resizable classic, resizable modern and
+the bank (`SidePillars`).
+
 ### Activity alerts
 
 Every alert is a RuneLite notification with its own toggle, and follows your

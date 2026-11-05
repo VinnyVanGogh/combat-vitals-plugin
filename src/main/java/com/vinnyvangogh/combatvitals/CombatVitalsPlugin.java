@@ -1,8 +1,10 @@
 package com.vinnyvangogh.combatvitals;
 
 import com.google.inject.Provides;
+import java.awt.Color;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -50,6 +52,7 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.Notification;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.game.FishingSpot;
 import net.runelite.client.game.NPCManager;
 import net.runelite.client.hiscore.HiscoreEndpoint;
@@ -81,6 +84,11 @@ public class CombatVitalsPlugin extends Plugin
 {
 	private static final String STOCK_PLUGIN_NAME = "Opponent Information";
 
+	/** RuneLite's Status Bars plugin, whose pillars ours sit beside, and its config group and keys. */
+	private static final String STATUS_BARS_NAME = "Status Bars";
+	private static final String STATUS_BARS_GROUP = "statusbars";
+	private static final String STATUS_BARS_DISABLED = "DISABLED";
+
 	@Inject
 	private Client client;
 
@@ -107,6 +115,15 @@ public class CombatVitalsPlugin extends Plugin
 
 	@Inject
 	private CombatVitalsOverheadOverlay overheadOverlay;
+
+	@Inject
+	private SkillingBadgeOverlay skillingBadgeOverlay;
+
+	@Inject
+	private PillarOverlay pillarOverlay;
+
+	@Inject
+	private ConfigManager configManager;
 
 	@Inject
 	private Notifier notifier;
@@ -158,6 +175,26 @@ public class CombatVitalsPlugin extends Plugin
 	private NPC clickedNpc;
 	private Skill clickedNpcSkill;
 
+	/** The tree, rock or stall clicked last, for drawing the badge over it, and its larger side in tiles. */
+	private WorldPoint objectSpot;
+	private int objectSpotSize;
+
+	/** Keeps the badge up as "Not fishing" once you stop. */
+	private final IdleBadge idleBadge = new IdleBadge();
+
+	/** How long "Needs: ..." stays on the badge after the click: about as long as the game's dialog. */
+	private static final long GEAR_WARNING_MILLIS = 8_000;
+
+	/** "Needs: Fishing rod + bait" from the last fishing click, and when; null when nothing was missing. */
+	private String gearWarning;
+	private long gearWarningAt;
+
+	/** This login's counts and rates; outlives a hop, not a logout. */
+	private final SkillingSession session = new SkillingSession();
+
+	/** Status Bars as last read, refreshed each tick for the pillar overlay. */
+	private volatile SidePillars.StatusBars statusBars = SidePillars.StatusBars.OFF;
+
 	private final InventoryCatches inventoryCatches = new InventoryCatches();
 	private final BoostTracker boosts = new BoostTracker();
 	private final BoostTimer boostTimer = new BoostTimer();
@@ -189,6 +226,7 @@ public class CombatVitalsPlugin extends Plugin
 
 	private HiscoreEndpoint hiscoreEndpoint = HiscoreEndpoint.NORMAL;
 	private Plugin stockPlugin;
+	private Plugin statusBarsPlugin;
 
 	/** Client thread only. Null until the plugin starts. */
 	private volatile NativeHealthBarHider<SpritePixels> healthBarHider;
@@ -210,11 +248,11 @@ public class CombatVitalsPlugin extends Plugin
 	{
 		overlayManager.add(panelOverlay);
 		overlayManager.add(overheadOverlay);
+		overlayManager.add(skillingBadgeOverlay);
+		overlayManager.add(pillarOverlay);
 
-		stockPlugin = pluginManager.getPlugins().stream()
-			.filter(p -> STOCK_PLUGIN_NAME.equals(p.getName()))
-			.findFirst()
-			.orElse(null);
+		stockPlugin = findPlugin(STOCK_PLUGIN_NAME);
+		statusBarsPlugin = findPlugin(STATUS_BARS_NAME);
 
 		healthBarHider = new NativeHealthBarHider<>(client.getSpriteOverrides(), this::blankSprite);
 		chatHolder = new OverheadChatHolder<>(new OverheadChatHolder.Access<Actor>()
@@ -244,6 +282,8 @@ public class CombatVitalsPlugin extends Plugin
 	{
 		overlayManager.remove(panelOverlay);
 		overlayManager.remove(overheadOverlay);
+		overlayManager.remove(skillingBadgeOverlay);
+		overlayManager.remove(pillarOverlay);
 
 		// shutDown runs off the client thread; the sprite map belongs to it.
 		final NativeHealthBarHider<SpritePixels> hider = healthBarHider;
@@ -267,7 +307,57 @@ public class CombatVitalsPlugin extends Plugin
 		opponent = null;
 		combat.clear();
 		clearSkilling();
+		session.clear();
 		stockPlugin = null;
+		statusBarsPlugin = null;
+		statusBars = SidePillars.StatusBars.OFF;
+	}
+
+	private Plugin findPlugin(String name)
+	{
+		return pluginManager.getPlugins().stream()
+			.filter(p -> name.equals(p.getName()))
+			.findFirst()
+			.orElse(null);
+	}
+
+	/** Status Bars as last read: whether it is on, which pillars it draws, and its width. */
+	SidePillars.StatusBars statusBars()
+	{
+		return statusBars;
+	}
+
+	/**
+	 * Reads Status Bars' own settings through the config manager, the
+	 * sanctioned way to see another plugin's settings: on or off, its two bar
+	 * modes (a bar set to Disabled leaves that pillar free), and its width.
+	 * Unset keys are its defaults: Hitpoints, Prayer, 20.
+	 */
+	private void readStatusBars()
+	{
+		if (config.pillarMode() == PillarMode.OFF || statusBarsPlugin == null
+			|| !pluginManager.isPluginEnabled(statusBarsPlugin))
+		{
+			statusBars = SidePillars.StatusBars.OFF;
+			return;
+		}
+
+		final String left = configManager.getConfiguration(STATUS_BARS_GROUP, "leftBarMode");
+		final String right = configManager.getConfiguration(STATUS_BARS_GROUP, "rightBarMode");
+		final Integer width = configManager.getConfiguration(STATUS_BARS_GROUP, "barWidth", Integer.class);
+		statusBars = new SidePillars.StatusBars(true, !STATUS_BARS_DISABLED.equals(left),
+			!STATUS_BARS_DISABLED.equals(right), width == null ? SidePillars.WIDTH : width);
+	}
+
+	/** "Reset session" is a tick box that unticks itself once the counts are zeroed. */
+	@Subscribe
+	public void onConfigChanged(ConfigChanged event)
+	{
+		if (CombatVitalsConfig.GROUP.equals(event.getGroup()) && config.skillingSessionReset())
+		{
+			session.reset();
+			configManager.setConfiguration(CombatVitalsConfig.GROUP, "skillingSessionReset", false);
+		}
 	}
 
 	@Subscribe
@@ -282,6 +372,9 @@ public class CombatVitalsPlugin extends Plugin
 				boostTimer.anchorLogin(client.getTickCount());
 				break;
 			case LOGIN_SCREEN:
+				// Logging out ends the session's counts; a hop does not.
+				session.clear();
+				// fall through
 			case HOPPING:
 				opponent = null;
 				combat.clear();
@@ -307,8 +400,11 @@ public class CombatVitalsPlugin extends Plugin
 		skilling.clear();
 		objectSkilling.forget();
 		objectBadge = false;
+		objectSpot = null;
+		idleBadge.clear();
 		clickedNpc = null;
 		clickedNpcSkill = null;
+		gearWarning = null;
 		inventoryCatches.clear();
 		boosts.clear();
 		boostTimer.clear();
@@ -417,6 +513,7 @@ public class CombatVitalsPlugin extends Plugin
 		final int boosted = event.getBoostedLevel();
 
 		activityAlerts.xp(skill, event.getXp());
+		session.xp(skill, event.getXp(), System.currentTimeMillis());
 
 		final BoostTracker.Change change = boosts.observe(skill, real, boosted);
 		if ((change == BoostTracker.Change.DROP || change == BoostTracker.Change.EXPIRED)
@@ -468,6 +565,7 @@ public class CombatVitalsPlugin extends Plugin
 			{
 				clickedNpc = npc;
 				clickedNpcSkill = SkillingActions.forOption(option, Text.removeTags(event.getMenuTarget()));
+				checkFishingGear(npc, option, clickedNpcSkill);
 			}
 			return;
 		}
@@ -483,6 +581,58 @@ public class CombatVitalsPlugin extends Plugin
 			// Walking off a tree clears its badge at once, no linger.
 			endObjectBadge();
 		}
+	}
+
+	/**
+	 * A fishing option clicked without the tool, bait or level it needs is
+	 * said on the badge at once, rather than after the game's dialog. Only
+	 * read: the click goes through unchanged. Any NPC click replaces the last
+	 * warning, so fetching the rod and clicking again clears it.
+	 */
+	private void checkFishingGear(NPC npc, String option, Skill skill)
+	{
+		gearWarning = null;
+		if (skill != Skill.FISHING || !config.skillingGearWarning())
+		{
+			return;
+		}
+
+		final List<FishingCatches.Fish> fish = FishingCatches.forOption(FishingSpot.findSpot(npc.getId()), option);
+		// BRUT_FISHING_S is Barbarian Training's barehanded stage. What each
+		// value means is not published, so any progress counts as trained:
+		// that can only hide a warning, never show a wrong one.
+		final FishingGear.Kit kit = new FishingGear.Kit(carriedItemNames(),
+			client.getVarbitValue(VarbitID.BRUT_FISHING_S) > 0, client.getBoostedSkillLevel(Skill.FISHING));
+		gearWarning = FishingGear.text(FishingGear.missing(option, fish, kit));
+		gearWarningAt = System.currentTimeMillis();
+	}
+
+	/** The names of everything in the inventory and worn, read on the click. */
+	private List<String> carriedItemNames()
+	{
+		final List<String> names = new ArrayList<>();
+		for (int containerId : new int[] {InventoryID.INV, InventoryID.WORN})
+		{
+			final ItemContainer container = client.getItemContainer(containerId);
+			if (container == null)
+			{
+				continue;
+			}
+			for (Item item : container.getItems())
+			{
+				if (item.getId() > 0 && item.getQuantity() > 0)
+				{
+					names.add(client.getItemDefinition(item.getId()).getName());
+				}
+			}
+		}
+		return names;
+	}
+
+	/** The gear warning while it is fresh, or null. */
+	private String gearWarning(long now)
+	{
+		return gearWarning != null && now - gearWarningAt < GEAR_WARNING_MILLIS ? gearWarning : null;
 	}
 
 	/** Drops an object badge at once, and any object waiting for its swing. */
@@ -534,6 +684,8 @@ public class CombatVitalsPlugin extends Plugin
 		// so take the larger side both ways and let REACH absorb the rest.
 		final WorldPoint at = WorldPoint.fromScene(view, event.getParam0(), event.getParam1(), view.getPlane());
 		final int size = Math.max(composition.getSizeX(), composition.getSizeY());
+		objectSpot = at;
+		objectSpotSize = size;
 		objectSkilling.clicked(skill, at.getX(), at.getY(), at.getPlane(), size, size, client.getTickCount());
 	}
 
@@ -600,6 +752,8 @@ public class CombatVitalsPlugin extends Plugin
 		if (fish != null)
 		{
 			skilling.caught(fish.getItemId());
+			// A catch is the proof the gear was there after all.
+			gearWarning = null;
 		}
 	}
 
@@ -853,6 +1007,7 @@ public class CombatVitalsPlugin extends Plugin
 		seedBoosts();
 		tickBoostTimer();
 		tickAlerts();
+		readStatusBars();
 		readout = buildReadout();
 		selfReadout = buildSelfReadout();
 		skillingReadout = buildSkillingReadout();
@@ -933,8 +1088,10 @@ public class CombatVitalsPlugin extends Plugin
 			{
 				boosts.seed(skill, client.getBoostedSkillLevel(skill));
 			}
-			// The alerts' experience baseline; a repeat of a known value is no gain.
+			// The alerts' and session's experience baseline; a repeat of a
+			// known value is no gain.
 			activityAlerts.xp(skill, client.getSkillExperience(skill));
+			session.xp(skill, client.getSkillExperience(skill), System.currentTimeMillis());
 		}
 		lastSpecEnergy = client.getVarpValue(VarPlayerID.SA_ENERGY);
 		boostsSeeded = true;
@@ -960,20 +1117,54 @@ public class CombatVitalsPlugin extends Plugin
 	 * The skilling badge. Only while the interaction is not a fight: a hit
 	 * landing on the held NPC promotes it to an opponent, and the health bar
 	 * takes over. The NPC decides whether the badge is up and what it can
-	 * catch; it is not where the badge is drawn.
+	 * catch, and is where the badge goes only with "Over the spot".
+	 *
+	 * Once the work stops the badge stays as "Not fishing" ({@link IdleBadge})
+	 * for as long as the idle setting says, until another activity or a fight.
 	 */
 	private SkillingReadout buildSkillingReadout()
 	{
-		final Skill skill = skilling.skill();
-		final NPC target = skillingTarget;
-		if (!config.skillingEnabled() || skill == null || (target == null && !objectBadge)
-			|| combat.showTarget())
+		final long now = System.currentTimeMillis();
+		final boolean fighting = combat.inCombat(Instant.now(), timeout());
+		final Skill active = skillingTarget != null || objectBadge ? skilling.skill() : null;
+		idleBadge.tick(active, fighting, now);
+
+		if (badgeHidden(fighting))
 		{
 			return null;
 		}
 
-		final int tick = client.getTickCount();
-		final int real = client.getRealSkillLevel(skill);
+		if (active != null)
+		{
+			return skillShown(active) ? activeReadout(active, now) : null;
+		}
+
+		final Skill idle = idleBadge.idleSkill(config.skillingIdleMode(), config.skillingIdleSeconds(), now);
+		if (idle != null && skillShown(idle))
+		{
+			return baseReadout(idle, now).idle(true).build();
+		}
+		return gearOnlyReadout(now);
+	}
+
+	/**
+	 * Clicking Bait without a rod usually never starts fishing at all, so
+	 * with no badge up the warning brings one up of its own.
+	 */
+	private SkillingReadout gearOnlyReadout(long now)
+	{
+		return gearWarning(now) != null && skillShown(Skill.FISHING) ? baseReadout(Skill.FISHING, now).build() : null;
+	}
+
+	/** Off, a fight with a target (its health bar takes over), or any combat with Hide during combat. */
+	private boolean badgeHidden(boolean fighting)
+	{
+		return !config.skillingEnabled() || combat.showTarget() || (fighting && config.skillingHideInCombat());
+	}
+
+	/** The badge while working: the shared rows plus the boost, spec, warning, catches and spot. */
+	private SkillingReadout activeReadout(Skill skill, long now)
+	{
 		final int boosted = client.getBoostedSkillLevel(skill);
 
 		int specPercent = -1;
@@ -983,21 +1174,84 @@ public class CombatVitalsPlugin extends Plugin
 			specPercent = client.getVarpValue(VarPlayerID.SA_ENERGY) / 10;
 		}
 
-		return new SkillingReadout(
-			skill,
-			real,
-			boosted,
-			config.skillingBoostTimer() ? ticksUntilDrop : -1,
-			boostTimer.cycleLength(),
-			boostTimer.isConfirmed(),
-			specPercent,
-			config.skillingBoostSource() ? skilling.source() : null,
-			skilling.warning(tick),
-			XpProgress.of(client.getSkillExperience(skill)),
-			catches(skill, target, boosted),
-			System.currentTimeMillis(),
-			inventoryFree() < 0 ? -1 : InventoryFill.fraction(inventoryFilling, inventoryEmpty),
-			inventoryFree());
+		final NPC target = skillingTarget;
+		return baseReadout(skill, now)
+			.ticksUntilDrop(config.skillingBoostTimer() ? ticksUntilDrop : -1)
+			.cycleLength(boostTimer.cycleLength())
+			.timerConfirmed(boostTimer.isConfirmed())
+			.specPercent(specPercent)
+			.source(config.skillingBoostSource() ? skilling.source() : null)
+			.warning(skilling.warning(client.getTickCount()))
+			.catches(catches(skill, target, boosted))
+			.spotNpc(target)
+			.spotTile(objectBadge ? objectSpot : null)
+			.spotSize(objectSpotSize)
+			.build();
+	}
+
+	/** What the badge shows working or idle: level, colour, and the XP, session and inventory rows. */
+	private SkillingReadout.SkillingReadoutBuilder baseReadout(Skill skill, long now)
+	{
+		final XpProgress xp = XpProgress.of(client.getSkillExperience(skill));
+		final int free = inventoryFree();
+		return SkillingReadout.builder()
+			.skill(skill)
+			.real(client.getRealSkillLevel(skill))
+			.boosted(client.getBoostedSkillLevel(skill))
+			.colour(skillColour(skill))
+			.gearText(skill == Skill.FISHING ? gearWarning(now) : null)
+			.header(config.skillingShowHeader())
+			.xp(xp)
+			.xpText(config.skillingShowXp() ? xp.text(config.skillingXpDisplay()) : null)
+			.sessionText(SkillingText.session(skill, session.actions(skill), session.xpPerHour(skill, now),
+				session.actionsPerHour(skill, now), config.skillingSessionCount(), config.skillingRates()))
+			.tickMillis(now)
+			.inventoryFill(free < 0 ? -1 : InventoryFill.fraction(inventoryFilling, inventoryEmpty))
+			.inventoryLabel(InventoryFill.label(free, config.skillingInventoryCount()));
+	}
+
+	/** The per-skill switches in Skilling badge. A skill without one is always shown. */
+	private boolean skillShown(Skill skill)
+	{
+		switch (skill)
+		{
+			case FISHING:
+				return config.skillingFishing();
+			case WOODCUTTING:
+				return config.skillingWoodcutting();
+			case MINING:
+				return config.skillingMining();
+			case THIEVING:
+				return config.skillingThieving();
+			case RUNECRAFT:
+				return config.skillingRunecraft();
+			case HUNTER:
+				return config.skillingHunter();
+			default:
+				return true;
+		}
+	}
+
+	/** The user's colour for the skill, which defaults to {@link SkillColours}. */
+	private Color skillColour(Skill skill)
+	{
+		switch (skill)
+		{
+			case FISHING:
+				return config.skillingFishingColour();
+			case WOODCUTTING:
+				return config.skillingWoodcuttingColour();
+			case MINING:
+				return config.skillingMiningColour();
+			case THIEVING:
+				return config.skillingThievingColour();
+			case RUNECRAFT:
+				return config.skillingRunecraftColour();
+			case HUNTER:
+				return config.skillingHunterColour();
+			default:
+				return SkillColours.of(skill);
+		}
 	}
 
 	/** Free slots for the badge's inventory line, or -1 when the line is off or the inventory unread. */
@@ -1129,7 +1383,12 @@ public class CombatVitalsPlugin extends Plugin
 
 		final FishingSpot spot = FishingSpot.findSpot(target.getId());
 		final List<FishingCatches.Fish> all = FishingCatches.forOption(spot, skilling.method());
-		return FishingCatches.options(all, boosted, skilling.lastCatch());
+		final List<FishingCatches.Catch> options = FishingCatches.options(all, boosted, skilling.lastCatch());
+		if (config.skillingLockedFish() == LockedFish.HIDE)
+		{
+			options.removeIf(c -> !c.isCatchable());
+		}
+		return options;
 	}
 
 	/** The wielded weapon's name, or null with nothing in the slot. */
