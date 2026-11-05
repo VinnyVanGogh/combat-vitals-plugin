@@ -213,6 +213,38 @@ Not done, deliberately: no walking, clicking or queuing of any kind; the path
 is drawn by Shortest Path and walked by the player. No route into the
 Wilderness: those locations are left out of the bundled list.
 
+The spot moving is read from the spot NPC's own tile changing between ticks
+(1.1.0): public scene state, the way the base client `fishing` plugin resets
+a minnow spot when `npc.getWorldLocation()` changes.
+
+### Hide game health bar, compliance (added 2026-11-04, for the 1.1.0 Hub PR)
+
+To quote in the Plugin Hub PR:
+
+> **Hide game health bar** (`hideGameHealthBar`, **off by default**). Method:
+> transparent sprite overrides. The 22 standard health bar sprites
+> (`StandardHealth30` to `StandardHealth160`, front and back) are replaced in
+> `client.getSpriteOverrides()` with fully transparent sprites of the same
+> size, then `client.resetHealthBarCaches()`. This is the same map and the
+> same ids the base client's Interface Styles plugin uses for its "HD health
+> bars" (`InterfaceStylesPlugin`, `HealthbarOverride`); Interface Styles'
+> sprites are remembered and handed back when the option is turned off or the
+> plugin stops. No hooks, no draw listeners, no reflection; hitsplats, head
+> icons and overhead chat use other sprites and are untouched. The readout the
+> plugin draws over your target and over you replaces the bar's information.
+
+| Element | Nearest rule | Precedent | Verdict |
+|---|---|---|---|
+| Blank sprites over the standard health bar ids, restored on toggle-off and shutdown | Interface Restrictions: nothing is moved, resized or made click-through; a cosmetic sprite swap of a non-interactive overlay | Base client Interface Styles overrides the same 22 ids for HD health bars; Entity Hider hides far more | Allowed |
+
+Accurate scope, stated so the PR does not over-claim: the client looks
+sprites up by id alone, so the override hides **every** standard health bar
+on screen, not only the ones the plugin redraws (`docs/native-hp-bar.md`,
+"Can a plugin hide only the health bar?": not per actor). The plugin redraws
+your target's health and your own; other actors' bars are hidden while the
+option is on. That is why it is off by default and described as global in
+its setting text.
+
 ---
 
 ## Phase 0.5, Measure before building

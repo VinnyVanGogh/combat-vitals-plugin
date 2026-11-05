@@ -254,7 +254,7 @@ the case that broke every earlier iteration of this overlay.
 | Bar background | Opaque black | Fill behind the health bar. Lower the alpha to let the game's bar show through |
 | Overhead position | Top | Top, Middle or Bottom relative to the target |
 | Overhead offset | 0 | Extra height in pixels, ±200 |
-| Hide game health bar | On | Hide the game's own health bar over everyone, yours included |
+| Hide game health bar | Off | Hide the game's own health bar over everyone, yours included |
 | Chat above readout | On | While the readout or skilling badge is over you or your opponent, take the game's overhead chat line off the moment it is posted and draw it above the readout instead, so it shows once and never under the readout. Off: the game draws its own line and the plugin adds nothing. A skilling NPC is never touched |
 
 ### Targets
@@ -314,6 +314,7 @@ A fish above your level is dimmed with `Lv 15` over it in red; hover it for
 | Fishing colour … Hunter colour | The palette | Per-skill colour overrides |
 | Warn if missing gear | On | Click a fishing option without its tool, bait or level and the badge says `Needs: Fishing rod + bait` in red for 8 seconds, before the game's dialog. Worn or carried tools count, as does barehanded harpooning after Barbarian Training. The click itself is never changed |
 | Time to level | On | With XP and actions per hour on, how long the next level takes at this session's rate, `lvl 18 in 6m`. Not shown before a rate is known, or at 99 |
+| Badge layout | Full | Full: each session stat in a column as wide as itself, the row wrapping to two lines when it would be wider than the rest of the badge. Compact: one short line, `24 caught \| 10.6k xp/h` |
 
 The session row's stats sit in equal columns with a faint rule between, each
 in its own soft shade of the skill's colour (`SessionRow`).
