@@ -73,10 +73,18 @@ class PillarOverlay extends Overlay
 			xpFill.reset();
 			inventoryFill.reset();
 			draw(graphics, pillars.get(config.pillarCombatSide()), targetPillar(target), combatFill, now);
-			return null;
 		}
+		else
+		{
+			combatFill.reset();
+			drawSkilling(graphics, pillars, skilling, now);
+		}
+		return null;
+	}
 
-		combatFill.reset();
+	/** XP on its side, inventory on the other. */
+	private void drawSkilling(Graphics2D graphics, SidePillars.Layout pillars, SkillingReadout skilling, long now)
+	{
 		if (skilling.getSkill() != lastSkill)
 		{
 			// Another skill's XP is not a change to glide through.
@@ -90,7 +98,6 @@ class PillarOverlay extends Overlay
 		{
 			draw(graphics, pillars.get(xpSide.other()), inventory, inventoryFill, now);
 		}
-		return null;
 	}
 
 	private void resetFills()
