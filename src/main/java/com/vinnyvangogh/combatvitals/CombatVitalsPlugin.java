@@ -540,20 +540,26 @@ public class CombatVitalsPlugin extends Plugin
 		}
 		else
 		{
-			// Keep the opponent: the health bar lingers after combat and the
-			// readout should too. The timeout below retires it.
-			final Instant now = Instant.now();
-			combat.disengage(now);
-			// An object badge follows the animation, not the interaction: the
-			// end of an earlier NPC interaction must not start its linger.
-			if (skillingTarget != null)
-			{
-				skilling.disengage(now);
-			}
-			if (spotPathing != null)
-			{
-				spotPathing.interactionEnded();
-			}
+			interactionEnded();
+		}
+	}
+
+	/** The player stopped interacting with anything. */
+	private void interactionEnded()
+	{
+		// Keep the opponent: the health bar lingers after combat and the
+		// readout should too. The timeout below retires it.
+		final Instant now = Instant.now();
+		combat.disengage(now);
+		// An object badge follows the animation, not the interaction: the
+		// end of an earlier NPC interaction must not start its linger.
+		if (skillingTarget != null)
+		{
+			skilling.disengage(now);
+		}
+		if (spotPathing != null)
+		{
+			spotPathing.interactionEnded();
 		}
 	}
 

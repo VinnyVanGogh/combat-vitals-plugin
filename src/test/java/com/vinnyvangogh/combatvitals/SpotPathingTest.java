@@ -275,12 +275,7 @@ public class SpotPathingTest
 		// The game clears the interaction first, then the spot despawns.
 		pathing.interactionEnded();
 		pathing.despawned(FISHED);
-		pathing.interactionEnded();
-		pathing.tick(picker);
-		pathing.tick(picker);
-
-		assertEquals(1, picker.picks);
-		assertEquals(1, router.routes.size());
+		assertOneSearchOverTwoTicks();
 	}
 
 	@Test
@@ -290,6 +285,11 @@ public class SpotPathingTest
 
 		pathing.despawned(FISHED);
 		pathing.interactionEnded();
+		assertOneSearchOverTwoTicks();
+	}
+
+	private void assertOneSearchOverTwoTicks()
+	{
 		pathing.tick(picker);
 		pathing.tick(picker);
 
