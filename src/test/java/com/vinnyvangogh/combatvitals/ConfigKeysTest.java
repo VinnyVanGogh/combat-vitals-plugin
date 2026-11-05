@@ -5,7 +5,9 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import java.awt.Color;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -38,6 +40,62 @@ public class ConfigKeysTest
 		{
 			assertNotNull(method.getName() + " has no default", method.invoke(NEW_PROFILE));
 		}
+	}
+
+	/**
+	 * RuneLite's ConfigManager serves settings through a java.lang.reflect.Proxy
+	 * of this interface, generated outside the plugin's package. A setting whose
+	 * type is package-private cannot be returned from that proxy: reading it
+	 * throws IllegalAccessError on the client thread, which black-screens the
+	 * game (FishingSpotPath, Board's in-game test 2026-11-04). Same proxy, same
+	 * call, every setting.
+	 */
+	@Test
+	public void everySettingCanBeReadThroughAConfigProxy()
+	{
+		final CombatVitalsConfig proxy = (CombatVitalsConfig) Proxy.newProxyInstance(
+			CombatVitalsConfig.class.getClassLoader(),
+			new Class<?>[]{CombatVitalsConfig.class},
+			ConfigKeysTest::storedValue);
+		for (Method method : items())
+		{
+			try
+			{
+				method.invoke(proxy);
+			}
+			catch (ReflectiveOperationException | LinkageError e)
+			{
+				final Throwable cause = e instanceof InvocationTargetException ? e.getCause() : e;
+				throw new AssertionError(method.getName() + " cannot be read through the config proxy: " + cause, cause);
+			}
+		}
+	}
+
+	/** A value of the setting's own type, as ConfigManager hands back a stored one. */
+	private static Object storedValue(Object proxy, Method method, Object[] args)
+	{
+		final Class<?> type = method.getReturnType();
+		if (type.isEnum())
+		{
+			return type.getEnumConstants()[0];
+		}
+		if (type == boolean.class)
+		{
+			return false;
+		}
+		if (type == int.class)
+		{
+			return 0;
+		}
+		if (type == double.class)
+		{
+			return 0d;
+		}
+		if (type == Color.class)
+		{
+			return Color.WHITE;
+		}
+		return null;
 	}
 
 	@Test
