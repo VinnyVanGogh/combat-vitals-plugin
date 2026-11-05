@@ -1855,5 +1855,11 @@ public class CombatVitalsPlugin extends Plugin
 			this.exactHealth = exactHealth;
 			this.hiscore = hiscore;
 		}
+
+		/** The text both overlays draw, in this actor's display, or null for nothing. */
+		String text(boolean decimals)
+		{
+			return HealthReadout.text(range, maxHealth, ratio, scale, mode, decimals, exactHealth);
+		}
 	}
 }

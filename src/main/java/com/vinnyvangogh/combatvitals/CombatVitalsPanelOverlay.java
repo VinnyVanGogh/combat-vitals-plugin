@@ -86,9 +86,7 @@ class CombatVitalsPanelOverlay extends OverlayPanel
 			return null;
 		}
 
-		final String text = HealthReadout.text(readout.getRange(), readout.getMaxHealth(),
-			readout.getRatio(), readout.getScale(), readout.getMode(), config.percentageDecimals(),
-			readout.getExactHealth());
+		final String text = readout.text(config.percentageDecimals());
 		if (text == null)
 		{
 			return null;
