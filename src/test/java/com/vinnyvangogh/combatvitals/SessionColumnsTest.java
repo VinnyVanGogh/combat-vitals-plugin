@@ -12,7 +12,7 @@ public class SessionColumnsTest
 	@Test
 	public void columnsAreSizedToTheirOwnCellNotTheWidest()
 	{
-		final int[][] lines = SessionColumns.lines(EVERY_STAT, 400, true);
+		final int[][] lines = SessionColumns.lines(EVERY_STAT.length, true, false);
 
 		assertEquals(1, lines.length);
 		// The old layout made every column the widest's 96: 384 wide.
@@ -20,53 +20,69 @@ public class SessionColumnsTest
 	}
 
 	@Test
-	public void aRowWiderThanTheBadgeWrapsToTwoLines()
+	public void fullPutsTheCountOnItsOwnLineAndTheRatesUnderIt()
 	{
-		final int[][] lines = SessionColumns.lines(EVERY_STAT, 160, true);
+		final int[][] lines = SessionColumns.lines(EVERY_STAT.length, true, true);
 
 		assertEquals(2, lines.length);
-		assertArrayEquals(new int[]{0, 2}, lines[0]);
-		assertArrayEquals(new int[]{2, 4}, lines[1]);
-		assertEquals("the wider line is as narrow as a split can make it", 154,
-			SessionColumns.width(EVERY_STAT, lines));
+		assertArrayEquals(new int[]{0, 1}, lines[0]);
+		assertArrayEquals(new int[]{1, 4}, lines[1]);
+		assertEquals("the rates line is the wider", 188, SessionColumns.width(EVERY_STAT, lines));
+	}
+
+	/**
+	 * Board's screenshots, 2026-11-06: woodcutting and thieving put "xp/h" on
+	 * its own line and mining and fishing did not, because the old rule
+	 * wrapped by width. The split no longer looks at any width, so it is
+	 * the same for every skill.
+	 */
+	@Test
+	public void theSplitIsTheSameWhateverTheWidths()
+	{
+		for (int cells = 2; cells <= 4; cells++)
+		{
+			final int[][] lines = SessionColumns.lines(cells, true, true);
+			assertEquals(2, lines.length);
+			assertArrayEquals(new int[]{0, 1}, lines[0]);
+			assertArrayEquals(new int[]{1, cells}, lines[1]);
+		}
+	}
+
+	@Test
+	public void theCountAloneIsOneLine()
+	{
+		final int[][] lines = SessionColumns.lines(1, true, true);
+
+		assertEquals(1, lines.length);
+		assertArrayEquals(new int[]{0, 1}, lines[0]);
+	}
+
+	@Test
+	public void ratesWithoutTheCountStayOnOneLine()
+	{
+		final int[][] lines = SessionColumns.lines(3, false, true);
+
+		assertEquals(1, lines.length);
+		assertArrayEquals(new int[]{0, 3}, lines[0]);
 	}
 
 	@Test
 	public void compactNeverWraps()
 	{
-		final int[][] lines = SessionColumns.lines(EVERY_STAT, 100, false);
+		final int[][] lines = SessionColumns.lines(EVERY_STAT.length, true, false);
 
 		assertEquals(1, lines.length);
 		assertArrayEquals(new int[]{0, 4}, lines[0]);
 	}
 
 	@Test
-	public void aSessionRowWithNothingElseOnTheBadgeNeverWraps()
-	{
-		assertEquals(1, SessionColumns.lines(EVERY_STAT, 0, true).length);
-	}
-
-	@Test
-	public void oneCellCannotWrap()
-	{
-		assertEquals(1, SessionColumns.lines(new int[]{300}, 100, true).length);
-	}
-
-	@Test
 	public void noCellsIsOneEmptyLine()
 	{
-		final int[][] lines = SessionColumns.lines(new int[0], 100, true);
+		final int[][] lines = SessionColumns.lines(0, false, true);
 
 		assertEquals(1, lines.length);
 		assertEquals(0, SessionColumns.width(new int[0], lines));
 		assertEquals(0, SessionColumns.fit(new int[0], lines[0], 100).length);
-	}
-
-	@Test
-	public void aRowThatFitsExactlyStaysOnOneLine()
-	{
-		assertEquals(1, SessionColumns.lines(EVERY_STAT, 284, true).length);
-		assertEquals(2, SessionColumns.lines(EVERY_STAT, 283, true).length);
 	}
 
 	@Test

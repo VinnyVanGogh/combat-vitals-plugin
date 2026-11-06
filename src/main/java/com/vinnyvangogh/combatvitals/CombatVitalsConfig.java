@@ -231,9 +231,10 @@ public interface CombatVitalsConfig extends Config
 		keyName = "hideGameHealthBar",
 		name = "Hide game health bar",
 		description =
-			"Hide the game's own green and red health bar over every player and NPC, yours included, "
-				+ "so it no longer jumps up when someone talks. Hitsplats and overhead chat stay. "
-				+ "Overrides Interface Styles' HD health bars while on, and gives them back when off.",
+			"Replace the game's own green and red health bar with the plugin's: your target and you get the "
+				+ "readout, and every other player and NPC that shows a bar gets a plain one drawn in the "
+				+ "game's place, so no bar goes missing. Hitsplats and overhead chat stay. Overrides "
+				+ "Interface Styles' HD health bars while on, and gives them back when off.",
 		section = displaySection,
 		position = 12
 	)
@@ -954,16 +955,31 @@ public interface CombatVitalsConfig extends Config
 		name = "Next spot path",
 		description =
 			"Find the nearest fishing spot of the same kind (net/bait, lure/bait, cage/harpoon...) that you can "
-				+ "catch something at, and send it to the Shortest Path plugin; the path clears when you start "
-				+ "fishing again. 'On spot move' does it when your spot moves; either way, right-clicking the badge "
-				+ "offers 'Path to next spot'. With no spot of that kind nearby, the nearest known location is "
-				+ "used. Without Shortest Path installed, the next spot is highlighted instead.",
+				+ "catch something at, and mark it: its tile outlined, a line from you to it, and an arrow at "
+				+ "the screen's edge while it is off screen. The mark stays until you start fishing again. "
+				+ "'On spot move' does it when your spot moves; either way, right-clicking the badge offers "
+				+ "'Path to next spot'. With no spot of that kind nearby, the nearest known location is used.",
 		section = skillingSection,
 		position = 7
 	)
 	default FishingSpotPath fishingSpotPath()
 	{
 		return FishingSpotPath.OFF;
+	}
+
+	@ConfigItem(
+		keyName = "fishingSpotShortestPath",
+		name = "Next spot: Shortest Path",
+		description =
+			"Also send the next spot to the Shortest Path plugin, when it is installed and on, for a walking "
+				+ "path. Shortest Path ends its own path once you are within its 'Finish distance' (5 tiles by "
+				+ "default), which is why the plugin's own mark is drawn as well.",
+		section = skillingSection,
+		position = 8
+	)
+	default boolean fishingSpotShortestPath()
+	{
+		return true;
 	}
 
 	@ConfigItem(

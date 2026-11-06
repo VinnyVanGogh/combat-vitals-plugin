@@ -100,7 +100,7 @@ public class FramePathBenchmarkTest
 		final long start = System.nanoTime();
 		for (int i = 0; i < FRAMES * 100; i++)
 		{
-			final int[][] lines = SessionColumns.lines(widths, 160, true);
+			final int[][] lines = SessionColumns.lines(widths.length, true, true);
 			for (int[] line : lines)
 			{
 				sink += SessionColumns.fit(widths, line, SessionColumns.width(widths, lines))[0];

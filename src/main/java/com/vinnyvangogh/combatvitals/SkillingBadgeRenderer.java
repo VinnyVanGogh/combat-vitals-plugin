@@ -10,10 +10,13 @@ import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import javax.inject.Inject;
 import net.runelite.api.Client;
 import net.runelite.api.Point;
+import net.runelite.api.Skill;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.ui.FontManager;
@@ -62,6 +65,12 @@ class SkillingBadgeRenderer
 
 	/** The faint rule between the session row's columns. */
 	private static final Color SESSION_RULE = new Color(255, 255, 255, 60);
+
+	/** How opaque the backing behind a dark session icon is. */
+	private static final int ICON_BACKING_ALPHA = 200;
+
+	/** Per skill, whether its icon needs a backing; icons never change. Client thread only. */
+	private final Map<Skill, Boolean> darkIcons = new EnumMap<>(Skill.class);
 
 	private final Client client;
 	private final CombatVitalsConfig config;
@@ -161,11 +170,13 @@ class SkillingBadgeRenderer
 		final int lineHeight = small.getAscent() + small.getDescent() + PAD_Y * 2;
 		final Measured measured = measure(readout, small);
 
-		// Every row but the session row sets the badge's width; the session
-		// row's columns carry their own padding and wrap to fit it.
+		// The session row's columns carry their own padding; in the Full
+		// layout the count and the rates take a line each, for every skill.
 		final int others = PAD_X * 2 + max(measured.gear,
 			readout.isHeader() ? iconWidth + metrics.stringWidth(text) : 0, measured.xp, measured.inv);
-		final int[][] lines = SessionColumns.lines(measured.cells, others > PAD_X * 2 ? others : 0,
+		final List<SessionRow.Cell> cells = readout.getSessionCells();
+		final int[][] lines = SessionColumns.lines(cells.size(),
+			!cells.isEmpty() && cells.get(0).getKind() == SessionRow.Kind.COUNT,
 			config.skillingBadgeLayout() == BadgeLayout.FULL);
 		final int width = Math.max(SessionColumns.width(measured.cells, lines), others);
 
@@ -273,8 +284,16 @@ class SkillingBadgeRenderer
 		final int x = cell.x + (cell.width - iconWidth - graphics.getFontMetrics().stringWidth(c.getText())) / 2;
 		if (icon != null)
 		{
-			graphics.drawImage(icon, x, cell.y + (cell.height - SESSION_ICON) / 2, iconWidth - ICON_GAP, SESSION_ICON,
-				null);
+			final int top = cell.y + (cell.height - SESSION_ICON) / 2;
+			if (darkIcon(readout.getSkill(), icon))
+			{
+				// A light backing in the skill's own shade, so a near-black
+				// icon (Thieving's mask) shows on the dark row.
+				final Color tint = SessionRow.tint(readout.getColour(), SessionRow.Kind.COUNT);
+				graphics.setColor(new Color(tint.getRed(), tint.getGreen(), tint.getBlue(), ICON_BACKING_ALPHA));
+				graphics.fillRoundRect(x - 1, top - 1, iconWidth - ICON_GAP + 2, SESSION_ICON + 2, 4, 4);
+			}
+			graphics.drawImage(icon, x, top, iconWidth - ICON_GAP, SESSION_ICON, null);
 		}
 		OverlayUtil.renderTextLocation(graphics, new Point(x + iconWidth, baseline), c.getText(),
 			SessionRow.tint(readout.getColour(), c.getKind()));
@@ -289,14 +308,29 @@ class SkillingBadgeRenderer
 	{
 		if (readout != measuredFor || !small.getFont().equals(measuredFont))
 		{
-			final String invLabel = readout.getInventoryLabel();
 			measured = new Measured(sessionCellWidths(small, readout), width(small, readout.getGearText()),
-				width(small, readout.getXpText()),
-				(invLabel == null ? 0 : small.stringWidth(invLabel)) + catchesWidth(readout.getCatches(), small));
+				width(small, readout.getXpText()), inventoryWidth(small, readout));
 			measuredFor = readout;
 			measuredFont = small.getFont();
 		}
 		return measured;
+	}
+
+	/**
+	 * The inventory line's content: the label at its widest digits, a gap,
+	 * and the catch icons. The icons are drawn from the right edge, so this
+	 * space is theirs whatever the count: at some counts the label used to
+	 * run into the first icon (Board's screenshots, 2026-11-06: "Inv 12/28
+	 * free", "14/28", "0/28").
+	 */
+	private int inventoryWidth(FontMetrics metrics, SkillingReadout readout)
+	{
+		final String label = readout.getInventoryLabel();
+		final int labelWidth = label == null ? 0 : InventoryLine.reservedWidth(label, metrics::charWidth,
+			metrics.stringWidth(label));
+		final List<FishingCatches.Catch> catches = readout.getCatches();
+		final int gap = label != null && !catches.isEmpty() ? InventoryLine.LABEL_GAP : 0;
+		return labelWidth + gap + catchesWidth(catches, metrics);
 	}
 
 	/** Each session cell's own width, the count's icon and the column padding included. */
@@ -312,6 +346,12 @@ class SkillingBadgeRenderer
 			widths[i] = icon + metrics.stringWidth(c.getText()) + PAD_X * 2;
 		}
 		return widths;
+	}
+
+	/** Whether this skill's icon is too dark for the session row ({@link IconTone}), worked out once per skill. */
+	private boolean darkIcon(Skill skill, BufferedImage icon)
+	{
+		return darkIcons.computeIfAbsent(skill, s -> IconTone.isDark(icon));
 	}
 
 	/** The count's skill icon at {@link #SESSION_ICON} high with the gap after it, or 0 without one. */
@@ -401,15 +441,17 @@ class SkillingBadgeRenderer
 
 		final FontMetrics metrics = graphics.getFontMetrics();
 		final int baseline = textBaseline(row, metrics);
-		int x = row.x + PAD_X;
 		if (label != null)
 		{
-			OverlayUtil.renderTextLocation(graphics, new Point(x, baseline), label, Color.WHITE);
-			x += metrics.stringWidth(label);
+			OverlayUtil.renderTextLocation(graphics, new Point(row.x + PAD_X, baseline), label, Color.WHITE);
 		}
 
+		// From the right edge, in the space measured for them, never after
+		// the label's drawn end.
+		final List<FishingCatches.Catch> catches = readout.getCatches();
+		int x = row.x + row.width - PAD_X - catchesWidth(catches, metrics);
 		final int iconTop = row.y + (row.height - FISH_ICON) / 2;
-		for (FishingCatches.Catch c : readout.getCatches())
+		for (FishingCatches.Catch c : catches)
 		{
 			x += ICON_GAP;
 			x += drawCatch(graphics, c, readout, x, iconTop, baseline, metrics);

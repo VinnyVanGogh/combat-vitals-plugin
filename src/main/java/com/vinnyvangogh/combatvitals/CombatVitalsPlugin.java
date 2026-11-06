@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 import javax.inject.Inject;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -140,15 +141,23 @@ public class CombatVitalsPlugin extends Plugin
 	@Inject
 	private NextSpotOverlay nextSpotOverlay;
 
+	/** Draws back every bar "Hide game health bar" takes off the game. */
+	@Inject
+	private GameHealthBarOverlay gameHealthBarOverlay;
+
 	/** Finds the next fishing spot and paths to or highlights it. Client thread only; null until started. */
 	private SpotPathing spotPathing;
 
 	/** The bundled fishing spot locations, read once at start-up. */
 	private List<NextFishingSpot.Spot> knownSpots = Collections.emptyList();
 
-	/** The next fishing spot to outline, when it could not go to Shortest Path. */
+	/**
+	 * The next fishing spot to mark, until the player fishes again. Marked
+	 * whether or not it also went to Shortest Path, which drops its own path
+	 * once the player is within its finish distance (5 tiles by default).
+	 */
 	@Getter
-	private volatile NPC highlightedSpot;
+	private volatile NextFishingSpot.Spot nextSpot;
 
 	/** Where the overlay drew the skilling badge in the latest frame, or null. */
 	private volatile Rectangle badgeBounds;
@@ -181,6 +190,9 @@ public class CombatVitalsPlugin extends Plugin
 	private NPC skillingTarget;
 
 	private final SkillingState skilling = new SkillingState();
+
+	/** Whether the player has clearly stopped working {@link #skillingTarget}: walked off, or a fishing spot left. */
+	private final SkillingStop skillingStop = new SkillingStop();
 
 	/** The tree, rock or stall being worked, when the badge is for an object. */
 	private final ObjectSkilling objectSkilling = new ObjectSkilling();
@@ -276,13 +288,14 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.add(skillingBadgeOverlay);
 		overlayManager.add(pillarOverlay);
 		overlayManager.add(nextSpotOverlay);
+		overlayManager.add(gameHealthBarOverlay);
 
 		knownSpots = KnownFishingSpots.load();
 		final ShortestPathBridge bridge = new ShortestPathBridge(
 			() -> pluginManager.getPlugins(),
 			p -> pluginManager.isPluginEnabled((Plugin) p),
 			ShortestPathBridge.clientThreadEventPoster(clientThread::invoke, eventBus::post));
-		spotPathing = new SpotPathing(config::fishingSpotPath, router(bridge));
+		spotPathing = new SpotPathing(config::fishingSpotPath, router(bridge, config::fishingSpotShortestPath));
 
 		stockPlugin = findPlugin(STOCK_PLUGIN_NAME);
 		statusBarsPlugin = findPlugin(STATUS_BARS_NAME);
@@ -318,6 +331,7 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.remove(skillingBadgeOverlay);
 		overlayManager.remove(pillarOverlay);
 		overlayManager.remove(nextSpotOverlay);
+		overlayManager.remove(gameHealthBarOverlay);
 
 		// shutDown runs off the client thread; the sprite map belongs to it.
 		final NativeHealthBarHider<SpritePixels> hider = healthBarHider;
@@ -402,15 +416,15 @@ public class CombatVitalsPlugin extends Plugin
 		}
 	}
 
-	/** Shortest Path as the pather sees it. */
-	private static SpotPathing.Router router(ShortestPathBridge bridge)
+	/** Shortest Path as the pather sees it: unavailable while the user has it switched off here. */
+	private static SpotPathing.Router router(ShortestPathBridge bridge, BooleanSupplier wanted)
 	{
 		return new SpotPathing.Router()
 		{
 			@Override
 			public boolean available()
 			{
-				return bridge.availability() == ShortestPathBridge.Availability.AVAILABLE;
+				return wanted.getAsBoolean() && bridge.availability() == ShortestPathBridge.Availability.AVAILABLE;
 			}
 
 			@Override
@@ -470,6 +484,7 @@ public class CombatVitalsPlugin extends Plugin
 		skillingTarget = null;
 		skillingReadout = null;
 		skilling.clear();
+		skillingStop.reset();
 		objectSkilling.forget();
 		objectBadge = false;
 		objectSpot = null;
@@ -488,7 +503,7 @@ public class CombatVitalsPlugin extends Plugin
 		inventoryEmpty = -1;
 		coinPouches = 0;
 		lastPosition = null;
-		highlightedSpot = null;
+		nextSpot = null;
 	}
 
 	@Subscribe
@@ -530,6 +545,7 @@ public class CombatVitalsPlugin extends Plugin
 			{
 				skillingTarget = (NPC) target;
 				skilling.engage(trained);
+				skillingStop.reset();
 				startedFishing(trained);
 			}
 			else
@@ -582,7 +598,7 @@ public class CombatVitalsPlugin extends Plugin
 		if (trained == Skill.FISHING && spotPathing != null)
 		{
 			spotPathing.fishingOn(FishingSpot.findSpot(skillingTarget.getId()), skilling.method(), skillingTarget);
-			highlightedSpot = null;
+			nextSpot = null;
 		}
 	}
 
@@ -1022,8 +1038,52 @@ public class CombatVitalsPlugin extends Plugin
 			return;
 		}
 
+		// A failed pickpocket stuns and hits you; that is the price of thieving,
+		// not a fight, and must not hide the badge (Board's in-game test,
+		// 2026-11-06). Anyone else on you is a fight: a stall's guard, a player.
+		// The scene is only searched for a hit on you while thieving.
+		final boolean thieving = onMe && thieving();
+		if (!ThievingHits.isFight(onMe, thieving, thieving && attackedByAnotherThan(self, skillingTarget)))
+		{
+			return;
+		}
+
 		final boolean onTarget = !onMe && actor == opponent && event.getHitsplat().isMine();
 		combat.hit(onTarget, Instant.now());
+	}
+
+	/** Pickpocketing an NPC or stealing from a stall, working or lingering. */
+	private boolean thieving()
+	{
+		return skilling.skill() == Skill.THIEVING && (skillingTarget != null || objectBadge);
+	}
+
+	/**
+	 * Pickpocketing or knocking out an NPC, which can stun and hit you, so your
+	 * health shows over the badge for as long as you are at it. A stall cannot
+	 * hit you; its guards can, and they are a fight.
+	 */
+	private boolean thievingFromNpc()
+	{
+		return skillingTarget != null && skilling.skill() == Skill.THIEVING;
+	}
+
+	/**
+	 * Whether anything but {@code except} that can fight is interacting with
+	 * you: an attackable NPC, or another player ({@link ThievingHits#otherAttacker}).
+	 */
+	private boolean attackedByAnotherThan(Player self, NPC except)
+	{
+		final WorldView view = client.getTopLevelWorldView();
+		if (view == null)
+		{
+			// Unknown: count it as a fight, as before.
+			return true;
+		}
+		return ThievingHits.<Actor>otherAttacker(view.npcs(), self, except, CombatVitalsPlugin::attackable,
+			Actor::getInteracting)
+			|| ThievingHits.<Actor>otherAttacker(view.players(), self, except, CombatVitalsPlugin::attackable,
+			Actor::getInteracting);
 	}
 
 	/**
@@ -1174,7 +1234,7 @@ public class CombatVitalsPlugin extends Plugin
 		skillingReadout = buildSkillingReadout();
 	}
 
-	/** Runs a due next-spot search, at most once a tick, and publishes what to outline. */
+	/** Runs a due next-spot search, at most once a tick, and publishes what to mark. */
 	private void tickSpotPathing()
 	{
 		if (spotPathing == null || client.getGameState() != GameState.LOGGED_IN)
@@ -1182,7 +1242,7 @@ public class CombatVitalsPlugin extends Plugin
 			return;
 		}
 		spotPathing.tick(this::pickSpot, CombatVitalsPlugin::spotTile);
-		highlightedSpot = (NPC) spotPathing.highlighted();
+		nextSpot = config.fishingSpotPath() == FishingSpotPath.OFF ? null : spotPathing.target();
 	}
 
 	/** Where a spot NPC stands: spots move by relocating, the same NPC on a new tile. */
@@ -1308,6 +1368,12 @@ public class CombatVitalsPlugin extends Plugin
 		}
 	}
 
+	/**
+	 * Ends the NPC badge: at once when the player has clearly stopped
+	 * ({@link SkillingStop}: walked off, or a fishing spot left for two
+	 * ticks), so "Not fishing" shows within a tick or two; otherwise after the
+	 * linger.
+	 */
 	private void expireSkillingTarget()
 	{
 		if (skillingTarget == null)
@@ -1318,10 +1384,26 @@ public class CombatVitalsPlugin extends Plugin
 		final Player self = client.getLocalPlayer();
 		final boolean stillOnTarget = self != null && self.getInteracting() == skillingTarget;
 
+		if (self != null && skillingStop.tick(stillOnTarget || clickedNpc != null, playerTile(self),
+			self.getAnimation() != -1, skilling.skill() == Skill.FISHING))
+		{
+			log.debug("Stopped {}: walked off or left the spot", skilling.skill());
+			skillingTarget = null;
+			skilling.release();
+			return;
+		}
+
 		if (skilling.expire(Instant.now(), timeout(), stillOnTarget))
 		{
 			skillingTarget = null;
 		}
+	}
+
+	/** The player's tile as {@link SpotPathing#tile}, or unknown. */
+	private static long playerTile(Player self)
+	{
+		final WorldPoint at = self.getWorldLocation();
+		return at == null ? SkillingStop.UNKNOWN : SpotPathing.tile(at.getX(), at.getY(), at.getPlane());
 	}
 
 	/**
@@ -1439,6 +1521,7 @@ public class CombatVitalsPlugin extends Plugin
 			.spotNpc(target)
 			.spotTile(objectBadge ? objectSpot : null)
 			.spotSize(objectSpotSize)
+			.healthAbove(thievingFromNpc())
 			.build();
 	}
 
@@ -1830,7 +1913,9 @@ public class CombatVitalsPlugin extends Plugin
 	 */
 	private Readout buildSelfReadout()
 	{
-		if (!config.showOwnHealth() || !combat.inCombat(Instant.now(), timeout()))
+		// Pickpocketing can stun and hit you at any attempt, so your health is
+		// up for the whole time, over the badge (Board, 2026-11-06).
+		if (!config.showOwnHealth() || !(combat.inCombat(Instant.now(), timeout()) || thievingFromNpc()))
 		{
 			return null;
 		}

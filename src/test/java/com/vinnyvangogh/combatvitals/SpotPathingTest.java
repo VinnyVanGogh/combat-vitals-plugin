@@ -275,6 +275,43 @@ public class SpotPathingTest
 		assertNull("routed, not highlighted", pathing.highlighted());
 	}
 
+	/**
+	 * Board's in-game test, 2026-11-06: Shortest Path drops its own path once
+	 * the player is within its finish distance, so the plugin marks the spot
+	 * itself. The target the mark is drawn from stays, routed or not, through
+	 * any number of ticks, until the player fishes again.
+	 */
+	@Test
+	public void theTargetStaysMarkedUntilFishingStartsAgain()
+	{
+		picker.next.add(SPOT_1);
+		pathing.despawned(FISHED);
+		tick();
+		assertSame(SPOT_1, pathing.target());
+
+		for (int i = 0; i < 20; i++)
+		{
+			tick();
+		}
+		assertSame("still marked while walking up to it", SPOT_1, pathing.target());
+
+		pathing.fishingOn(FishingSpot.LOBSTER, "Cage", NPC_1);
+		assertNull("cleared once fishing starts", pathing.target());
+		assertEquals("and the path this sent is cleared", 1, router.clears);
+	}
+
+	@Test
+	public void withShortestPathSwitchedOffTheSpotIsStillMarked()
+	{
+		router.installed = false;
+		picker.next.add(SPOT_1);
+		pathing.despawned(FISHED);
+		tick();
+
+		assertEquals(0, router.routes.size());
+		assertSame(SPOT_1, pathing.target());
+	}
+
 	@Test
 	public void offDoesNothingEvenOnRightClick()
 	{

@@ -223,8 +223,8 @@ final class SpotPathing
 			return;
 		}
 
-		// No Shortest Path: the spot itself is highlighted, when it is loaded.
-		log.debug("Shortest Path not available: highlighting the spot instead");
+		// No Shortest Path (or switched off here): the plugin's own mark is all there is.
+		log.debug("Shortest Path not available or not wanted: marking the spot only");
 		clearTarget();
 		target = next;
 	}

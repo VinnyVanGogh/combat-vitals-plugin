@@ -45,8 +45,16 @@ public class ConfigDefaultsTest
 	}
 
 	@Test
+	public void newProfileAlsoSendsTheNextSpotToShortestPath()
+	{
+		// Shortest Path stays optional; the plugin's own mark is drawn either way.
+		assertTrue(NEW_PROFILE.fishingSpotShortestPath());
+	}
+
+	@Test
 	public void savedValuesKeepTheirKeys() throws NoSuchMethodException
 	{
+		assertEquals("fishingSpotShortestPath", keyName("fishingSpotShortestPath"));
 		assertEquals("hideGameOverheadChat", keyName("hideGameOverheadChat"));
 		assertEquals("hideGameHealthBar", keyName("hideGameHealthBar"));
 		assertEquals("fishingSpotPath", keyName("fishingSpotPath"));

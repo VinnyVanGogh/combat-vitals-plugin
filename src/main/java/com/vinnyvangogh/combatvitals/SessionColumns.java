@@ -2,12 +2,17 @@ package com.vinnyvangogh.combatvitals;
 
 /**
  * Lays out the badge's session row: each column as wide as its own cell,
- * not as wide as the widest, and the row split over two lines when on one
- * it would be wider than the rest of the badge (Board's in-game test,
- * 2026-11-04: with every stat on the badge was far too wide).
+ * not as wide as the widest (Board's in-game test, 2026-11-04: with every
+ * stat on the badge was far too wide).
  *
- * Pure: cell widths in pixels, padding included, in; lines and column
- * widths out.
+ * In the Full layout the count has a line of its own and the rates go on
+ * the line under it, for every skill alike. Wrapping only when the row was
+ * wider than the rest of the badge made the layout depend on how wide the
+ * skill's header happened to be: woodcutting and thieving put "xp/h" on its
+ * own line while mining and fishing kept one (Board, 2026-11-06).
+ *
+ * Pure: cell counts and widths in pixels, padding included, in; lines and
+ * column widths out.
  */
 final class SessionColumns
 {
@@ -18,33 +23,17 @@ final class SessionColumns
 	/**
 	 * The row's lines, each as {from, to} cell indexes, top line first.
 	 *
-	 * @param widths each cell's width, its padding included
-	 * @param limit  the width the rest of the badge sets; 0 or less when the
-	 *               session row is all there is, which never wraps
-	 * @param wrap   whether two lines are allowed (the Full layout)
+	 * @param cells      how many cells the row has
+	 * @param countFirst the first cell is the count ("24 caught in 3m")
+	 * @param wrap       whether two lines are allowed (the Full layout)
 	 */
-	static int[][] lines(int[] widths, int limit, boolean wrap)
+	static int[][] lines(int cells, boolean countFirst, boolean wrap)
 	{
-		final int n = widths.length;
-		if (!wrap || n < 2 || limit <= 0 || sum(widths, 0, n) <= limit)
+		if (!wrap || !countFirst || cells < 2)
 		{
-			return new int[][]{{0, n}};
+			return new int[][]{{0, cells}};
 		}
-
-		// Split where the wider of the two lines is narrowest; on a tie the
-		// top line keeps more cells, so it reads left to right, top first.
-		int split = 1;
-		int best = Integer.MAX_VALUE;
-		for (int i = n - 1; i >= 1; i--)
-		{
-			final int wider = Math.max(sum(widths, 0, i), sum(widths, i, n));
-			if (wider < best)
-			{
-				best = wider;
-				split = i;
-			}
-		}
-		return new int[][]{{0, split}, {split, n}};
+		return new int[][]{{0, 1}, {1, cells}};
 	}
 
 	/** The widest line's natural width. */
