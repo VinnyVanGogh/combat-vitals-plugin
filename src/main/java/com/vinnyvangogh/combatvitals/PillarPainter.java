@@ -57,6 +57,13 @@ final class PillarPainter
 	private static final Color QUARTER = new Color(255, 255, 255, 90);
 	private static final Color SHADOW = Color.BLACK;
 
+	/** The eight one-pixel offsets the label's outline is drawn at. */
+	private static final int[][] OUTLINE = {
+		{-1, -1}, {0, -1}, {1, -1},
+		{-1, 0}, {1, 0},
+		{-1, 1}, {0, 1}, {1, 1},
+	};
+
 	private PillarPainter()
 	{
 	}
@@ -182,9 +189,11 @@ final class PillarPainter
 	}
 
 	/**
-	 * White with a drop shadow, as Status Bars' counter. "82%" is wider than
-	 * a 20 px bar in the small font, so a percentage that does not fit drops
-	 * its sign; the hover text still says it in full.
+	 * White inside a one-pixel black outline, so it reads on any fill: a
+	 * drop shadow alone was lost on the thin tan Mining fill (Board's
+	 * screenshots, 2026-11-06). "82%" is wider than a 20 px bar in the small
+	 * font, so a percentage that does not fit drops its sign; the hover text
+	 * still says it in full.
 	 */
 	private static void centred(Graphics2D graphics, Rectangle box, String number, int baseline)
 	{
@@ -197,7 +206,10 @@ final class PillarPainter
 			? number.substring(0, number.length() - 1) : number;
 		final int x = box.x + (box.width - metrics.stringWidth(text)) / 2;
 		graphics.setColor(SHADOW);
-		graphics.drawString(text, x + 1, baseline + 1);
+		for (int[] offset : OUTLINE)
+		{
+			graphics.drawString(text, x + offset[0], baseline + offset[1]);
+		}
 		graphics.setColor(Color.WHITE);
 		graphics.drawString(text, x, baseline);
 	}

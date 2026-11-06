@@ -102,6 +102,13 @@ final class SkillingReadout
 	/** The object's larger side in tiles, for centring over it. */
 	private final int spotSize;
 
+	/**
+	 * Pickpocketing: your own health is drawn above the badge rather than
+	 * under it, for as long as you are at it, since the target can stun and
+	 * hit you at any attempt.
+	 */
+	private final boolean healthAbove;
+
 	boolean isBoosted()
 	{
 		return boosted > real;

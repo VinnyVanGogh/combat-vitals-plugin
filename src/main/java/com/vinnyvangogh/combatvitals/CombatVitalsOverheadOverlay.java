@@ -8,7 +8,9 @@ import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Supplier;
 import javax.inject.Inject;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
 import net.runelite.api.NPC;
@@ -28,6 +30,7 @@ import net.runelite.client.ui.overlay.OverlayUtil;
  * Draws the readout over the target itself, which is the thing the stock
  * plugin cannot do, and the skilling badge over your head or the spot.
  */
+@Slf4j
 class CombatVitalsOverheadOverlay extends Overlay
 {
 	/** Space between the text and the edge of the bar behind it. */
@@ -94,12 +97,26 @@ class CombatVitalsOverheadOverlay extends Overlay
 			// Both sides in one visual language. Getting your own health from some
 			// other plugin would render it in a different style beside your
 			// opponent's, which is the main reason this belongs here.
-			final Rectangle selfBar = draw(graphics, plugin.getSelfReadout());
+			final CombatVitalsPlugin.Readout self = plugin.getSelfReadout();
+			final SkillingReadout skilling = plugin.getSkillingReadout();
+			final Rectangle selfBar;
+			if (skilling != null && skilling.isHealthAbove())
+			{
+				// Pickpocketing: the badge keeps its place and your health sits
+				// on top of it (Board, 2026-11-06), or in its own place when the
+				// badge is not over your head.
+				overHead = drawSkilling(graphics, skilling, null);
+				selfBar = overHead != null ? drawAbove(graphics, self, overHead) : draw(graphics, self);
+			}
+			else
+			{
+				selfBar = draw(graphics, self);
 
-			// Over your head the badge shares the anchor with your own bar and
-			// stacks above it when both are up (hit while fishing). Over the
-			// spot it covers nothing of yours.
-			overHead = drawSkilling(graphics, plugin.getSkillingReadout(), selfBar);
+				// Over your head the badge shares the anchor with your own bar and
+				// stacks above it when both are up (hit while fishing). Over the
+				// spot it covers nothing of yours.
+				overHead = drawSkilling(graphics, skilling, selfBar);
+			}
 
 			// Your own overhead chat goes above whichever of the two is topmost,
 			// once: the bar and the badge are one stack over one actor, so one
@@ -158,7 +175,7 @@ class CombatVitalsOverheadOverlay extends Overlay
 		}
 
 		final Player self = client.getLocalPlayer();
-		final Point head = self == null ? null : self.getCanvasTextLocation(graphics, "", zOffset(self));
+		final Point head = self == null ? null : onScreen(() -> self.getCanvasTextLocation(graphics, "", zOffset(self)));
 		if (head == null)
 		{
 			return null;
@@ -177,7 +194,7 @@ class CombatVitalsOverheadOverlay extends Overlay
 		final NPC npc = readout.getSpotNpc();
 		if (npc != null)
 		{
-			return npc.getCanvasTextLocation(graphics, "", zOffset(npc));
+			return onScreen(() -> npc.getCanvasTextLocation(graphics, "", zOffset(npc)));
 		}
 
 		final WorldPoint tile = readout.getSpotTile();
@@ -210,12 +227,33 @@ class CombatVitalsOverheadOverlay extends Overlay
 		}
 
 		final Actor actor = readout.getActor();
-		final Point location = actor.getCanvasTextLocation(graphics, text, zOffset(actor));
-		if (location == null)
+		final Point location = onScreen(() -> actor.getCanvasTextLocation(graphics, text, zOffset(actor)));
+		return location == null ? null : drawText(graphics, readout, text, location);
+	}
+
+	/**
+	 * The readout centred just above {@code below}, the badge it sits on.
+	 *
+	 * @return the readout's box, or null when nothing was drawn
+	 */
+	private Rectangle drawAbove(Graphics2D graphics, CombatVitalsPlugin.Readout readout, Rectangle below)
+	{
+		final String text = readout == null ? null : readout.text(config.percentageDecimals());
+		if (text == null)
 		{
 			return null;
 		}
 
+		final FontMetrics metrics = graphics.getFontMetrics();
+		final int padding = config.overheadStyle() == OverheadStyle.BAR ? PAD_Y : 0;
+		final Point location = new Point(below.x + (below.width - metrics.stringWidth(text)) / 2,
+			below.y - OverheadStack.GAP - padding - metrics.getDescent());
+		return drawText(graphics, readout, text, location);
+	}
+
+	/** The readout with its text's baseline starting at {@code location}. */
+	private Rectangle drawText(Graphics2D graphics, CombatVitalsPlugin.Readout readout, String text, Point location)
+	{
 		final double fraction = HealthReadout.fraction(readout.getRatio(), readout.getScale(),
 			readout.getExactHealth(), readout.getMaxHealth());
 
@@ -290,7 +328,8 @@ class CombatVitalsOverheadOverlay extends Overlay
 		graphics.setFont(FontManager.getRunescapeBoldFont());
 		try
 		{
-			final Point chatAt = actor.getCanvasTextLocation(graphics, chat, Math.max(0, actor.getLogicalHeight()));
+			final Point chatAt = onScreen(() -> actor.getCanvasTextLocation(graphics, chat,
+				Math.max(0, actor.getLogicalHeight())));
 			if (chatAt == null)
 			{
 				return;
@@ -309,6 +348,26 @@ class CombatVitalsOverheadOverlay extends Overlay
 		finally
 		{
 			graphics.setFont(previous);
+		}
+	}
+
+	/**
+	 * Where the client puts an actor's text this frame, or null. An actor the
+	 * client is removing (an NPC just killed) can throw from its model or
+	 * scene lookups mid-frame; that frame skips it rather than failing the
+	 * whole overlay, and the plugin drops a despawned opponent before the
+	 * next tick.
+	 */
+	static Point onScreen(Supplier<Point> location)
+	{
+		try
+		{
+			return location.get();
+		}
+		catch (RuntimeException e)
+		{
+			log.debug("Actor not drawable this frame", e);
+			return null;
 		}
 	}
 

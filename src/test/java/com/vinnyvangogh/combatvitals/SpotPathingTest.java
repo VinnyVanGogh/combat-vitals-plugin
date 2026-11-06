@@ -6,7 +6,9 @@ import static org.junit.Assert.assertSame;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import net.runelite.client.game.FishingSpot;
 import org.junit.Before;
 import org.junit.Test;
@@ -58,6 +60,24 @@ public class SpotPathingTest
 		}
 	}
 
+	/** Where each spot NPC stands; one with no entry is not loaded. */
+	private static final class FakeLocator implements SpotPathing.Locator
+	{
+		final Map<Object, Long> tiles = new IdentityHashMap<>();
+
+		void put(Object npc, int x, int y, int plane)
+		{
+			tiles.put(npc, SpotPathing.tile(x, y, plane));
+		}
+
+		@Override
+		public long tile(Object npc)
+		{
+			final Long tile = tiles.get(npc);
+			return tile == null ? SpotPathing.UNKNOWN : tile;
+		}
+	}
+
 	/** The spot NPC {@link #setUp} starts fishing; its despawning is the spot moving. */
 	private static final Object FISHED = new Object();
 	private static final Object NPC_1 = new Object();
@@ -68,6 +88,7 @@ public class SpotPathingTest
 	private FishingSpotPath mode;
 	private FakeRouter router;
 	private FakePicker picker;
+	private FakeLocator tiles;
 	private SpotPathing pathing;
 
 	@Before
@@ -76,8 +97,167 @@ public class SpotPathingTest
 		mode = FishingSpotPath.ON_SPOT_MOVE;
 		router = new FakeRouter();
 		picker = new FakePicker();
+		tiles = new FakeLocator();
 		pathing = new SpotPathing(() -> mode, router);
 		pathing.fishingOn(FishingSpot.LOBSTER, "Cage", FISHED);
+	}
+
+	/** One game tick: the pather reads where the spots stand, then runs any due search. */
+	private void tick()
+	{
+		pathing.tick(picker, tiles);
+	}
+
+	@Test
+	public void fishedSpotRelocatingAsTheSameNpcSearches()
+	{
+		// How the game moves a spot (RuneLite's FishingPlugin keys spots by NPC
+		// index and resets on a world location change): same NPC, new tile.
+		picker.next.add(SPOT_1);
+		tiles.put(FISHED, 3000, 3000, 0);
+		tick();
+		assertEquals(0, picker.picks);
+
+		tiles.put(FISHED, 3010, 3004, 0);
+		tick();
+
+		assertEquals(1, picker.picks);
+		assertSame(SPOT_1, router.routes.get(0));
+	}
+
+	@Test
+	public void fishedSpotRelocatingWithinTheGraceAfterTheInteractionEndsSearches()
+	{
+		picker.next.add(SPOT_1);
+		tiles.put(FISHED, 3000, 3000, 0);
+		tick();
+
+		// The game ends the interaction, then the spot shows on its new tile.
+		pathing.interactionEnded();
+		tick();
+		tiles.put(FISHED, 3010, 3004, 0);
+		tick();
+
+		assertEquals(1, picker.picks);
+	}
+
+	@Test
+	public void fishedSpotRelocatingLongAfterTheInteractionEndedIsNotTheSpotMoving()
+	{
+		picker.next.add(SPOT_1);
+		tiles.put(FISHED, 3000, 3000, 0);
+		tick();
+
+		pathing.interactionEnded();
+		for (int i = 0; i < 10; i++)
+		{
+			tick();
+		}
+		tiles.put(FISHED, 3010, 3004, 0);
+		tick();
+
+		assertEquals(0, picker.picks);
+	}
+
+	@Test
+	public void walkingAwayThenTheSpotRelocatingDoesNotSearch()
+	{
+		picker.next.add(SPOT_1);
+		tiles.put(FISHED, 3000, 3000, 0);
+		tick();
+
+		// Walk here: no NPC.
+		pathing.turnedTo(null);
+		tiles.put(FISHED, 3010, 3004, 0);
+		tick();
+
+		assertEquals(0, picker.picks);
+	}
+
+	@Test
+	public void standingStillOnTheSameTileNeverSearches()
+	{
+		tiles.put(FISHED, 3000, 3000, 0);
+		for (int i = 0; i < 20; i++)
+		{
+			tick();
+		}
+
+		assertEquals(0, picker.picks);
+	}
+
+	@Test
+	public void fishedSpotNotLoadedForATickIsNotAMove()
+	{
+		tiles.put(FISHED, 3000, 3000, 0);
+		tick();
+		tiles.tiles.remove(FISHED);
+		tick();
+		tiles.put(FISHED, 3000, 3000, 0);
+		tick();
+
+		assertEquals(0, picker.picks);
+	}
+
+	@Test
+	public void relocateThenDespawnOfTheSameSpotSearchesOnce()
+	{
+		picker.next.add(SPOT_1);
+		tiles.put(FISHED, 3000, 3000, 0);
+		tick();
+		tiles.put(FISHED, 3010, 3004, 0);
+		tick();
+		pathing.despawned(FISHED);
+		tick();
+
+		assertEquals(1, picker.picks);
+	}
+
+	@Test
+	public void rightClickModeIgnoresTheSpotRelocating()
+	{
+		mode = FishingSpotPath.RIGHT_CLICK;
+		picker.next.add(SPOT_1);
+		tiles.put(FISHED, 3000, 3000, 0);
+		tick();
+		tiles.put(FISHED, 3010, 3004, 0);
+		tick();
+
+		assertEquals(0, picker.picks);
+	}
+
+	@Test
+	public void targetRelocatingBeforeItIsReachedSearchesAgain()
+	{
+		picker.next.add(SPOT_1);
+		picker.next.add(SPOT_2);
+		pathing.despawned(FISHED);
+		tiles.put(NPC_1, SPOT_1.getX(), SPOT_1.getY(), SPOT_1.getPlane());
+		tick();
+		tick();
+		assertEquals("the target standing where it was picked is not a move", 1, picker.picks);
+
+		tiles.put(NPC_1, 3020, 3020, 0);
+		tick();
+
+		assertEquals(2, picker.picks);
+		assertSame(SPOT_2, pathing.target());
+	}
+
+	@Test
+	public void startingToFishResetsTheRememberedTile()
+	{
+		picker.next.add(SPOT_1);
+		tiles.put(FISHED, 3000, 3000, 0);
+		tick();
+
+		// A new spot NPC, somewhere else: its first tile is the baseline, not a move.
+		final Object other = new Object();
+		pathing.fishingOn(FishingSpot.LOBSTER, "Cage", other);
+		tiles.put(other, 3050, 3050, 0);
+		tick();
+
+		assertEquals(0, picker.picks);
 	}
 
 	@Test
@@ -86,13 +266,50 @@ public class SpotPathingTest
 		picker.next.add(SPOT_1);
 
 		pathing.despawned(FISHED);
-		pathing.tick(picker);
+		tick();
 
 		assertEquals(1, router.routes.size());
 		assertSame(SPOT_1, router.routes.get(0));
 		assertSame(FishingSpot.LOBSTER, picker.lastType);
 		assertEquals("Cage", picker.lastMethod);
 		assertNull("routed, not highlighted", pathing.highlighted());
+	}
+
+	/**
+	 * Board's in-game test, 2026-11-06: Shortest Path drops its own path once
+	 * the player is within its finish distance, so the plugin marks the spot
+	 * itself. The target the mark is drawn from stays, routed or not, through
+	 * any number of ticks, until the player fishes again.
+	 */
+	@Test
+	public void theTargetStaysMarkedUntilFishingStartsAgain()
+	{
+		picker.next.add(SPOT_1);
+		pathing.despawned(FISHED);
+		tick();
+		assertSame(SPOT_1, pathing.target());
+
+		for (int i = 0; i < 20; i++)
+		{
+			tick();
+		}
+		assertSame("still marked while walking up to it", SPOT_1, pathing.target());
+
+		pathing.fishingOn(FishingSpot.LOBSTER, "Cage", NPC_1);
+		assertNull("cleared once fishing starts", pathing.target());
+		assertEquals("and the path this sent is cleared", 1, router.clears);
+	}
+
+	@Test
+	public void withShortestPathSwitchedOffTheSpotIsStillMarked()
+	{
+		router.installed = false;
+		picker.next.add(SPOT_1);
+		pathing.despawned(FISHED);
+		tick();
+
+		assertEquals(0, router.routes.size());
+		assertSame(SPOT_1, pathing.target());
 	}
 
 	@Test
@@ -103,7 +320,7 @@ public class SpotPathingTest
 
 		pathing.despawned(FISHED);
 		pathing.requested();
-		pathing.tick(picker);
+		tick();
 
 		assertEquals(0, picker.picks);
 		assertEquals(0, router.routes.size());
@@ -116,11 +333,11 @@ public class SpotPathingTest
 		picker.next.add(SPOT_1);
 
 		pathing.despawned(FISHED);
-		pathing.tick(picker);
+		tick();
 		assertEquals(0, router.routes.size());
 
 		pathing.requested();
-		pathing.tick(picker);
+		tick();
 		assertEquals(1, router.routes.size());
 	}
 
@@ -131,8 +348,8 @@ public class SpotPathingTest
 
 		pathing.despawned(FISHED);
 		pathing.despawned(FISHED);
-		pathing.tick(picker);
-		pathing.tick(picker);
+		tick();
+		tick();
 
 		assertEquals(1, picker.picks);
 		assertEquals(1, router.routes.size());
@@ -146,10 +363,10 @@ public class SpotPathingTest
 		picker.next.add(SPOT_2);
 
 		pathing.despawned(FISHED);
-		pathing.tick(picker);
+		tick();
 		// The spot being walked to moves before the player gets there.
 		pathing.despawned(NPC_1);
-		pathing.tick(picker);
+		tick();
 
 		assertEquals(2, router.routes.size());
 		assertSame(SPOT_2, router.routes.get(1));
@@ -161,10 +378,10 @@ public class SpotPathingTest
 	{
 		picker.next.add(SPOT_1);
 		pathing.despawned(FISHED);
-		pathing.tick(picker);
+		tick();
 
 		pathing.despawned(new Object());
-		pathing.tick(picker);
+		tick();
 
 		assertEquals(1, picker.picks);
 	}
@@ -176,7 +393,7 @@ public class SpotPathingTest
 		picker.next.add(SPOT_1);
 
 		pathing.despawned(FISHED);
-		pathing.tick(picker);
+		tick();
 
 		assertEquals(0, router.routes.size());
 		assertSame(NPC_1, pathing.highlighted());
@@ -189,7 +406,7 @@ public class SpotPathingTest
 		picker.next.add(NextFishingSpot.Spot.known(FishingSpot.LOBSTER, 2844, 3429, 0, true, 0, "Catherby"));
 
 		pathing.despawned(FISHED);
-		pathing.tick(picker);
+		tick();
 
 		assertNull(pathing.highlighted());
 	}
@@ -199,7 +416,7 @@ public class SpotPathingTest
 	{
 		picker.next.add(SPOT_1);
 		pathing.despawned(FISHED);
-		pathing.tick(picker);
+		tick();
 
 		pathing.fishingOn(FishingSpot.LOBSTER, "Cage", new Object());
 
@@ -213,7 +430,7 @@ public class SpotPathingTest
 		router.installed = false;
 		picker.next.add(SPOT_1);
 		pathing.despawned(FISHED);
-		pathing.tick(picker);
+		tick();
 
 		pathing.fishingOn(FishingSpot.LOBSTER, "Cage", new Object());
 
@@ -235,10 +452,10 @@ public class SpotPathingTest
 	{
 		picker.next.add(SPOT_1);
 		pathing.despawned(FISHED);
-		pathing.tick(picker);
+		tick();
 
 		pathing.despawned(NPC_1);
-		pathing.tick(picker);
+		tick();
 
 		assertEquals(1, router.clears);
 		assertNull(pathing.target());
@@ -250,7 +467,7 @@ public class SpotPathingTest
 		final SpotPathing fresh = new SpotPathing(() -> FishingSpotPath.ON_SPOT_MOVE, router);
 		fresh.despawned(FISHED);
 		fresh.requested();
-		fresh.tick(picker);
+		fresh.tick(picker, tiles);
 
 		assertEquals(0, picker.picks);
 	}
@@ -261,7 +478,7 @@ public class SpotPathingTest
 		picker.next.add(SPOT_1);
 
 		pathing.despawned(FISHED);
-		pathing.tick(picker);
+		tick();
 
 		assertEquals(1, picker.picks);
 		assertSame(SPOT_1, router.routes.get(0));
@@ -290,8 +507,8 @@ public class SpotPathingTest
 
 	private void assertOneSearchOverTwoTicks()
 	{
-		pathing.tick(picker);
-		pathing.tick(picker);
+		tick();
+		tick();
 
 		assertEquals(1, picker.picks);
 		assertEquals(1, router.routes.size());
@@ -303,9 +520,9 @@ public class SpotPathingTest
 		picker.next.add(SPOT_1);
 
 		pathing.interactionEnded();
-		pathing.tick(picker);
+		tick();
 		pathing.despawned(FISHED);
-		pathing.tick(picker);
+		tick();
 
 		assertEquals(1, picker.picks);
 	}
@@ -319,10 +536,10 @@ public class SpotPathingTest
 		pathing.interactionEnded();
 		for (int i = 0; i < 10; i++)
 		{
-			pathing.tick(picker);
+			tick();
 		}
 		pathing.despawned(FISHED);
-		pathing.tick(picker);
+		tick();
 
 		assertEquals(0, picker.picks);
 	}
@@ -335,7 +552,7 @@ public class SpotPathingTest
 		// Walk here, or a tree or rock: no NPC.
 		pathing.turnedTo(null);
 		pathing.despawned(FISHED);
-		pathing.tick(picker);
+		tick();
 
 		assertEquals(0, picker.picks);
 	}
@@ -347,7 +564,7 @@ public class SpotPathingTest
 
 		pathing.turnedTo(FISHED);
 		pathing.despawned(FISHED);
-		pathing.tick(picker);
+		tick();
 
 		assertEquals(1, picker.picks);
 	}
@@ -361,7 +578,7 @@ public class SpotPathingTest
 		pathing.turnedTo(NPC_2);
 		pathing.interactionEnded();
 		pathing.despawned(FISHED);
-		pathing.tick(picker);
+		tick();
 
 		assertEquals(0, picker.picks);
 	}
@@ -372,7 +589,7 @@ public class SpotPathingTest
 		picker.next.add(SPOT_1);
 
 		pathing.changed(FISHED);
-		pathing.tick(picker);
+		tick();
 
 		assertEquals(1, picker.picks);
 	}
@@ -383,9 +600,9 @@ public class SpotPathingTest
 		picker.next.add(SPOT_1);
 
 		pathing.changed(FISHED);
-		pathing.tick(picker);
+		tick();
 		pathing.despawned(FISHED);
-		pathing.tick(picker);
+		tick();
 
 		assertEquals(1, picker.picks);
 	}
@@ -395,7 +612,7 @@ public class SpotPathingTest
 	{
 
 		pathing.changed(new Object());
-		pathing.tick(picker);
+		tick();
 
 		assertEquals(0, picker.picks);
 	}
@@ -407,11 +624,11 @@ public class SpotPathingTest
 		picker.next.add(SPOT_1);
 
 		pathing.despawned(FISHED);
-		pathing.tick(picker);
+		tick();
 		assertEquals(0, picker.picks);
 
 		pathing.requested();
-		pathing.tick(picker);
+		tick();
 		assertEquals(1, picker.picks);
 		assertEquals(1, router.routes.size());
 	}
@@ -422,7 +639,7 @@ public class SpotPathingTest
 		pathing.reset();
 
 		pathing.despawned(FISHED);
-		pathing.tick(picker);
+		tick();
 
 		assertEquals(0, picker.picks);
 	}
@@ -432,11 +649,11 @@ public class SpotPathingTest
 	{
 		picker.next.add(SPOT_1);
 		pathing.despawned(FISHED);
-		pathing.tick(picker);
+		tick();
 
 		pathing.reset();
 		pathing.despawned(FISHED);
-		pathing.tick(picker);
+		tick();
 
 		assertEquals(1, router.clears);
 		assertEquals(1, picker.picks);
