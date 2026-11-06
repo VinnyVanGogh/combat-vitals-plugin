@@ -76,9 +76,27 @@ still has no sprites; the in-game test will show it.
 
 *Display > Hide game health bar*, default **off**.
 
-- **Global**, not per actor (see above). The plugin still shows HP for the
-  tracked opponent and you; every other player and NPC shows no bar while it
-  is on. The config description says so.
+- **Global**, not per actor (see above), so every bar it hides is drawn back
+  (Board's in-game test, 2026-11-06, rejected the first version, which left
+  every bystander without a bar). Your target and you get the plugin's
+  readout; every other player and NPC the client reports a bar for
+  (`getHealthRatio() >= 0`, `getHealthScale() > 0`) gets a plain bar from
+  `GameHealthBarOverlay`, drawn where `drawActor2d` puts it:
+  - projected at `getLogicalHeight() + 15` (devious-client
+    `UserComparator10.java` L145, `vmethod2708() + 15`; `vmethod2708` is
+    `defaultHeight`, which RuneLite exposes as `getLogicalHeight`);
+  - top 3 px above that point, 15 px while overhead chat is up (offset starts
+    at -2, L123; +12 for chat, L137; +5 for the bar, L216);
+  - centred, `x - (width >> 1)` (L217), `width` = the bar definition's width,
+    which `getHealthScale()` returns (RuneLite's mixin reads the same field);
+  - `ratio * width / scale` green, the rest red, the client's fallback colours
+    `0x00FF00` / `0xFF0000` (L219-L222).
+
+  Not reproduced: a second stacked bar (the API reports one per actor), the
+  HD look, and NPCs whose definition sets their own bar height (cache opcode
+  124, `NPC.java` L379-L380 in the deob), which are drawn a few pixels off.
+  Pure geometry in `GameHealthBars`, tested with a crowd in
+  `GameHealthBarsTest`.
 - Each transparent sprite is built at the size of the sprite it replaces, read
   from the cache, so the stack above it (head icons, player name) does not
   shift.

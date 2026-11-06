@@ -254,7 +254,7 @@ the case that broke every earlier iteration of this overlay.
 | Bar background | Opaque black | Fill behind the health bar. Lower the alpha to let the game's bar show through |
 | Overhead position | Top | Top, Middle or Bottom relative to the target |
 | Overhead offset | 0 | Extra height in pixels, ±200 |
-| Hide game health bar | Off | Hide the game's own health bar over everyone, yours included |
+| Hide game health bar | Off | Replace the game's own health bar: your target and you get the readout, and every other player and NPC that shows a bar gets a plain one in the game's place, so no bar goes missing |
 | Chat above readout | On | While the readout or skilling badge is over you or your opponent, take the game's overhead chat line off the moment it is posted and draw it above the readout instead, so it shows once and never under the readout. Off: the game draws its own line and the plugin adds nothing. A skilling NPC is never touched |
 
 ### Targets
@@ -287,7 +287,8 @@ the case that broke every earlier iteration of this overlay.
 | Show spec energy | On | Remaining special attack energy when wielding a spec skilling tool |
 | Notify on boost drop | Off | RuneLite notification when the badge's boost drops or wears off |
 | Show inventory fill | On | `Inv 26/28 free` on a bar under the badge, green to red as the inventory fills; stackables, tools and equipment do not count toward the fill |
-| Next spot path | Off | Send the nearest fishing spot of the same kind to Shortest Path when yours moves, or only from the badge's right-click menu |
+| Next spot path | Off | Mark the nearest fishing spot of the same kind when yours moves, or only from the badge's right-click menu: its tile outlined, a line from you to it, an arrow at the screen's edge while it is off screen. The mark stays until you fish again |
+| Next spot: Shortest Path | On | Also send the next spot to Shortest Path for a walking path, when it is installed. Shortest Path ends its own path within its *Finish distance* (5 tiles by default), which is why the mark is drawn as well |
 
 A fish above your level is dimmed with `Lv 15` over it in red; hover it for
 `Needs Fishing 15`.
@@ -304,17 +305,17 @@ A fish above your level is dimmed with `Lv 15` over it in red; hover it for
 | XP shown as | Both | `64%`, `1,234 xp`, or both |
 | Inventory count | Free slots | `Inv 26/28 free` or `Inv 2/28 used` |
 | Session count | Off | A row with what you caught, chopped or mined this session and for how long, `24 caught in 3m`, after the skill's icon (one per experience drop). Resets on logout |
-| XP and actions per hour | Off | Hourly rates for the skill this session, from your first drop, in short numbers with what was done: `10.6k xp/h`, `459 fish/h`; shown after a minute |
+| XP and actions per hour | Off | Hourly rates for the skill this session, from your first drop, in short numbers with what was done: `10.6k xp/h`, `459 fish/h`; nothing is shown until a rate exists, after a minute |
 | Reset session | Off | Tick to zero the session count and rates; unticks itself |
 | Badge position | Over your head | Over your head; over the spot, tree or rock (over your head while idle); or fixed on screen, Alt-drag to move |
 | Badge offset | 0 | Pixels to raise the badge, ±200 |
 | Badge size (%) | 100 | Scale the whole badge, 50 to 200 |
 | Fish above your level | Dim | Dim them with the level, or hide them |
-| Hide during combat | Off | Hide the badge while you are hit or hitting back; fighting a target always replaces it |
+| Hide during combat | Off | Hide the badge while you are hit or hitting back; fighting a target always replaces it. A stun or hit from the NPC you are pickpocketing is not combat; while pickpocketing your own health shows above the badge |
 | Fishing colour … Hunter colour | The palette | Per-skill colour overrides |
 | Warn if missing gear | On | Click a fishing option without its tool, bait or level and the badge says `Needs: Fishing rod + bait` in red for 8 seconds, before the game's dialog. Worn or carried tools count, as does barehanded harpooning after Barbarian Training. The click itself is never changed |
 | Time to level | On | With XP and actions per hour on, how long the next level takes at this session's rate, `lvl 18 in 6m`. Not shown before a rate is known, or at 99 |
-| Badge layout | Full | Full: each session stat in a column as wide as itself, the row wrapping to two lines when it would be wider than the rest of the badge. Compact: one short line, `24 caught \| 10.6k xp/h` |
+| Badge layout | Full | Full: each session stat in a column as wide as itself, the count on one line and the rates on the line under it, for every skill. Compact: one short line, `24 caught \| 10.6k xp/h` |
 
 The session row's stats sit in equal columns with a faint rule between, each
 in its own soft shade of the skill's colour (`SessionRow`).
