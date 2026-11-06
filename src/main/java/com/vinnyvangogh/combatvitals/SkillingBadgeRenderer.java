@@ -10,13 +10,10 @@ import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
-import java.util.EnumMap;
 import java.util.List;
-import java.util.Map;
 import javax.inject.Inject;
 import net.runelite.api.Client;
 import net.runelite.api.Point;
-import net.runelite.api.Skill;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.ui.FontManager;
@@ -66,11 +63,13 @@ class SkillingBadgeRenderer
 	/** The faint rule between the session row's columns. */
 	private static final Color SESSION_RULE = new Color(255, 255, 255, 60);
 
-	/** How opaque the backing behind a dark session icon is. */
-	private static final int ICON_BACKING_ALPHA = 200;
-
-	/** Per skill, whether its icon needs a backing; icons never change. Client thread only. */
-	private final Map<Skill, Boolean> darkIcons = new EnumMap<>(Skill.class);
+	/**
+	 * The light backing behind every session icon, whatever the skill, so a
+	 * near-black icon (Thieving's mask) reads on the dark row and every skill
+	 * looks the same. No per-icon brightness test: measured mean brightness
+	 * cannot tell Thieving (0.152) from Mining (0.142) or Fishing (0.167).
+	 */
+	static final Color ICON_BACKING = new Color(255, 255, 255, 110);
 
 	private final Client client;
 	private final CombatVitalsConfig config;
@@ -284,16 +283,7 @@ class SkillingBadgeRenderer
 		final int x = cell.x + (cell.width - iconWidth - graphics.getFontMetrics().stringWidth(c.getText())) / 2;
 		if (icon != null)
 		{
-			final int top = cell.y + (cell.height - SESSION_ICON) / 2;
-			if (darkIcon(readout.getSkill(), icon))
-			{
-				// A light backing in the skill's own shade, so a near-black
-				// icon (Thieving's mask) shows on the dark row.
-				final Color tint = SessionRow.tint(readout.getColour(), SessionRow.Kind.COUNT);
-				graphics.setColor(new Color(tint.getRed(), tint.getGreen(), tint.getBlue(), ICON_BACKING_ALPHA));
-				graphics.fillRoundRect(x - 1, top - 1, iconWidth - ICON_GAP + 2, SESSION_ICON + 2, 4, 4);
-			}
-			graphics.drawImage(icon, x, top, iconWidth - ICON_GAP, SESSION_ICON, null);
+			drawSessionIcon(graphics, icon, x, cell.y + (cell.height - SESSION_ICON) / 2, iconWidth - ICON_GAP);
 		}
 		OverlayUtil.renderTextLocation(graphics, new Point(x + iconWidth, baseline), c.getText(),
 			SessionRow.tint(readout.getColour(), c.getKind()));
@@ -348,10 +338,12 @@ class SkillingBadgeRenderer
 		return widths;
 	}
 
-	/** Whether this skill's icon is too dark for the session row ({@link IconTone}), worked out once per skill. */
-	private boolean darkIcon(Skill skill, BufferedImage icon)
+	/** A session icon {@code width} by {@link #SESSION_ICON} at (x, top), on the same {@link #ICON_BACKING} for every skill. */
+	static void drawSessionIcon(Graphics2D graphics, BufferedImage icon, int x, int top, int width)
 	{
-		return darkIcons.computeIfAbsent(skill, s -> IconTone.isDark(icon));
+		graphics.setColor(ICON_BACKING);
+		graphics.fillRoundRect(x - 1, top - 1, width + 2, SESSION_ICON + 2, 4, 4);
+		graphics.drawImage(icon, x, top, width, SESSION_ICON, null);
 	}
 
 	/** The count's skill icon at {@link #SESSION_ICON} high with the gap after it, or 0 without one. */
