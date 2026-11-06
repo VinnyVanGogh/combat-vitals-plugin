@@ -70,26 +70,27 @@ class NextSpotOverlay extends Overlay
 
 		final LocalPoint target = targetLocation(view, spot);
 		final LocalPoint from = self.getLocalLocation();
-		if (target == null || from == null)
+		if (target != null && from != null)
 		{
-			return null;
+			mark(graphics, from, target, view.getPlane());
 		}
+		return null;
+	}
 
+	/** The tile outline, the line from you, and the edge arrow while the spot is off screen. */
+	private void mark(Graphics2D graphics, LocalPoint from, LocalPoint target, int plane)
+	{
 		final Polygon tile = Perspective.getCanvasTilePoly(client, target);
 		if (tile != null)
 		{
 			OverlayUtil.renderPolygon(graphics, tile, OUTLINE);
 		}
 
-		final Point to = Perspective.localToCanvas(client, target, view.getPlane());
-		final Point at = Perspective.localToCanvas(client, from, view.getPlane());
+		final Point to = Perspective.localToCanvas(client, target, plane);
+		final Point at = Perspective.localToCanvas(client, from, plane);
 		if (to != null && at != null)
 		{
-			final Stroke stroke = graphics.getStroke();
-			graphics.setStroke(LINE_STROKE);
-			graphics.setColor(LINE);
-			graphics.drawLine(at.getX(), at.getY(), to.getX(), to.getY());
-			graphics.setStroke(stroke);
+			drawLine(graphics, at, to);
 		}
 
 		final Rectangle game = new Rectangle(client.getViewportXOffset(), client.getViewportYOffset(),
@@ -98,7 +99,15 @@ class NextSpotOverlay extends Overlay
 		{
 			drawEdgeArrow(graphics, game, direction(from, target, at, to));
 		}
-		return null;
+	}
+
+	private static void drawLine(Graphics2D graphics, Point at, Point to)
+	{
+		final Stroke stroke = graphics.getStroke();
+		graphics.setStroke(LINE_STROKE);
+		graphics.setColor(LINE);
+		graphics.drawLine(at.getX(), at.getY(), to.getX(), to.getY());
+		graphics.setStroke(stroke);
 	}
 
 	/** Where the spot is now: a loaded spot NPC's own tile, else the spot's. Null outside the scene. */
