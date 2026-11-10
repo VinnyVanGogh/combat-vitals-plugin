@@ -111,6 +111,12 @@ contrast against both white and black, so it reads over snow and in caves.
 Under the level a second row shows your progress to the next level, as a bar
 and as text: `Lv 12 -> 13: 64% (1,234 xp)`. At 99 it counts toward 200m.
 
+| Woodcutting | Mining | Thieving |
+|:---:|:---:|:---:|
+| <img src="docs/images/woodcutting-badge.png" alt="Woodcutting badge over player" width="280"> | <img src="docs/images/mining-badge.png" alt="Mining badge and side pillars" width="280"> | <img src="docs/images/thieving-badge.png" alt="Thieving badge over player" width="280"> |
+
+<p align="center"><em>Skilling badge across different skills, themed in each skill's WCAG-compliant palette.</em></p>
+
 **Inventory line.** The bottom row is your inventory: `Inv 26/28 free`, on a
 bar that runs from green through yellow to red as it fills. A stack or a tool
 holds its slot, so it is not free. Only what you are gathering counts toward
@@ -120,6 +126,12 @@ wear hold their slot for the whole trip, so they shrink the capacity instead.
 A harpoon and 27 fish is solid red. It uses the health colours from Display,
 run backwards.
 
+| Nearly empty (27/28 free) | Half full | Full (harpoon + 27 fish) |
+|:---:|:---:|:---:|
+| <img src="docs/images/inventory-fill-empty.png" alt="Inventory fill nearly empty at 27/28 free" width="260"> | <img src="docs/images/inventory-fill-half.png" alt="Inventory fill half full" width="260"> | <img src="docs/images/inventory-fill-full.png" alt="Inventory fill completely full" width="260"> |
+
+<p align="center"><em>Inventory fill line draining from green through yellow to red as gatherable slots fill up. Tools and stackables hold capacity from the start.</em></p>
+
 **What you can catch.** On a fishing spot the inventory line also shows every
 fish the method you clicked can give. The ones your boosted level lands now are
 at full strength; the rest are dimmed, with the level they need written over
@@ -128,6 +140,12 @@ with a 15. The fish you last caught, from the `You catch some shrimps.` message
 or from it landing in your inventory, leads. The spot type comes from
 RuneLite's own fishing spot table and the levels from the OSRS wiki; a spot the
 plugin does not know shows no fish.
+
+<p align="center">
+  <img src="docs/images/badge-catch-list.png" alt="What you can catch list on a fishing spot with dimmed locked fish" width="280">
+</p>
+
+<p align="center"><em>Catch list on a fishing spot: unlocked fish appear at full opacity, locked fish dimmed with level required.</em></p>
 
 **Activity alerts.** RuneLite notifications for the moments you would
 otherwise miss while looking at something else, each with its own toggle in
@@ -240,6 +258,26 @@ the case that broke every earlier iteration of this overlay.
 
 ## Settings
 
+<p align="center">
+  <img src="docs/images/settings.png" alt="The Combat Vitals settings panel" width="300">
+</p>
+
+<details>
+<summary><strong>Configuration panel sections (click to expand)</strong></summary>
+
+| Section | Screenshot |
+|---|---|
+| **Overview** | <img src="docs/images/settings.png" alt="Main settings overview" width="280"> |
+| **Display** | <img src="docs/images/settings-display.png" alt="Display settings" width="280"> |
+| **Targets** | <img src="docs/images/settings-targets.png" alt="Targets settings" width="280"> |
+| **Skilling vitals** | <img src="docs/images/settings-skilling-vitals.png" alt="Skilling vitals settings" width="280"> |
+| **Skilling badge** | <img src="docs/images/settings-skilling-badge.png" alt="Skilling badge settings" width="280"> |
+| **Side pillars** | <img src="docs/images/settings-side-pillars.png" alt="Side pillars settings" width="280"> |
+| **Activity alerts** | <img src="docs/images/alerts-settings.png" alt="Activity alerts settings" width="280"> |
+| **Advanced** | <img src="docs/images/settings-advanced.png" alt="Advanced settings" width="280"> |
+
+</details>
+
 ### Display
 
 | Setting | Default | What it does |
@@ -271,10 +309,6 @@ the case that broke every earlier iteration of this overlay.
 | Other targets | Same as Display | Display for every other NPC, e.g. Hitpoints. Players always use Display |
 | Big target is | Bosses + max HP | Bosses only, Bosses + max HP, or Max HP only. A boss is an NPC the game's boss health bar is showing, or one on a bundled list from the OSRS wiki's Boss page. Unknown max HP counts as an other target |
 | Big target max HP | 200 | Max HP at or above which an NPC is a big target, 1–10000 |
-
-<p align="center">
-  <img src="docs/images/settings.png" alt="The Combat Vitals settings panel" width="300">
-</p>
 
 ### Skilling vitals
 
@@ -320,6 +354,12 @@ A fish above your level is dimmed with `Lv 15` over it in red; hover it for
 The session row's stats sit in equal columns with a faint rule between, each
 in its own soft shade of the skill's colour (`SessionRow`).
 
+| Idle state (`Not fishing`) | Session row | Compact layout |
+|:---:|:---:|:---:|
+| <img src="docs/images/badge-not-fishing.png" alt="Badge once idle with Not fishing header" width="240"> | <img src="docs/images/badge-session-row.png" alt="Badge with session count and hourly rate row" width="240"> | <img src="docs/images/badge-compact.png" alt="Compact badge layout" width="240"> |
+
+<p align="center"><em>Left: idle badge lingering after activity ends. Center: session row tracking catches and rates. Right: Compact layout without progress bars.</em></p>
+
 ### Side pillars
 
 | Setting | Default | What it does |
@@ -342,6 +382,12 @@ to the left of its leftmost bar, out over the game view. Placement follows
 Status Bars' own offsets for fixed, resizable classic, resizable modern and
 the bank (`SidePillars`).
 
+| Skilling (XP & inventory) | Inventory full | Combat target | Tooltip hover |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/images/side-pillars-skilling.png" alt="Side pillars during skilling" width="200"> | <img src="docs/images/side-pillars-inventory-full.png" alt="Side pillars with inventory full" width="200"> | <img src="docs/images/side-pillars-combat.png" alt="Side pillars showing target health in combat" width="200"> | <img src="docs/images/side-pillars-tooltip.png" alt="Hover tooltip on side pillar" width="200"> |
+
+<p align="center"><em>From left: skilling pillars (XP progress on left, inventory fill on right); full inventory indicator; combat target health pillar; detailed hover tooltip. Also supports placing combat health on the right pillar (<a href="docs/images/side-pillars-combat-right.png">preview</a>) and active skilling pillars for <a href="docs/images/side-pillars-woodcutting.png">Woodcutting</a> and <a href="docs/images/side-pillars-thieving.png">Thieving</a>.</em></p>
+
 ### Activity alerts
 
 Every alert is a RuneLite notification with its own toggle, and follows your
@@ -362,18 +408,21 @@ RuneLite notification settings.
 | Low run energy | **Off** | Run energy drops below the threshold below |
 | Low run energy (%) | 10 | The threshold for that alert |
 
+<p align="center">
+  <img src="docs/images/alerts-settings.png" alt="Activity alerts configuration options" width="280">
+</p>
+
 Known limits, until they are checked in game: eating or otherwise using up
 items counts as stopping on purpose, so stopping right after eating does not
 alert; when pickpocketing a wandering NPC, walking after it without a success
 does the same.
 
 <!-- Screenshots still to take in game, for docs/images/:
-  1. inventory-fill-empty.png  : badge on a fishing spot, inventory empty, green bar.
-  2. inventory-fill-half.png   : same, about 14 fish, yellow bar.
-  3. inventory-fill-full.png   : harpoon plus 27 fish, red bar.
-  4. inventory-fill-stack.png  : badge with your health bar up too, fill bar between them.
-  5. alerts-settings.png       : the Activity alerts section of the config panel.
-  6. alert-notification.png    : a "You have stopped fishing" tray notification.
+  1. alert-notification.png     : a tray notification (e.g. "You have stopped fishing").
+  2. inventory-fill-stack.png   : badge with your health bar up too, fill bar between them.
+  3. badge-level-lock.png       : catch icon dimmed with level requirement overlay.
+  4. next-spot-path.png         : Shortest Path tile markers guiding to the next fishing spot.
+  5. boss-vs-everything-else.png: side-by-side or comparison of big target vs standard NPC display.
 -->
 
 ### Advanced
