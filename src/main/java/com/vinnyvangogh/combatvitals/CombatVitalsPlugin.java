@@ -54,6 +54,10 @@ import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.Notifier;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.chat.ChatColorType;
+import net.runelite.client.chat.ChatMessageBuilder;
+import net.runelite.client.chat.ChatMessageManager;
+import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.Notification;
 import net.runelite.client.eventbus.EventBus;
@@ -137,6 +141,12 @@ public class CombatVitalsPlugin extends Plugin
 
 	@Inject
 	private EventBus eventBus;
+
+	@Inject
+	private ChatMessageManager chatMessageManager;
+
+	/** Whether this start found the player logged in: with no stored version, a fresh install (UpdateNotes). */
+	private boolean startedLoggedIn;
 
 	@Inject
 	private NextSpotOverlay nextSpotOverlay;
@@ -321,6 +331,40 @@ public class CombatVitalsPlugin extends Plugin
 				actor.setOverheadText(text);
 			}
 		});
+
+		// Installed or turned on mid-session: no LOGGED_IN is coming, so say it now.
+		startedLoggedIn = client.getGameState() == GameState.LOGGED_IN;
+		if (startedLoggedIn)
+		{
+			clientThread.invoke(this::postUpdateNotes);
+		}
+	}
+
+	/**
+	 * Posts the "what's new" lines once per version (UpdateNotes), and stores the
+	 * version as seen even with the setting off, so turning it on later does not
+	 * bring back notes for an update long past. Client thread.
+	 */
+	private void postUpdateNotes()
+	{
+		final String lastSeen = config.lastSeenVersion();
+		if (!UpdateNotes.needsRecord(lastSeen))
+		{
+			return;
+		}
+		configManager.setConfiguration(CombatVitalsConfig.GROUP, CombatVitalsConfig.LAST_SEEN_VERSION, UpdateNotes.VERSION);
+		final List<String> lines = UpdateNotes.toShow(lastSeen, config.showUpdateNotes(), startedLoggedIn);
+		for (int i = 0; i < lines.size(); i++)
+		{
+			final String message = new ChatMessageBuilder()
+				.append(i == 0 ? ChatColorType.HIGHLIGHT : ChatColorType.NORMAL)
+				.append(lines.get(i))
+				.build();
+			chatMessageManager.queue(QueuedMessage.builder()
+				.type(ChatMessageType.CONSOLE)
+				.runeLiteFormattedMessage(message)
+				.build());
+		}
 	}
 
 	@Override
@@ -452,6 +496,7 @@ public class CombatVitalsPlugin extends Plugin
 				// Logging in restarts the drain segment (OSRS wiki, "Temporary
 				// skill boost"): the one anchor available before a drop is seen.
 				boostTimer.anchorLogin(client.getTickCount());
+				postUpdateNotes();
 				break;
 			case LOGIN_SCREEN:
 				// Logging out ends the session's counts; a hop does not.
