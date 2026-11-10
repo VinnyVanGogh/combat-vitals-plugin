@@ -15,7 +15,11 @@ final class PillarText
 	{
 	}
 
-	/** "82%", or the XP left, "65" or "1.2k", per the XP display setting; "Max" at 200m. */
+	/**
+	 * "82%", or the XP left, "65" or "1.2k", per the XP display setting;
+	 * "Max" at 200m. Every skill's percent carries its sign (Board,
+	 * 2026-11-09); {@link PillarPainter} condenses one too wide for the bar.
+	 */
 	static String xpNumber(XpProgress xp, XpDisplay display)
 	{
 		if (maxed(xp))

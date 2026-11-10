@@ -204,7 +204,7 @@ path to the next fishing spot that's active". Off by default.
 | Element | Nearest rule | Precedent | Verdict |
 |---|---|---|---|
 | Spot NPCs in the loaded scene read from `WorldView.npcs()` and typed with `FishingSpot.findSpot` | None: public game state any player can see | Base client `fishing` plugin enumerates and highlights every spot NPC in the scene the same way | Allowed |
-| Next spot's tile outlined when Shortest Path is absent | None | Base client `fishing` plugin outlines every fishing spot; this outlines one | Allowed |
+| Next spot marked until you fish again: its tile outlined, a straight line from you to it, an arrow at the game view's edge while it is off screen (1.1.0; Shortest Path drops its own path within its `finishDistance`, 5 tiles by default) | None: a drawing over public scene state, no input | Base client `fishing` plugin outlines every fishing spot; `groundmarkers` outlines tiles; Shortest Path draws lines to targets and Quest Helper arrows to them (from memory, not re-checked this pass) | Allowed |
 | Target sent to Shortest Path via `PluginMessage` (`shortestpath` / `path`, `clear`) | Plugin Hub: reflection or reaching into another plugin is rejected | `PluginMessage` is RuneLite's own public, sanctioned plugin-to-plugin channel, shipped in `runelite-client`; Shortest Path documents and handles it. Same bridge as QuestPath's | Allowed |
 | `Path to next spot` added to the right-click menu, only over the badge | Menu Restrictions: adding or removing entries | A `RUNELITE` entry of the plugin's own, nothing removed, swapped or reordered; base client `groundmarkers` ("Mark tile") and `npchighlight` ("Tag") add their own entries the same way | Allowed |
 | Bundled list of spot locations from the OSRS wiki | None: public data | Shortest Path itself and many hub plugins ship wiki location tables | Allowed |
@@ -212,6 +212,51 @@ path to the next fishing spot that's active". Off by default.
 Not done, deliberately: no walking, clicking or queuing of any kind; the path
 is drawn by Shortest Path and walked by the player. No route into the
 Wilderness: those locations are left out of the bundled list.
+
+The spot moving is read from the spot NPC's own tile changing between ticks
+(1.1.0): public scene state, the way the base client `fishing` plugin resets
+a minnow spot when `npc.getWorldLocation()` changes.
+
+### Hide game health bar, compliance (added 2026-11-04, for the 1.1.0 Hub PR)
+
+To quote in the Plugin Hub PR:
+
+> **Hide game health bar** (`hideGameHealthBar`, **off by default**). Method:
+> transparent sprite overrides. The 22 standard health bar sprites
+> (`StandardHealth30` to `StandardHealth160`, front and back) are replaced in
+> `client.getSpriteOverrides()` with fully transparent sprites of the same
+> size, then `client.resetHealthBarCaches()`. This is the same map and the
+> same ids the base client's Interface Styles plugin uses for its "HD health
+> bars" (`InterfaceStylesPlugin`, `HealthbarOverride`); Interface Styles'
+> sprites are remembered and handed back when the option is turned off or the
+> plugin stops. No hooks, no draw listeners, no reflection; hitsplats, head
+> icons and overhead chat use other sprites and are untouched. Every bar the
+> override hides is drawn back by the plugin: your target and you get the
+> plugin's readout, and every other player and NPC the game reports a bar for
+> (`Actor#getHealthRatio` / `getHealthScale`) gets a plain green and red bar
+> in the game's own place. No bar disappears, and none appears that the game
+> was not showing.
+
+| Element | Nearest rule | Precedent | Verdict |
+|---|---|---|---|
+| Blank sprites over the standard health bar ids, restored on toggle-off and shutdown | Interface Restrictions: nothing is moved, resized or made click-through; a cosmetic sprite swap of a non-interactive overlay | Base client Interface Styles overrides the same 22 ids for HD health bars; Entity Hider hides far more | Allowed |
+| A plain bar redrawn for every other actor showing one, from its own ratio and scale, at the game's position | None: the same information the game shows at that moment, drawn in its place; nothing extra revealed | Interface Styles restyles these same bars for every actor; Opponent Information reads the same ratio and scale | Allowed |
+
+Accurate scope (Board's in-game test, 2026-11-06, which rejected the first
+version): the client looks sprites up by id alone, so the override hides
+**every** standard health bar on screen (`docs/native-hp-bar.md`, "Can a
+plugin hide only the health bar?": not per actor). 1.1.0 therefore draws
+every one of them back (`GameHealthBars`, `GameHealthBarOverlay`). Known
+differences from the game's own: one bar per actor where the game can stack
+two, the plain look rather than Interface Styles' HD one, and an NPC whose
+definition sets its own bar height is drawn a few pixels off.
+
+### Thieving: stuns and hits (added 2026-11-06)
+
+| Element | Nearest rule | Precedent | Verdict |
+|---|---|---|---|
+| A hit on you while pickpocketing or at a stall does not count as combat unless an attackable NPC or another player is interacting with you | None: reads public scene state (`Actor#getInteracting`) on a hitsplat on you | Base client Opponent Information and NPC Aggression Timer read `getInteracting` the same way | Allowed |
+| Your own health shown above the badge for as long as you pickpocket | None: your own account's state | The plugin's own self readout | Allowed |
 
 ---
 

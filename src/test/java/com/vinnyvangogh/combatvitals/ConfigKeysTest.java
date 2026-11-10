@@ -1,6 +1,7 @@
 package com.vinnyvangogh.combatvitals;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import java.awt.Color;
@@ -14,6 +15,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import net.runelite.api.Skill;
@@ -124,8 +126,31 @@ public class ConfigKeysTest
 
 		for (Method method : items())
 		{
-			assertTrue(method.getName() + " is never read", code.contains("config." + method.getName() + "()"));
+			assertTrue(method.getName() + " is never read", isRead(code, method.getName()));
 		}
+	}
+
+	/**
+	 * A setting is read by a call, config.key(), or by a method reference,
+	 * config::key, handed on to be called later (SpotPathing's
+	 * fishingSpotShortestPath). The reference must end at the key's last
+	 * letter, so config::keyLonger does not count as reading key.
+	 */
+	static boolean isRead(String code, String key)
+	{
+		return code.contains("config." + key + "()")
+			|| Pattern.compile("config::" + Pattern.quote(key) + "(?![\\p{javaJavaIdentifierPart}])").matcher(code).find();
+	}
+
+	@Test
+	public void aMethodReferenceCountsAsARead()
+	{
+		assertTrue(isRead("new SpotPathing(config::fishingSpotPath, router(bridge, config::fishingSpotShortestPath));",
+			"fishingSpotShortestPath"));
+		assertTrue(isRead("if (config.fishingSpotPath() == ON)", "fishingSpotPath"));
+		assertFalse("a longer key's reference is not this key's read",
+			isRead("router(bridge, config::fishingSpotShortestPath)", "fishingSpot"));
+		assertFalse("named but never read", isRead("// fishingSpotShortestPath is optional", "fishingSpotShortestPath"));
 	}
 
 	@Test

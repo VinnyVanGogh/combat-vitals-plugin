@@ -51,6 +51,17 @@ final class NativeHealthBarHider<S>
 	/** Another plugin's override we replaced, to hand back on restore. */
 	private final Map<Integer, S> displaced = new HashMap<>();
 
+	/**
+	 * Calls to {@link #apply()} between attempts at a sprite that could not
+	 * be built. Building one reads and decodes it from the game cache, and
+	 * apply runs every client tick: retrying a sprite that is not there yet
+	 * on every one of them is a cache decode per frame. About a second.
+	 */
+	static final int RETRY_CALLS = 50;
+
+	/** Calls left before the missing sprites are tried again; 0 tries them on the next call. */
+	private int retryIn;
+
 	NativeHealthBarHider(Map<Integer, S> overrides, IntFunction<S> blankFor)
 	{
 		this.overrides = overrides;
@@ -66,18 +77,20 @@ final class NativeHealthBarHider<S>
 	 */
 	boolean apply()
 	{
+		if (retryIn > 0)
+		{
+			retryIn--;
+		}
+		final boolean retry = retryIn == 0;
+		boolean missing = false;
 		boolean changed = false;
 		for (int id : SPRITE_IDS)
 		{
-			S mine = ours.get(id);
+			final S mine = blank(id, retry);
 			if (mine == null)
 			{
-				mine = blankFor.apply(id);
-				if (mine == null)
-				{
-					continue;
-				}
-				ours.put(id, mine);
+				missing = true;
+				continue;
 			}
 
 			final S current = overrides.get(id);
@@ -100,7 +113,27 @@ final class NativeHealthBarHider<S>
 			overrides.put(id, mine);
 			changed = true;
 		}
+		if (retry && missing)
+		{
+			retryIn = RETRY_CALLS;
+		}
 		return changed;
+	}
+
+	/** Our transparent sprite for this id, built now when this call may retry; null while it cannot be. */
+	private S blank(int id, boolean retry)
+	{
+		final S mine = ours.get(id);
+		if (mine != null || !retry)
+		{
+			return mine;
+		}
+		final S built = blankFor.apply(id);
+		if (built != null)
+		{
+			ours.put(id, built);
+		}
+		return built;
 	}
 
 	/**
@@ -111,6 +144,8 @@ final class NativeHealthBarHider<S>
 	 */
 	boolean restore()
 	{
+		// Switching back on tries every sprite straight away.
+		retryIn = 0;
 		if (ours.isEmpty())
 		{
 			return false;

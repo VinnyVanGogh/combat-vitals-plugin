@@ -28,13 +28,83 @@ public class NativeHealthBarHiderTest
 	}
 
 	@Test
-	public void optionIsOnByDefault()
+	public void optionIsOffByDefault()
 	{
-		// On by default since the Board's first in-game test (2026-11-04).
+		// Off by default for the 1.1.0 Hub release (Board, 2026-11-04 night):
+		// a new profile keeps the game's bar until the option is ticked.
 		final CombatVitalsConfig config = new CombatVitalsConfig()
 		{
 		};
-		assertTrue(config.hideGameHealthBar());
+		assertFalse(config.hideGameHealthBar());
+	}
+
+	@Test
+	public void aSpriteNotReadyIsRetriedAboutOnceASecondNotEveryFrame()
+	{
+		final int[] builds = {0};
+		final NativeHealthBarHider<Object> notReady = new NativeHealthBarHider<>(overrides, id ->
+		{
+			builds[0]++;
+			return null;
+		});
+
+		final int frames = NativeHealthBarHider.RETRY_CALLS * 4;
+		for (int i = 0; i < frames; i++)
+		{
+			notReady.apply();
+		}
+
+		// Before: every sprite id on every frame, 22 * 200 = 4400 cache reads.
+		assertEquals(4 * NativeHealthBarHider.SPRITE_IDS.length, builds[0]);
+	}
+
+	@Test
+	public void aSpriteThatBecomesReadyIsInstalledOnTheNextRetry()
+	{
+		final boolean[] ready = {false};
+		final NativeHealthBarHider<Object> later = new NativeHealthBarHider<>(overrides,
+			id -> ready[0] ? new Object() : null);
+
+		assertFalse(later.apply());
+		ready[0] = true;
+		for (int i = 1; i < NativeHealthBarHider.RETRY_CALLS; i++)
+		{
+			assertFalse("waits out the retry", later.apply());
+		}
+		assertTrue(later.apply());
+		assertEquals(NativeHealthBarHider.SPRITE_IDS.length, overrides.size());
+	}
+
+	@Test
+	public void switchingBackOnRetriesStraightAway()
+	{
+		final boolean[] ready = {false};
+		final NativeHealthBarHider<Object> later = new NativeHealthBarHider<>(overrides,
+			id -> ready[0] ? new Object() : null);
+
+		later.apply();
+		later.restore();
+		ready[0] = true;
+
+		assertTrue(later.apply());
+	}
+
+	@Test
+	public void installedSpritesAreNotRebuilt()
+	{
+		final int[] builds = {0};
+		final NativeHealthBarHider<Object> counted = new NativeHealthBarHider<>(overrides, id ->
+		{
+			builds[0]++;
+			return new Object();
+		});
+
+		for (int i = 0; i < 100; i++)
+		{
+			counted.apply();
+		}
+
+		assertEquals(NativeHealthBarHider.SPRITE_IDS.length, builds[0]);
 	}
 
 	@Test

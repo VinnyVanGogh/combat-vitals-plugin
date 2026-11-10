@@ -64,12 +64,33 @@ final class SessionRow
 		}
 		if (rates)
 		{
-			cells.add(new Cell(Kind.XP_RATE, xpRate(xpPerHour)));
+			add(cells, Kind.XP_RATE, xpRate(xpPerHour));
 			add(cells, Kind.ACTION_RATE, actionRate(skill, actionsPerHour));
 			if (timeToLevel)
 			{
 				add(cells, Kind.TIME_TO_LEVEL, timeToLevel(xp, xpPerHour));
 			}
+		}
+		return cells;
+	}
+
+	/**
+	 * The Compact layout's one short line: "24 caught | 10.6k xp/h", the
+	 * count without its time and the XP rate alone. Either half follows its
+	 * own switch.
+	 *
+	 * @return the cells, left to right; empty when both the count and the rates are off
+	 */
+	static List<Cell> compactCells(Skill skill, int actions, int xpPerHour, boolean count, boolean rates)
+	{
+		final List<Cell> cells = new ArrayList<>(2);
+		if (count)
+		{
+			cells.add(new Cell(Kind.COUNT, count(skill, actions, -1)));
+		}
+		if (rates)
+		{
+			add(cells, Kind.XP_RATE, xpRate(xpPerHour));
 		}
 		return cells;
 	}
@@ -89,10 +110,13 @@ final class SessionRow
 		return elapsedMillis < 0 ? done : done + " in " + duration(elapsedMillis);
 	}
 
-	/** "10.6k xp/h", or "-- xp/h" for the first minute. */
+	/**
+	 * "10.6k xp/h", or null for the first minute: nothing is shown until a
+	 * rate exists, rather than "-- xp/h" (Board, 2026-11-06).
+	 */
 	static String xpRate(int xpPerHour)
 	{
-		return (xpPerHour < 0 ? "--" : shortNumber(xpPerHour)) + " xp/h";
+		return xpPerHour < 0 ? null : shortNumber(xpPerHour) + " xp/h";
 	}
 
 	/** "459 fish/h", or null while not yet known. */

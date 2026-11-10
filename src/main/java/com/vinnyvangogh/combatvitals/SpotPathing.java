@@ -15,8 +15,9 @@ import net.runelite.client.game.FishingSpot;
  * points at the latest spot. Starting to fish clears what this sent, and
  * nothing else: a path the player set up themselves is never touched.
  *
- * Client thread only. The game is reached through {@link Router} and
- * {@link Picker}, so the whole flow is testable without a client.
+ * Client thread only. The game is reached through {@link Router},
+ * {@link Picker} and {@link Locator}, so the whole flow is testable without
+ * a client.
  *
  * Whether the spot moved is decided here, from the spot being fished and
  * whether the player has clicked or walked elsewhere since, never from the
@@ -45,6 +46,21 @@ final class SpotPathing
 		NextFishingSpot.Spot pick(FishingSpot type, String method);
 	}
 
+	/** Where a spot NPC stands now, as {@link #tile}, or {@link #UNKNOWN} when it is not loaded. */
+	interface Locator
+	{
+		long tile(Object npc);
+	}
+
+	/** A spot NPC that is not loaded, or a tile not read yet. */
+	static final long UNKNOWN = -1;
+
+	/** One world tile as a single comparable value. */
+	static long tile(int x, int y, int plane)
+	{
+		return ((long) plane << 40) | ((long) (x & 0xFFFFF) << 20) | (y & 0xFFFFF);
+	}
+
 	/**
 	 * Game ticks the fished spot is still "ours" after the interaction with it
 	 * ends. The game clears the interaction around the tick the spot moves, in
@@ -62,9 +78,13 @@ final class SpotPathing
 	/**
 	 * The spot NPC being fished, until the player clicks or walks elsewhere,
 	 * or {@link #GRACE_TICKS} after the interaction with it ended. Its
-	 * despawning or turning into another spot is the spot moving.
+	 * showing on another tile, despawning or turning into another spot is the
+	 * spot moving.
 	 */
 	private Object fished;
+
+	/** Where {@link #fished} stood on the last tick it was read; {@link #UNKNOWN} until then. */
+	private long fishedTile = UNKNOWN;
 
 	/** Ticks left of {@link #fished} once the interaction ended; -1 while still on it. */
 	private int graceLeft = -1;
@@ -91,6 +111,7 @@ final class SpotPathing
 		this.type = type;
 		this.method = method;
 		fished = spot;
+		fishedTile = UNKNOWN;
 		graceLeft = -1;
 	}
 
@@ -169,9 +190,15 @@ final class SpotPathing
 		}
 	}
 
-	/** Runs a due search, once, and ages the fished spot's grace. */
-	void tick(Picker picker)
+	/**
+	 * Checks whether the spots moved, runs a due search, once, and ages the
+	 * fished spot's grace. The tiles are read before the grace ages, so a
+	 * spot seen on its new tile on the tick its grace runs out still counts.
+	 */
+	void tick(Picker picker, Locator locator)
 	{
+		watchFished(locator);
+		watchTarget(locator);
 		ageGrace();
 		if (!due)
 		{
@@ -196,10 +223,52 @@ final class SpotPathing
 			return;
 		}
 
-		// No Shortest Path: the spot itself is highlighted, when it is loaded.
-		log.debug("Shortest Path not available: highlighting the spot instead");
+		// No Shortest Path (or switched off here): the plugin's own mark is all there is.
+		log.debug("Shortest Path not available or not wanted: marking the spot only");
 		clearTarget();
 		target = next;
+	}
+
+	/**
+	 * A spot moves by relocating: the same NPC shows on a new tile, without a
+	 * despawn or an id change (the Board's in-game test, 2026-11-04; RuneLite's
+	 * own FishingPlugin likewise keys spots by NPC index and resets a minnow
+	 * spot when its world location changes). A tick it is not loaded is not
+	 * a move; it is compared again once it is.
+	 */
+	private void watchFished(Locator locator)
+	{
+		if (fished == null)
+		{
+			return;
+		}
+		final long now = locator.tile(fished);
+		if (now == UNKNOWN)
+		{
+			return;
+		}
+		if (fishedTile != UNKNOWN && now != fishedTile)
+		{
+			fishedSpotMoved();
+			return;
+		}
+		fishedTile = now;
+	}
+
+	/** The spot being walked to relocating before it is reached means finding the next one again. */
+	private void watchTarget(Locator locator)
+	{
+		final Object npc = target == null ? null : target.getNpc();
+		if (npc == null || mode.get() == FishingSpotPath.OFF)
+		{
+			return;
+		}
+		final long now = locator.tile(npc);
+		if (now != UNKNOWN && now != tile(target.getX(), target.getY(), target.getPlane()))
+		{
+			log.debug("Next fishing spot moved before it was reached: searching again");
+			request();
+		}
 	}
 
 	private void ageGrace()
@@ -219,6 +288,7 @@ final class SpotPathing
 		type = null;
 		method = null;
 		fished = null;
+		fishedTile = UNKNOWN;
 		graceLeft = -1;
 	}
 

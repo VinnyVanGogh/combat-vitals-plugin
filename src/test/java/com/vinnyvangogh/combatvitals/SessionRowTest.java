@@ -51,7 +51,7 @@ public class SessionRowTest
 	public void ratesAreShortAndNameTheAction()
 	{
 		assertEquals("10.6k xp/h", SessionRow.xpRate(10_597));
-		assertEquals("-- xp/h", SessionRow.xpRate(-1));
+		assertNull("nothing until a rate exists, not \"-- xp/h\"", SessionRow.xpRate(-1));
 		assertEquals("459 fish/h", SessionRow.actionRate(Skill.FISHING, 459));
 		assertEquals("1.2k logs/h", SessionRow.actionRate(Skill.WOODCUTTING, 1_200));
 		assertEquals("300 ores/h", SessionRow.actionRate(Skill.MINING, 300));
@@ -126,8 +126,22 @@ public class SessionRowTest
 	public void unknownRatesLeaveOutWhatIsNotKnown()
 	{
 		final XpProgress p = XpProgress.of(Experience.getXpForLevel(18) - 6_000);
-		assertEquals("1 caught in 10s | -- xp/h", joined(SessionRow.cells(Skill.FISHING, 1, 10_000, -1, -1, p,
+		assertEquals("1 caught in 10s", joined(SessionRow.cells(Skill.FISHING, 1, 10_000, -1, -1, p,
 			true, true, true)));
+	}
+
+	/** Board's screenshots, 2026-11-06: "-- 1 stolen in 3s". Every skill alike: no rate yet, no rate cell. */
+	@Test
+	public void noSkillShowsAPlaceholderRate()
+	{
+		final XpProgress p = XpProgress.of(Experience.getXpForLevel(18) - 6_000);
+		for (Skill skill : new Skill[]{Skill.FISHING, Skill.WOODCUTTING, Skill.MINING, Skill.THIEVING})
+		{
+			final List<SessionRow.Cell> cells = SessionRow.cells(skill, 1, 3_000, -1, -1, p, true, true, true);
+			assertEquals(skill + " has only its count", 1, cells.size());
+			assertEquals(SessionRow.Kind.COUNT, cells.get(0).getKind());
+			assertTrue(skill + " never shows \"--\"", !cells.get(0).getText().contains("--"));
+		}
 	}
 
 	@Test
@@ -143,6 +157,21 @@ public class SessionRowTest
 			assertNotEquals(kind + " differs from the one before", previous, c);
 			previous = c;
 		}
+	}
+
+	@Test
+	public void compactIsOneShortLineOfTheCountAndXpRate()
+	{
+		assertEquals("24 caught | 10.6k xp/h",
+			joined(SessionRow.compactCells(Skill.FISHING, 24, 10_597, true, true)));
+	}
+
+	@Test
+	public void compactFollowsEachSwitch()
+	{
+		assertEquals("24 caught", joined(SessionRow.compactCells(Skill.FISHING, 24, 10_597, true, false)));
+		assertTrue("no rate yet, nothing shown", SessionRow.compactCells(Skill.FISHING, 24, -1, false, true).isEmpty());
+		assertTrue(SessionRow.compactCells(Skill.FISHING, 24, 10_597, false, false).isEmpty());
 	}
 
 	private static String joined(List<SessionRow.Cell> cells)

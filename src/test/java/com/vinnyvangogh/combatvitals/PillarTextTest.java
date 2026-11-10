@@ -29,6 +29,27 @@ public class PillarTextTest
 		assertEquals(Integer.toString(p.getXpLeft()), PillarText.xpNumber(p, XpDisplay.XP_LEFT));
 	}
 
+	/**
+	 * Board, 2026-11-09: every skill's XP pillar reads a percent, "3%" and
+	 * "82%" alike. The screenshots of 2026-11-06 showed "3%" beside "82"
+	 * because only a wide percentage lost its sign when drawn.
+	 */
+	@Test
+	public void xpPercentKeepsItsSignAtEveryValue()
+	{
+		for (int level : new int[]{2, 16, 40, 60, 98})
+		{
+			final int from = Experience.getXpForLevel(level);
+			final int to = Experience.getXpForLevel(level + 1);
+			for (double share : new double[]{0.03, 0.5, 0.82})
+			{
+				final String number = PillarText.xpNumber(XpProgress.of(from + (int) ((to - from) * share)),
+					XpDisplay.PERCENT);
+				assertTrue(number, number.matches("\\d{1,2}%"));
+			}
+		}
+	}
+
 	@Test
 	public void xpLeftIsShortenedToFitThePillar()
 	{
