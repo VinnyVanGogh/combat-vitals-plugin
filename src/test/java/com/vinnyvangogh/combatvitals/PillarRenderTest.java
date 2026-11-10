@@ -1,5 +1,6 @@
 package com.vinnyvangogh.combatvitals;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -150,6 +151,24 @@ public class PillarRenderTest
 		}
 	}
 
+	/** Dropping the sign of a percent too wide for the bar made "82%" paint exactly as "82". */
+	@Test
+	public void aWidePercentKeepsItsSignWhenDrawn()
+	{
+		final Pillar withSign = xp(0, false).toBuilder().number("82%").build();
+		final Pillar withoutSign = xp(0, false).toBuilder().number("82").build();
+		assertFalse(same(render(withSign, PillarStyle.STATUS_BARS, PillarLabels.ICON_AND_NUMBER),
+			render(withoutSign, PillarStyle.STATUS_BARS, PillarLabels.ICON_AND_NUMBER)));
+	}
+
+	@Test
+	public void onlyALabelTooWideForTheBarIsCondensed()
+	{
+		assertEquals(1.0, PillarPainter.labelScale(15, 18), 0);
+		assertEquals(1.0, PillarPainter.labelScale(18, 18), 0);
+		assertEquals(0.75, PillarPainter.labelScale(24, 18), 1e-9);
+	}
+
 	@Test
 	public void theTargetCarriesTheHeart()
 	{
@@ -220,6 +239,21 @@ public class PillarRenderTest
 		assertNotNull(bag);
 		assertTrue(bag.getWidth() <= SidePillars.WIDTH);
 		assertTrue(coloured(bag, 0, bag.getHeight()));
+	}
+
+	private static boolean same(BufferedImage a, BufferedImage b)
+	{
+		for (int y = 0; y < a.getHeight(); y++)
+		{
+			for (int x = 0; x < a.getWidth(); x++)
+			{
+				if (a.getRGB(x, y) != b.getRGB(x, y))
+				{
+					return false;
+				}
+			}
+		}
+		return true;
 	}
 
 	/** Any near-white pixel in these rows. */

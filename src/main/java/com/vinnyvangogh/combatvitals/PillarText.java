@@ -16,11 +16,9 @@ final class PillarText
 	}
 
 	/**
-	 * "82", the percentage without its sign, or the XP left, "65" or "1.2k",
-	 * per the XP display setting; "Max" at 200m. Never a sign: "82%" is wider
-	 * than the pillar and lost it when drawn while "3%" kept it, so pillars
-	 * read "3%" beside "82" (Board's screenshots, 2026-11-06). The hover text
-	 * says which it is.
+	 * "82%", or the XP left, "65" or "1.2k", per the XP display setting;
+	 * "Max" at 200m. Every skill's percent carries its sign (Board,
+	 * 2026-11-09); {@link PillarPainter} condenses one too wide for the bar.
 	 */
 	static String xpNumber(XpProgress xp, XpDisplay display)
 	{
@@ -29,7 +27,7 @@ final class PillarText
 			return "Max";
 		}
 		// Both reads as the percentage: there is room for one number.
-		return display == XpDisplay.XP_LEFT ? compact(xp.getXpLeft()) : Integer.toString(percent(xp));
+		return display == XpDisplay.XP_LEFT ? compact(xp.getXpLeft()) : percent(xp) + "%";
 	}
 
 	/**

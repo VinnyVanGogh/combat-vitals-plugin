@@ -24,18 +24,18 @@ public class PillarTextTest
 	public void xpNumberFollowsTheXpDisplaySetting()
 	{
 		final XpProgress p = fishing16();
-		assertEquals("82", PillarText.xpNumber(p, XpDisplay.PERCENT));
-		assertEquals("82", PillarText.xpNumber(p, XpDisplay.BOTH));
+		assertEquals("82%", PillarText.xpNumber(p, XpDisplay.PERCENT));
+		assertEquals("82%", PillarText.xpNumber(p, XpDisplay.BOTH));
 		assertEquals(Integer.toString(p.getXpLeft()), PillarText.xpNumber(p, XpDisplay.XP_LEFT));
 	}
 
 	/**
-	 * Board's screenshots, 2026-11-06: the Mining pillar read "3%" while the
-	 * others read a bare number, because only a wide percentage lost its sign
-	 * when drawn. One format at every value.
+	 * Board, 2026-11-09: every skill's XP pillar reads a percent, "3%" and
+	 * "82%" alike. The screenshots of 2026-11-06 showed "3%" beside "82"
+	 * because only a wide percentage lost its sign when drawn.
 	 */
 	@Test
-	public void xpPercentIsABareNumberAtEveryValue()
+	public void xpPercentKeepsItsSignAtEveryValue()
 	{
 		for (int level : new int[]{2, 16, 40, 60, 98})
 		{
@@ -45,7 +45,7 @@ public class PillarTextTest
 			{
 				final String number = PillarText.xpNumber(XpProgress.of(from + (int) ((to - from) * share)),
 					XpDisplay.PERCENT);
-				assertTrue(number, number.matches("\\d{1,2}"));
+				assertTrue(number, number.matches("\\d{1,2}%"));
 			}
 		}
 	}

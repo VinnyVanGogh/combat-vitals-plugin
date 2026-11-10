@@ -10,6 +10,7 @@ import java.awt.Graphics2D;
 import java.awt.Paint;
 import java.awt.Rectangle;
 import java.awt.Shape;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import net.runelite.client.ui.FontManager;
 
@@ -192,8 +193,9 @@ final class PillarPainter
 	 * White inside a one-pixel black outline, so it reads on any fill: a
 	 * drop shadow alone was lost on the thin tan Mining fill (Board's
 	 * screenshots, 2026-11-06). "82%" is wider than a 20 px bar in the small
-	 * font, so a percentage that does not fit drops its sign; the hover text
-	 * still says it in full.
+	 * font, so a label that does not fit is condensed sideways rather than
+	 * cut or stripped of its sign: every skill reads "3%" and "82%" alike
+	 * (Board, 2026-11-09).
 	 */
 	private static void centred(Graphics2D graphics, Rectangle box, String number, int baseline)
 	{
@@ -201,16 +203,29 @@ final class PillarPainter
 		{
 			return;
 		}
+		final Font font = graphics.getFont();
 		final FontMetrics metrics = graphics.getFontMetrics();
-		final String text = metrics.stringWidth(number) > box.width - 2 && number.endsWith("%")
-			? number.substring(0, number.length() - 1) : number;
-		final int x = box.x + (box.width - metrics.stringWidth(text)) / 2;
+		final int width = metrics.stringWidth(number);
+		final int room = box.width - 2;
+		final double scale = labelScale(width, room);
+		if (scale < 1)
+		{
+			graphics.setFont(font.deriveFont(AffineTransform.getScaleInstance(scale, 1)));
+		}
+		final int x = box.x + (box.width - Math.min(width, room)) / 2;
 		graphics.setColor(SHADOW);
 		for (int[] offset : OUTLINE)
 		{
-			graphics.drawString(text, x + offset[0], baseline + offset[1]);
+			graphics.drawString(number, x + offset[0], baseline + offset[1]);
 		}
 		graphics.setColor(Color.WHITE);
-		graphics.drawString(text, x, baseline);
+		graphics.drawString(number, x, baseline);
+		graphics.setFont(font);
+	}
+
+	/** How much to narrow a label {@code width} px wide to fit {@code room}: 1 when it already fits. */
+	static double labelScale(int width, int room)
+	{
+		return width > room ? (double) room / width : 1;
 	}
 }
