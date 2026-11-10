@@ -258,6 +258,12 @@ definition sets its own bar height is drawn a few pixels off.
 | A hit on you while pickpocketing or at a stall does not count as combat unless an attackable NPC or another player is interacting with you | None: reads public scene state (`Actor#getInteracting`) on a hitsplat on you | Base client Opponent Information and NPC Aggression Timer read `getInteracting` the same way | Allowed |
 | Your own health shown above the badge for as long as you pickpocket | None: your own account's state | The plugin's own self readout | Allowed |
 
+### Update notes in chat (added 2026-11-09, Board)
+
+| Element | Nearest rule | Precedent | Verdict |
+|---|---|---|---|
+| Once per plugin version, on the first login after an update, a few `CONSOLE` lines in the game chat saying what is new; a fresh install gets one welcome line. `Show update notes in chat` (default on) turns it off | "No autotyping" / "No modifying outgoing chat messages": both are about the player's chatbox input and what they send. This posts only into the local chat history through `ChatMessageManager`, nothing is typed, sent or changed, and it carries no game information at all | Base client `Notifier`'s "Game message" notification queues a `CONSOLE` `QueuedMessage` through `ChatMessageManager` the same way (from memory of the client source; the jar check was gated on 2026-11-09, re-read `Notifier` before the Hub PR) | Allowed, with precedent |
+
 ---
 
 ## Phase 0.5, Measure before building

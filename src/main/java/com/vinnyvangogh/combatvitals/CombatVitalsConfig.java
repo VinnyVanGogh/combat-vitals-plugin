@@ -1178,4 +1178,29 @@ public interface CombatVitalsConfig extends Config
 		return true;
 	}
 
+	@ConfigItem(
+		keyName = "showUpdateNotes",
+		name = "Show update notes in chat",
+		description = "After the plugin updates, say what is new in the game chat once, on your next login.",
+		section = advancedSection,
+		position = 3
+	)
+	default boolean showUpdateNotes()
+	{
+		return true;
+	}
+
+	/** The last version whose update notes were handled; written by the plugin, never shown. */
+	@ConfigItem(
+		keyName = LAST_SEEN_VERSION,
+		name = "",
+		description = "",
+		hidden = true
+	)
+	default String lastSeenVersion()
+	{
+		return "";
+	}
+
+	String LAST_SEEN_VERSION = "lastSeenVersion";
 }
