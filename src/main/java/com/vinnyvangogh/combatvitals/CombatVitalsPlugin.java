@@ -734,27 +734,34 @@ public class CombatVitalsPlugin extends Plugin
 			objectBadge = false;
 			// Turning to anything else (a banker, an attacker) is leaving the spot.
 			turnedTo(target);
-			final Skill trained = clicked != null ? clicked : fight ? null : skillingSkill(target);
-			if (trained != null)
-			{
-				endXpBadge();
-				skillingTarget = (NPC) target;
-				skilling.engage(trained);
-				skillingStop.reset();
-				startedFishing(trained);
-			}
-			else if (!xpBadge || fight)
-			{
-				endXpBadge();
-				skillingTarget = null;
-				skilling.release();
-			}
-			// Talking to the butler or a banker mid-build is not stopping: the
-			// XP badge runs out on its own gap.
+			turnedToNpc(target, clicked != null ? clicked : fight ? null : skillingSkill(target), fight);
 		}
 		else
 		{
 			interactionEnded();
+		}
+	}
+
+	/**
+	 * The badge takes an NPC only when its menu names a skill; anything else
+	 * drops it at once, except that talking to the butler or a banker mid-build
+	 * is not stopping: an XP badge runs out on its own gap.
+	 */
+	private void turnedToNpc(Actor target, Skill trained, boolean fight)
+	{
+		if (trained != null)
+		{
+			endXpBadge();
+			skillingTarget = (NPC) target;
+			skilling.engage(trained);
+			skillingStop.reset();
+			startedFishing(trained);
+		}
+		else if (!xpBadge || fight)
+		{
+			endXpBadge();
+			skillingTarget = null;
+			skilling.release();
 		}
 	}
 
@@ -1138,18 +1145,13 @@ public class CombatVitalsPlugin extends Plugin
 		final Item[] items = event.getItemContainer().getItems();
 		final int[] ids = new int[items.length];
 		final int[] quantities = new int[items.length];
-		final Map<Integer, Integer> byId = new HashMap<>();
 		for (int i = 0; i < items.length; i++)
 		{
 			ids[i] = items[i].getId();
 			quantities[i] = items[i].getQuantity();
-			if (ids[i] >= 0 && quantities[i] > 0)
-			{
-				byId.merge(ids[i], quantities[i], Integer::sum);
-			}
 		}
-		inventoryNow = byId;
-		agilityLaps.marksHeld(byId.getOrDefault(ItemID.GRACE, 0));
+		inventoryNow = byId(ids, quantities);
+		agilityLaps.marksHeld(inventoryNow.getOrDefault(ItemID.GRACE, 0));
 
 		final int caught = inventoryCatches.observe(ids, quantities);
 		if (caught != -1)
@@ -1162,6 +1164,20 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			lastGainedItem = client.getItemDefinition(gained).getName();
 		}
+	}
+
+	/** The inventory as item id to total quantity, empty slots left out. */
+	static Map<Integer, Integer> byId(int[] ids, int[] quantities)
+	{
+		final Map<Integer, Integer> byId = new HashMap<>();
+		for (int i = 0; i < ids.length; i++)
+		{
+			if (ids[i] >= 0 && quantities[i] > 0)
+			{
+				byId.merge(ids[i], quantities[i], Integer::sum);
+			}
+		}
+		return byId;
 	}
 
 	/** Special attack energy falling while a skilling spec tool is wielded is that tool's special. */
@@ -1691,7 +1707,23 @@ public class CombatVitalsPlugin extends Plugin
 		final Instant now = Instant.now();
 		final boolean blocked = skillingTarget != null || objectBadge || combat.inCombat(now, timeout());
 		final int tick = client.getTickCount();
-		switch (xpSkilling.tick(tick, animating, blocked))
+		applyXpStep(xpSkilling.tick(tick, animating, blocked), now);
+
+		if (xpSkilling.acted())
+		{
+			productionInputs.action(xpSkilling.skill(), inventoryLastTick, inventoryNow, tick);
+		}
+		if (xpBadge && skilling.expire(now, timeout(), xpSkilling.working()))
+		{
+			xpBadge = false;
+			xpSkilling.forget();
+		}
+		inventoryLastTick = inventoryNow;
+	}
+
+	private void applyXpStep(XpSkilling.Step step, Instant now)
+	{
+		switch (step)
 		{
 			case ENGAGE:
 				skilling.engage(xpSkilling.skill());
@@ -1710,17 +1742,12 @@ public class CombatVitalsPlugin extends Plugin
 			default:
 				break;
 		}
+	}
 
-		if (xpSkilling.acted())
-		{
-			productionInputs.action(xpSkilling.skill(), inventoryLastTick, inventoryNow, tick);
-		}
-		if (xpBadge && skilling.expire(now, timeout(), xpSkilling.working()))
-		{
-			xpBadge = false;
-			xpSkilling.forget();
-		}
-		inventoryLastTick = inventoryNow;
+	/** A skilling NPC, object or XP-drop skill holds the badge up. */
+	private boolean badgeHeld()
+	{
+		return skillingTarget != null || objectBadge || xpBadge;
 	}
 
 	/** An NPC or object badge takes over from the XP badge. */
@@ -1824,7 +1851,7 @@ public class CombatVitalsPlugin extends Plugin
 	{
 		final long now = System.currentTimeMillis();
 		final boolean fighting = combat.inCombat(Instant.now(), timeout());
-		final Skill active = skillingTarget != null || objectBadge || xpBadge ? skilling.skill() : null;
+		final Skill active = badgeHeld() ? skilling.skill() : null;
 		// A badge moved off your head shares no space with the health bars, so a fight
 		// neither hides it nor ends its "Not woodcutting" (Board, 2026-11-14).
 		final boolean overHead = config.skillingPosition() == BadgePosition.OVER_HEAD;

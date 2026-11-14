@@ -138,7 +138,12 @@ final class XpSkilling
 			stopped = false;
 			return start ? Step.ENGAGE : Step.NONE;
 		}
+		return idleStep(tick, animating);
+	}
 
+	/** A tick with no gain: an animation keeps it up, the skill's gap stops it. */
+	private Step idleStep(int tick, boolean animating)
+	{
 		if (skill == null || stopped)
 		{
 			return Step.NONE;
