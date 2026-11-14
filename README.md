@@ -392,7 +392,7 @@ A fish above your level is dimmed with `Lv 15` over it in red; hover it for
 | Badge offset | 0 | Pixels to raise the badge, ±200 |
 | Badge size (%) | 100 | Scale the whole badge, 50 to 200 |
 | Fish above your level | Dim | Dim them with the level, or hide them |
-| Hide during combat | Off | Hide the badge while you are hit or hitting back; fighting a target always replaces it. A stun or hit from the NPC you are pickpocketing is not combat; while pickpocketing your own health shows above the badge |
+| Hide in combat (over head) | Off | Over your head only: hide the badge while you are hit or hitting back; fighting a target always replaces it there. Fixed or over the spot a fight never hides it: the header adds `in combat` (`Not woodcutting \| in combat`) or `under attack` while still gathering, and the idle badge runs out on its own timer. A stun or hit from the NPC you are pickpocketing is not combat; while pickpocketing your own health shows above the badge |
 | Fishing colour … Hunter colour | The palette | Per-skill colour overrides |
 | Warn if missing gear | On | Click a fishing option without its tool, bait or level and the badge says `Needs: Fishing rod + bait` in red for 8 seconds, before the game's dialog. Worn or carried tools count, as does barehanded harpooning after Barbarian Training. The click itself is never changed |
 | Time to level | On | With XP and actions per hour on, how long the next level takes at this session's rate, `lvl 18 in 6m`. Not shown before a rate is known, or at 99 |
