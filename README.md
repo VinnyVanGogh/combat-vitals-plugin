@@ -151,7 +151,9 @@ plugin does not know shows no fish.
 otherwise miss while looking at something else, each with its own toggle in
 the *Activity alerts* section. They go through RuneLite's notifier, so your
 RuneLite notification settings (tray, flash, sound, focus) decide how they
-arrive; the plugin plays nothing of its own.
+arrive. By default the sound is RuneLite's; *Alert sounds* can give any
+alert a sound of its own, a voice line, or your own file, and can repeat it
+until you are back.
 
 - *Inventory full* while fishing, woodcutting, mining, hunting or thieving.
 - *Stopped gathering*: no gathering animation or experience for five seconds
@@ -425,6 +427,39 @@ does the same.
   5. boss-vs-everything-else.png: side-by-side or comparison of big target vs standard NPC display.
 -->
 
+### Alert sounds
+
+Closed by default. Every activity alert has three settings here:
+
+| Setting | Default | What it does |
+|---|---|---|
+| *Alert* sound | RuneLite | RuneLite (your RuneLite notification sound, as before), Soft chime, Music box, Retro blip, Voice line, or My sounds |
+| *Alert* volume | 40 | Volume of the plugin's own sounds; RuneLite's sound keeps RuneLite's volume |
+| Repeat *alert* | Off | Play the alert again, softly, until you are back |
+| Repeat every (s) | 15 | Seconds between repeats |
+| Repeat for (min) | 10 | Stop repeating after this long even if you are not back |
+
+**Repeat until you're back.** "Back" is any mouse press or key press in the
+client, starting the activity again (experience in it), logging out or
+hopping. The plugin only listens for those; it never presses, clicks or
+types anything, and never gets louder.
+
+**Voice line** says what happened: *"You've stopped chopping yew logs."*,
+*"Your inventory is full."* It is joined from short clips, so it knows
+every log, fish, ore and chinchompa in its word list; anything else says
+*"You've stopped chopping"*, or *"You've stopped gathering."*.
+
+**My sounds** plays your own WAV from `.runelite/combat-vitals/sounds/`,
+one file per alert: `inventory-full.wav`, `gathering-stopped.wav`,
+`spot-moved.wav`, `thieving-stopped.wav`, `stunned.wav`,
+`coin-pouch-cap.wav`, `necklace-broke.wav`, `production-finished.wav`,
+`low-run-energy.wav`. If the file is not there, RuneLite's sound plays and
+the chat says so once.
+
+With a sound of the plugin's own, RuneLite's notification still appears
+(tray, flash and the rest as you set them) with its own sound off for that
+alert. The plugin's sounds play even while the client is focused.
+
 ### Advanced
 
 | Setting | Default | What it does |
@@ -571,6 +606,14 @@ client, follow
 [Using Jagex Accounts](https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts).
 
 There are no dependencies beyond RuneLite itself, deliberately.
+
+Development builds use the newest RuneLite release (`latest.release`) and check
+for a newer one on every run; `run` and `test` print the version they resolved
+(`RuneLite client: 1.x.y`). A RuneLite release can therefore break the build on a
+day nothing here changed. To compare against a fixed version, pin it:
+`./gradlew build -PruneLiteVersion=1.13.6`. `--offline` builds from the cache.
+The Plugin Hub replaces `build.gradle` when it builds the plugin, so none of this
+affects the published version.
 
 ## Credit
 

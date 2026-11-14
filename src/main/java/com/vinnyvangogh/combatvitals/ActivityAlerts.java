@@ -129,6 +129,9 @@ final class ActivityAlerts
 	private boolean necklaceBroke;
 	private Skill spotMoved;
 
+	/** The last {@link #tick} saw experience in a tracked skill. */
+	private boolean experienced;
+
 	private int lastFilling = -1;
 	private int lastEmpty = -1;
 	private int lastPouches = -1;
@@ -215,6 +218,15 @@ final class ActivityAlerts
 	}
 
 	/**
+	 * The last tick brought experience in a gathering, thieving or make-X
+	 * skill: the player is at it again, so a repeating alert can stop.
+	 */
+	boolean experienced()
+	{
+		return experienced;
+	}
+
+	/**
 	 * @param stopTicks ticks without animation or experience before "stopped"
 	 * @param pouchCap  coin pouches at which the cap alert fires
 	 * @param energyLow run energy percent below which the low energy alert fires
@@ -224,6 +236,7 @@ final class ActivityAlerts
 	{
 		List<Alert> out = null;
 
+		experienced = xpThisTick != null;
 		if (xpThisTick != null)
 		{
 			active = xpThisTick;
@@ -320,6 +333,7 @@ final class ActivityAlerts
 		active = null;
 		lastActiveTick = -1;
 		xpThisTick = null;
+		experienced = false;
 		banked = false;
 		stunned = false;
 		necklaceBroke = false;
