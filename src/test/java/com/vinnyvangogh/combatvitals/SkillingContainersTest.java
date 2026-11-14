@@ -396,6 +396,78 @@ public class SkillingContainersTest
 		assertEquals(0, contents.contents(SkillingContainer.FISH_BARREL));
 	}
 
+	// --- Empty in the bank (Board, 2026-11-14) -------------------------------
+
+	@Test
+	public void emptyInTheBankIsZeroOnceTheBankChangesWithoutTheChatLine()
+	{
+		contents.message("The basket contains: 28 x Yew logs");
+		contents.clicked(SkillingContainer.LOG_BASKET, "Empty", 50, true);
+		// Not yet: the click alone could have failed (a full bank).
+		assertEquals(28, contents.contents(SkillingContainer.LOG_BASKET));
+		assertTrue(contents.bankChanged(51));
+		assertEquals(0, contents.contents(SkillingContainer.LOG_BASKET));
+	}
+
+	@Test
+	public void emptyInTheBankOfAnUncheckedBasketIsStillZero()
+	{
+		contents.clicked(SkillingContainer.LOG_BASKET, "Empty", 50, true);
+		assertTrue(contents.bankChanged(50));
+		assertEquals(0, contents.contents(SkillingContainer.LOG_BASKET));
+	}
+
+	@Test
+	public void emptyInTheBankIsZeroFromTheChatLineToo()
+	{
+		contents.message("The basket contains: 28 x Yew logs");
+		contents.clicked(SkillingContainer.LOG_BASKET, "Empty", 50, true);
+		assertTrue(contents.message("You empty your basket into the bank.", 51));
+		assertEquals(0, contents.contents(SkillingContainer.LOG_BASKET));
+		// Already settled: the bank change after it moves nothing.
+		assertFalse(contents.bankChanged(51));
+	}
+
+	@Test
+	public void fishBarrelEmptyInTheBankIsZero()
+	{
+		contents.message("The barrel contains: 12 x Raw trout");
+		contents.clicked(SkillingContainer.FISH_BARREL, "Empty", 50, true);
+		assertTrue(contents.bankChanged(52));
+		assertEquals(0, contents.contents(SkillingContainer.FISH_BARREL));
+	}
+
+	@Test
+	public void emptyInTheBankWithNoBankChangeLeavesTheCount()
+	{
+		contents.message("The basket contains: 28 x Yew logs");
+		contents.clicked(SkillingContainer.LOG_BASKET, "Empty", 50, true);
+		assertFalse(contents.bankChanged(60));
+		assertEquals(28, contents.contents(SkillingContainer.LOG_BASKET));
+	}
+
+	@Test
+	public void bankChangeWithoutAnEmptyClickMovesNothing()
+	{
+		contents.message("The basket contains: 28 x Yew logs");
+		assertFalse(contents.bankChanged(50));
+		contents.clicked(SkillingContainer.LOG_BASKET, "Fill", 50, true);
+		assertFalse(contents.bankChanged(50));
+		assertEquals(28, contents.contents(SkillingContainer.LOG_BASKET));
+	}
+
+	@Test
+	public void emptyOutsideTheBankIsUnchanged()
+	{
+		contents.message("The basket contains: 12 x Logs");
+		contents.clicked(SkillingContainer.LOG_BASKET, "Empty", 50, false);
+		// A bank change (none should come, but) never zeroes an Empty made outside the bank.
+		assertFalse(contents.bankChanged(50));
+		assertEquals(12, contents.contents(SkillingContainer.LOG_BASKET));
+		assertTrue(contents.inventoryChanged(4, 14, 50));
+		assertEquals(2, contents.contents(SkillingContainer.LOG_BASKET));
+	}
+
 	@Test
 	public void checkOrOtherOptionsDoNotMoveAnything()
 	{

@@ -841,7 +841,7 @@ public class CombatVitalsPlugin extends Plugin
 			SkillingContainer.fromItemName(Text.removeTags(event.getMenuTarget()));
 		if (clickedContainer != null)
 		{
-			containerContents.clicked(clickedContainer, option, client.getTickCount());
+			containerContents.clicked(clickedContainer, option, client.getTickCount(), bankOpen());
 		}
 
 		if (event.isItemOp())
@@ -1079,6 +1079,8 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			// The bank's contents arrive when it opens: you stopped on purpose.
 			activityAlerts.banked();
+			// And change when a basket or barrel is emptied into it, with no chat line needed.
+			containerContents.bankChanged(client.getTickCount());
 			return;
 		}
 
@@ -1119,6 +1121,13 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			lastGainedItem = client.getItemDefinition(gained).getName();
 		}
+	}
+
+	/** The bank is open: its inventory side panel, where a basket's Empty is clicked, is up. */
+	private boolean bankOpen()
+	{
+		final Widget side = client.getWidget(InterfaceID.Bankside.ITEMS);
+		return side != null && !side.isHidden();
 	}
 
 	/** Special attack energy falling while a skilling spec tool is wielded is that tool's special. */
@@ -1719,32 +1728,33 @@ public class CombatVitalsPlugin extends Plugin
 	 * catch, and is where the badge goes only with "Over the spot".
 	 *
 	 * Once the work stops the badge stays as "Not fishing" ({@link IdleBadge})
-	 * for as long as the idle setting says, until another activity or a fight.
+	 * for as long as the idle setting says, until another activity, or a
+	 * fight over your head. Moved off your head a fight never hides it; the
+	 * header just says "in combat" or "under attack" ({@link BadgeCombat}).
 	 */
 	private SkillingReadout buildSkillingReadout()
 	{
 		final long now = System.currentTimeMillis();
 		final boolean fighting = combat.inCombat(Instant.now(), timeout());
 		final Skill active = skillingTarget != null || objectBadge ? skilling.skill() : null;
-		// A badge moved off your head shares no space with the health bars, so a fight
-		// neither hides it nor ends its "Not woodcutting" (Board, 2026-11-14).
 		final boolean overHead = config.skillingPosition() == BadgePosition.OVER_HEAD;
-		idleBadge.tick(active, fighting && overHead, now);
+		idleBadge.tick(active, BadgeCombat.endsIdle(fighting, overHead), now);
 
-		if (badgeHidden(fighting, overHead))
+		if (!config.skillingEnabled()
+			|| BadgeCombat.hides(fighting, overHead, config.skillingHideInCombat(), combat.showTarget()))
 		{
 			return null;
 		}
 
 		if (active != null)
 		{
-			return skillShown(active) ? activeReadout(active, now) : null;
+			return skillShown(active) ? activeReadout(active, now, BadgeCombat.tag(fighting, false)) : null;
 		}
 
 		final Skill idle = idleBadge.idleSkill(config.skillingIdleMode(), config.skillingIdleSeconds(), now);
 		if (idle != null && skillShown(idle))
 		{
-			return baseReadout(idle, now).idle(true).build();
+			return baseReadout(idle, now).idle(true).combatTag(BadgeCombat.tag(fighting, true)).build();
 		}
 		return gearOnlyReadout(now);
 	}
@@ -1758,18 +1768,8 @@ public class CombatVitalsPlugin extends Plugin
 		return gearWarning(now) != null && skillShown(Skill.FISHING) ? baseReadout(Skill.FISHING, now).build() : null;
 	}
 
-	/**
-	 * Off, a fight with a target while the badge is over your head (its health bar takes over), or any combat
-	 * with Hide during combat.
-	 */
-	private boolean badgeHidden(boolean fighting, boolean overHead)
-	{
-		return !config.skillingEnabled() || (overHead && combat.showTarget())
-			|| (fighting && config.skillingHideInCombat());
-	}
-
 	/** The badge while working: the shared rows plus the boost, spec, warning, catches and spot. */
-	private SkillingReadout activeReadout(Skill skill, long now)
+	private SkillingReadout activeReadout(Skill skill, long now, String combatTag)
 	{
 		final int boosted = client.getBoostedSkillLevel(skill);
 
@@ -1782,6 +1782,7 @@ public class CombatVitalsPlugin extends Plugin
 
 		final NPC target = skillingTarget;
 		return baseReadout(skill, now)
+			.combatTag(combatTag)
 			.ticksUntilDrop(config.skillingBoostTimer() ? ticksUntilDrop : -1)
 			.cycleLength(boostTimer.cycleLength())
 			.timerConfirmed(boostTimer.isConfirmed())

@@ -14,6 +14,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - My sounds: your own WAV per alert at `~/.runelite/combat-vitals/sounds/<alert>.wav` (for example `gathering-stopped.wav`). A missing file plays RuneLite's sound and says so in the chat once.
 - Sound packs Soft chime, Music box and Retro blip, synthesised by `tools/sounds/generate_packs.py`: the project's own, no third-party audio (117 KB).
 ### Changed
+- Skilling badge in a fight (Board, 2026-11-14): fixed or over the spot, a fight never hides the badge or ends its "Not woodcutting"; the header reads `Not woodcutting | in combat`, or `Woodcutting 70 | under attack` while still gathering, and the idle badge goes only on its timer. `Hide during combat` now applies only over your head and is labelled `Hide in combat (over head)`; its key `skillingHideInCombat` is unchanged (`BadgeCombat`).
+- Log basket / fish barrel `Empty` with the bank open counts as 0 once the bank's contents change (or the "You empty your basket into the bank." line arrives), so a missed or filtered chat line no longer leaves it at 28/28. An Empty outside the bank is unchanged.
 - Dev builds use the newest RuneLite (Board, 2026-11-14): `build.gradle` resolves `latest.release` instead of pinning 1.13.6, re-checks for a newer release on every run, and `run`/`test` print the resolved version. `-PruneLiteVersion=<x>` still pins one. Dev only; the Plugin Hub replaces `build.gradle`.
 
 ## [1.1.0] - 2026-11-06

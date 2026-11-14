@@ -9,7 +9,8 @@ import net.runelite.api.Skill;
  * Idle starts the tick the badge would otherwise have gone: the activity's
  * own linger ({@link SkillingState#expire}) has run out, or it was released
  * by clicking something else. It ends when another activity starts, when a
- * fight starts, or after the configured seconds.
+ * fight starts with the badge over your head ({@link BadgeCombat#endsIdle}),
+ * or after the configured seconds.
  *
  * Pure: skills and wall-clock milliseconds in, the idle skill out.
  */
@@ -24,7 +25,7 @@ final class IdleBadge
 	 * Once per game tick.
 	 *
 	 * @param active the skill the badge is up for now, or null
-	 * @param combat a fight or a hitsplat is in progress
+	 * @param combat a fight that ends the idle badge is in progress
 	 */
 	void tick(Skill active, boolean combat, long nowMillis)
 	{
