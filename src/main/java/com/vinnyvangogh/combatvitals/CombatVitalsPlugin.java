@@ -1828,9 +1828,13 @@ public class CombatVitalsPlugin extends Plugin
 		lastPosition = position;
 
 		final int pouchCap = config.alertCoinPouchCap();
-		final List<ActivityAlerts.Alert> fired = activityAlerts.tick(now,
-			ActivityAlerts.ticks(config.alertStopSeconds()), pouchCap, config.alertRunEnergyThreshold());
+		sendAlerts(activityAlerts.tick(now, ActivityAlerts.ticks(config.alertStopSeconds()), pouchCap,
+			config.alertRunEnergyThreshold()), pouchCap);
+	}
 
+	/** This tick's alerts, then any repeat that is due. */
+	private void sendAlerts(List<ActivityAlerts.Alert> fired, int pouchCap)
+	{
 		// Back at it: experience again stops a repeat. Checked before this
 		// tick's alerts, so "inventory full" on the tick of the last catch
 		// still starts its own.
