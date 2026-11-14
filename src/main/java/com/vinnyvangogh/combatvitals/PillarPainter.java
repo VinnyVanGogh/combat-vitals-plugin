@@ -4,12 +4,12 @@ import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Composite;
 import java.awt.Font;
-import java.awt.FontMetrics;
 import java.awt.GradientPaint;
 import java.awt.Graphics2D;
 import java.awt.Paint;
 import java.awt.Rectangle;
 import java.awt.Shape;
+import java.awt.font.FontRenderContext;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import net.runelite.client.ui.FontManager;
@@ -64,6 +64,17 @@ final class PillarPainter
 		{-1, 0}, {1, 0},
 		{-1, 1}, {0, 1}, {1, 1},
 	};
+	private static final int[][] FACE = {{0, 0}};
+
+	/** A percent's sign beside full-size digits, raised to their top like a superscript. */
+	static final float SIGN_SIZE = 0.7f;
+
+	/**
+	 * How far a percent may reach past each side of the bar before it is
+	 * condensed: no further than the gap to the next bar, so it never
+	 * touches Status Bars' bar or the side panel.
+	 */
+	static final int OVERHANG = SidePillars.GAP;
 
 	private PillarPainter()
 	{
@@ -95,8 +106,8 @@ final class PillarPainter
 			}
 			if (box.width >= MIN_LABEL_WIDTH)
 			{
-				// Kept inside the bar: a shadow pixel past its edge would sit on Status Bars' bar.
-				graphics.clip(box);
+				// Kept inside the bar and its gap: a shadow pixel past that would sit on Status Bars' bar.
+				graphics.clip(labelBounds(box));
 				labels(graphics, box, pillar, labels);
 			}
 		}
@@ -192,10 +203,8 @@ final class PillarPainter
 	/**
 	 * White inside a one-pixel black outline, so it reads on any fill: a
 	 * drop shadow alone was lost on the thin tan Mining fill (Board's
-	 * screenshots, 2026-11-06). "82%" is wider than a 20 px bar in the small
-	 * font, so a label that does not fit is condensed sideways rather than
-	 * cut or stripped of its sign: every skill reads "3%" and "82%" alike
-	 * (Board, 2026-11-09).
+	 * screenshots, 2026-11-06). A label that does not fit is condensed
+	 * sideways rather than cut; a percent is drawn by {@link #percent}.
 	 */
 	private static void centred(Graphics2D graphics, Rectangle box, String number, int baseline)
 	{
@@ -203,29 +212,130 @@ final class PillarPainter
 		{
 			return;
 		}
+		if (isPercent(number))
+		{
+			percent(graphics, box, number, baseline);
+			return;
+		}
 		final Font font = graphics.getFont();
-		final FontMetrics metrics = graphics.getFontMetrics();
-		final int width = metrics.stringWidth(number);
+		final int width = graphics.getFontMetrics().stringWidth(number);
 		final int room = box.width - 2;
 		final double scale = labelScale(width, room);
-		if (scale < 1)
-		{
-			graphics.setFont(font.deriveFont(AffineTransform.getScaleInstance(scale, 1)));
-		}
 		final int x = box.x + (box.width - Math.min(width, room)) / 2;
-		graphics.setColor(SHADOW);
-		for (int[] offset : OUTLINE)
-		{
-			graphics.drawString(number, x + offset[0], baseline + offset[1]);
-		}
-		graphics.setColor(Color.WHITE);
-		graphics.drawString(number, x, baseline);
+		outlined(graphics, new Part(number, condensed(font, scale), x, baseline));
 		graphics.setFont(font);
+	}
+
+	/**
+	 * "63%" in the small font is wider than a 20 px bar, and condensing it
+	 * whole squished the digits (Board's Woodcutting screenshot,
+	 * 2026-11-14). Every skill keeps its sign (Board, 2026-11-09), so the
+	 * digits stay full size, the sign is drawn smaller at their top, the
+	 * label may reach {@link #OVERHANG} into the gap each side, and only a
+	 * label still too wide ("100%") is condensed.
+	 */
+	private static void percent(Graphics2D graphics, Rectangle box, String number, int baseline)
+	{
+		final Font font = graphics.getFont();
+		final Font sign = signFont(font);
+		final String digits = number.substring(0, number.length() - 1);
+		final int digitsWidth = graphics.getFontMetrics(font).stringWidth(digits);
+		final int width = percentWidth(graphics, number);
+		final double scale = labelScale(width, percentRoom(box.width));
+		final int x = box.x + (box.width - (int) Math.ceil(width * scale)) / 2;
+		final int raise = raise(graphics, font, digits, sign);
+		outlined(graphics,
+			new Part(digits, condensed(font, scale), x, baseline),
+			new Part("%", condensed(sign, scale), x + (int) Math.round(digitsWidth * scale), baseline - raise));
+		graphics.setFont(font);
+	}
+
+	/** One piece of a label: its text, font and where its baseline starts. */
+	private static final class Part
+	{
+		private final String text;
+		private final Font font;
+		private final int x;
+		private final int y;
+
+		Part(String text, Font font, int x, int y)
+		{
+			this.text = text;
+			this.font = font;
+			this.x = x;
+			this.y = y;
+		}
+	}
+
+	/** Every part's outline first, then every face, so no outline covers a neighbouring face. */
+	private static void outlined(Graphics2D graphics, Part... parts)
+	{
+		graphics.setColor(SHADOW);
+		draw(graphics, parts, OUTLINE);
+		graphics.setColor(Color.WHITE);
+		draw(graphics, parts, FACE);
+	}
+
+	private static void draw(Graphics2D graphics, Part[] parts, int[][] offsets)
+	{
+		for (Part part : parts)
+		{
+			graphics.setFont(part.font);
+			for (int[] offset : offsets)
+			{
+				graphics.drawString(part.text, part.x + offset[0], part.y + offset[1]);
+			}
+		}
+	}
+
+	private static Font condensed(Font font, double scale)
+	{
+		return scale < 1 ? font.deriveFont(AffineTransform.getScaleInstance(scale, 1)) : font;
 	}
 
 	/** How much to narrow a label {@code width} px wide to fit {@code room}: 1 when it already fits. */
 	static double labelScale(int width, int room)
 	{
 		return width > room ? (double) room / width : 1;
+	}
+
+	/** "63%", not "%" or "63". */
+	static boolean isPercent(String number)
+	{
+		return number.length() > 1 && number.endsWith("%");
+	}
+
+	static Font signFont(Font font)
+	{
+		return font.deriveFont(font.getSize2D() * SIGN_SIZE);
+	}
+
+	/** Full-size digits plus the small sign, in the graphics' current font, before any condensing. */
+	static int percentWidth(Graphics2D graphics, String number)
+	{
+		final Font font = graphics.getFont();
+		return graphics.getFontMetrics(font).stringWidth(number.substring(0, number.length() - 1))
+			+ graphics.getFontMetrics(signFont(font)).stringWidth("%");
+	}
+
+	/** The room a percent's glyphs get: the bar less its outline, plus the overhang each side. */
+	static int percentRoom(int boxWidth)
+	{
+		return boxWidth - 2 + 2 * OVERHANG;
+	}
+
+	/** Where a label may paint: the bar, widened by the overhang each side. */
+	static Rectangle labelBounds(Rectangle box)
+	{
+		return new Rectangle(box.x - OVERHANG, box.y, box.width + 2 * OVERHANG, box.height);
+	}
+
+	/** How far up the small sign moves so its top lines up with the digits' top. */
+	private static int raise(Graphics2D graphics, Font font, String digits, Font sign)
+	{
+		final FontRenderContext context = graphics.getFontRenderContext();
+		final double digitsTop = font.createGlyphVector(context, digits).getVisualBounds().getMinY();
+		final double signTop = sign.createGlyphVector(context, "%").getVisualBounds().getMinY();
+		return (int) Math.round(signTop - digitsTop);
 	}
 }
