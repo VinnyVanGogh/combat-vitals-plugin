@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- Skilling containers (Board, 2026-11-14): under the badge's inventory line, one line per container carried or worn that holds what the current skill gathers: log basket / forestry basket while woodcutting, fish barrel / fish sack barrel while fishing, coal bag while mining (27, 36 with a worn Smithing cape), essence pouches while runecrafting: `Log basket 12/28 free`. Basket, barrel and coal bag contents come from the game's chat lines (Check, emptied, full, one more per catch while open) and from the inventory change after a Fill or Empty click; never guessed, so a container not checked since login reads `Log basket ?/28 (check the basket once)`. Pouches read their varbits, capacity from the base client's `EssencePouchOverlay` table. New `skillingContainers` (`Show containers`, default on) and `skillingContainersAsInventory` (`Count containers as free inventory`, default off): on, the inventory line reads `Inv 27/28 free (+16 basket)` and Inventory full waits for the container too; the coal bag (coal only) and unknown contents never count. The inventory side pillar's tooltip lists the same lines. Log baskets, barrels, coal bags and pouches now hold their slot instead of counting as filling (`SkillingContainer`, `ContainerContents`, `ContainerRow`, `EssencePouch`). Gem bag, herb sack, seed box and plank sack are not covered; see BRIEF.md.
+
 ## [1.1.0] - 2026-11-06
 
 The first update since the Plugin Hub release (`7e9eac9`, 2026-09-02): PRs #2 to #21 and the fixes from the Board's in-game test of 2026-11-04. In short: a skilling badge for fishing, woodcutting, mining, thieving, hunter and runecraft (level, boost timer, XP, session rates, inventory fill, catchable fish, missing-gear warning, idle state); activity alerts; side pillars; a path to the next fishing spot through Shortest Path; separate display for bosses; overhead chat kept readable above the readout; and an opt-in option to hide the game's own health bar. Pinned to RuneLite 1.13.6, the Hub's `runelite.version`.

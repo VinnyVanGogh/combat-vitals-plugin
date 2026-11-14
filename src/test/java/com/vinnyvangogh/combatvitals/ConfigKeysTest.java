@@ -167,6 +167,7 @@ public class ConfigKeysTest
 			NEW_PROFILE.skillingFishing(), NEW_PROFILE.skillingWoodcutting(), NEW_PROFILE.skillingMining(),
 			NEW_PROFILE.skillingThieving(), NEW_PROFILE.skillingRunecraft(), NEW_PROFILE.skillingHunter(),
 			NEW_PROFILE.skillingShowHeader(), NEW_PROFILE.skillingShowXp(), NEW_PROFILE.skillingGearWarning(),
+			NEW_PROFILE.skillingContainers(),
 		};
 		for (boolean b : on)
 		{
@@ -180,6 +181,8 @@ public class ConfigKeysTest
 		final boolean[] off = {
 			NEW_PROFILE.skillingSessionCount(), NEW_PROFILE.skillingRates(),
 			NEW_PROFILE.skillingSessionReset(), NEW_PROFILE.skillingHideInCombat(),
+			// Container space counted as inventory changes what "Inv N/28" means: opt in (2026-11-14).
+			NEW_PROFILE.skillingContainersAsInventory(),
 		};
 		for (boolean b : off)
 		{

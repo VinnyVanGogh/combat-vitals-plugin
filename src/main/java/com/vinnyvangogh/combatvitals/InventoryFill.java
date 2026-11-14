@@ -61,6 +61,11 @@ final class InventoryFill
 		{
 			return Slot.FIXED;
 		}
+		// A log basket or fish barrel holds its slot for the whole trip.
+		if (SkillingContainer.fromItemName(name) != null)
+		{
+			return Slot.FIXED;
+		}
 		if (actions != null)
 		{
 			for (String action : actions)

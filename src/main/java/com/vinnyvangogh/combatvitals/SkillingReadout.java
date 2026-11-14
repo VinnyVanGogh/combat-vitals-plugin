@@ -93,6 +93,18 @@ final class SkillingReadout
 	@Builder.Default
 	private final int inventoryFree = -1;
 
+	/**
+	 * A line under the inventory line for each container carried that takes
+	 * what this skill gathers ({@link ContainerRow#rows}); empty with the
+	 * inventory line or the containers setting off.
+	 */
+	@Builder.Default
+	private final List<ContainerRow> containers = Collections.emptyList();
+
+	/** Free or used, for the container lines, as the inventory line counts. */
+	@Builder.Default
+	private final InventoryCount containerCount = InventoryCount.FREE;
+
 	/** The fishing spot or other NPC being worked, or null. */
 	private final NPC spotNpc;
 
