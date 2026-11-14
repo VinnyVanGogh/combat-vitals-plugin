@@ -1648,9 +1648,12 @@ public class CombatVitalsPlugin extends Plugin
 		final long now = System.currentTimeMillis();
 		final boolean fighting = combat.inCombat(Instant.now(), timeout());
 		final Skill active = skillingTarget != null || objectBadge ? skilling.skill() : null;
-		idleBadge.tick(active, fighting, now);
+		// A badge moved off your head shares no space with the health bars, so a fight
+		// neither hides it nor ends its "Not woodcutting" (Board, 2026-11-14).
+		final boolean overHead = config.skillingPosition() == BadgePosition.OVER_HEAD;
+		idleBadge.tick(active, fighting && overHead, now);
 
-		if (badgeHidden(fighting))
+		if (badgeHidden(fighting, overHead))
 		{
 			return null;
 		}
@@ -1677,10 +1680,14 @@ public class CombatVitalsPlugin extends Plugin
 		return gearWarning(now) != null && skillShown(Skill.FISHING) ? baseReadout(Skill.FISHING, now).build() : null;
 	}
 
-	/** Off, a fight with a target (its health bar takes over), or any combat with Hide during combat. */
-	private boolean badgeHidden(boolean fighting)
+	/**
+	 * Off, a fight with a target while the badge is over your head (its health bar takes over), or any combat
+	 * with Hide during combat.
+	 */
+	private boolean badgeHidden(boolean fighting, boolean overHead)
 	{
-		return !config.skillingEnabled() || combat.showTarget() || (fighting && config.skillingHideInCombat());
+		return !config.skillingEnabled() || (overHead && combat.showTarget())
+			|| (fighting && config.skillingHideInCombat());
 	}
 
 	/** The badge while working: the shared rows plus the boost, spec, warning, catches and spot. */
