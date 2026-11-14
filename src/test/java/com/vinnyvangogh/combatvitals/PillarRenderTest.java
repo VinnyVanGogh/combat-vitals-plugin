@@ -174,11 +174,11 @@ public class PillarRenderTest
 			for (int n = 0; n <= 99; n++)
 			{
 				final String number = n + "%";
-				final int width = PillarPainter.percentWidth(g, number);
+				final int width = PillarPainter.percentWidth(g, number, room);
 				assertEquals(number + " is " + width + " px for " + room, 1.0,
 					PillarPainter.labelScale(width, room), 0);
 			}
-			final int hundred = PillarPainter.percentWidth(g, "100%");
+			final int hundred = PillarPainter.percentWidth(g, "100%", room);
 			assertTrue("100% condensed no more than needed",
 				hundred * PillarPainter.labelScale(hundred, room) <= room);
 		}
@@ -196,7 +196,7 @@ public class PillarRenderTest
 		try
 		{
 			final int full = g.getFontMetrics().stringWidth("63%");
-			final int split = PillarPainter.percentWidth(g, "63%");
+			final int split = PillarPainter.percentWidth(g, "63%", PillarPainter.percentRoom(SidePillars.WIDTH));
 			assertTrue(split + " < " + full, split < full);
 			assertTrue("old 63% was condensed", full > SidePillars.WIDTH - 2);
 			assertTrue(PillarPainter.isPercent("63%"));

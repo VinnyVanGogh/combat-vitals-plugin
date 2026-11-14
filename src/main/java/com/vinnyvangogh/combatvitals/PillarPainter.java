@@ -69,6 +69,14 @@ final class PillarPainter
 	/** A percent's sign beside full-size digits, raised to their top like a superscript. */
 	static final float SIGN_SIZE = 0.7f;
 
+	/** The smallest the sign shrinks to, in {@link #SIGN_STEP}s, before the label is tightened or condensed. */
+	static final float MIN_SIGN_SIZE = 0.5f;
+	private static final float SIGN_STEP = 0.05f;
+	private static final int SIGN_STEPS = Math.round((SIGN_SIZE - MIN_SIGN_SIZE) / SIGN_STEP);
+
+	/** Pixels the smallest sign moves toward the digits, into their trailing blank column. */
+	private static final int TIGHTEN = 1;
+
 	/**
 	 * How far a percent may reach past each side of the bar before it is
 	 * condensed: no further than the gap to the next bar, so it never
@@ -218,11 +226,15 @@ final class PillarPainter
 			return;
 		}
 		final Font font = graphics.getFont();
+		final Shape clip = graphics.getClip();
 		final int width = graphics.getFontMetrics().stringWidth(number);
 		final int room = box.width - 2;
 		final double scale = labelScale(width, room);
 		final int x = box.x + (box.width - Math.min(width, room)) / 2;
+		// Only a percent may use the overhang; anything else stays strictly inside the bar.
+		graphics.clip(box);
 		outlined(graphics, new Part(number, condensed(font, scale), x, baseline));
+		graphics.setClip(clip);
 		graphics.setFont(font);
 	}
 
@@ -237,17 +249,58 @@ final class PillarPainter
 	private static void percent(Graphics2D graphics, Rectangle box, String number, int baseline)
 	{
 		final Font font = graphics.getFont();
-		final Font sign = signFont(font);
-		final String digits = number.substring(0, number.length() - 1);
-		final int digitsWidth = graphics.getFontMetrics(font).stringWidth(digits);
-		final int width = percentWidth(graphics, number);
-		final double scale = labelScale(width, percentRoom(box.width));
-		final int x = box.x + (box.width - (int) Math.ceil(width * scale)) / 2;
-		final int raise = raise(graphics, font, digits, sign);
+		final String digits = digits(number);
+		final int room = percentRoom(box.width);
+		final PercentFit fit = percentFit(graphics, number, room);
+		final double scale = labelScale(fit.width, room);
+		final int x = box.x + (box.width - (int) Math.ceil(fit.width * scale)) / 2;
+		final int raise = raise(graphics, font, digits, fit.sign);
 		outlined(graphics,
 			new Part(digits, condensed(font, scale), x, baseline),
-			new Part("%", condensed(sign, scale), x + (int) Math.round(digitsWidth * scale), baseline - raise));
+			new Part("%", condensed(fit.sign, scale), x + (int) Math.round(fit.signX * scale), baseline - raise));
 		graphics.setFont(font);
+	}
+
+	/** The sign's font and where it starts, and the whole label's width, all before any condensing. */
+	private static final class PercentFit
+	{
+		private final Font sign;
+		private final int signX;
+		private final int width;
+
+		PercentFit(Graphics2D graphics, int digitsWidth, float signSize, int tighten)
+		{
+			final Font font = graphics.getFont();
+			this.sign = font.deriveFont(font.getSize2D() * signSize);
+			this.signX = digitsWidth - tighten;
+			this.width = signX + graphics.getFontMetrics(sign).stringWidth("%");
+		}
+	}
+
+	/**
+	 * Full-size digits and the largest sign from {@link #SIGN_SIZE} down to
+	 * {@link #MIN_SIGN_SIZE} that fits {@code room}; then the sign one pixel
+	 * closer to the digits. "20%" with a 70% sign was 23 px for a 22 px room
+	 * in the small font, so a fixed sign size alone did not keep every two
+	 * digit percent whole. Anything still too wide is condensed by the caller.
+	 */
+	private static PercentFit percentFit(Graphics2D graphics, String number, int room)
+	{
+		final int digitsWidth = graphics.getFontMetrics().stringWidth(digits(number));
+		for (int step = 0; step <= SIGN_STEPS; step++)
+		{
+			final PercentFit fit = new PercentFit(graphics, digitsWidth, SIGN_SIZE - step * SIGN_STEP, 0);
+			if (fit.width <= room)
+			{
+				return fit;
+			}
+		}
+		return new PercentFit(graphics, digitsWidth, MIN_SIGN_SIZE, TIGHTEN);
+	}
+
+	private static String digits(String number)
+	{
+		return number.substring(0, number.length() - 1);
 	}
 
 	/** One piece of a label: its text, font and where its baseline starts. */
@@ -305,17 +358,10 @@ final class PillarPainter
 		return number.length() > 1 && number.endsWith("%");
 	}
 
-	static Font signFont(Font font)
+	/** Full-size digits plus the fitted sign, in the graphics' current font, before any condensing. */
+	static int percentWidth(Graphics2D graphics, String number, int room)
 	{
-		return font.deriveFont(font.getSize2D() * SIGN_SIZE);
-	}
-
-	/** Full-size digits plus the small sign, in the graphics' current font, before any condensing. */
-	static int percentWidth(Graphics2D graphics, String number)
-	{
-		final Font font = graphics.getFont();
-		return graphics.getFontMetrics(font).stringWidth(number.substring(0, number.length() - 1))
-			+ graphics.getFontMetrics(signFont(font)).stringWidth("%");
+		return percentFit(graphics, number, room).width;
 	}
 
 	/** The room a percent's glyphs get: the bar less its outline, plus the overhang each side. */
