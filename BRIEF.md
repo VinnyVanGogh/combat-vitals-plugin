@@ -299,6 +299,32 @@ Not done, deliberately:
   coal only, so its space is not free space at any other rock.
 - **Herb sack, seed box, plank sack**: Herblore, Farming and Construction
   have no skilling badge, so there is no line to put them under.
+
+### Skilling badge for the XP-drop skills, compliance (added 2026-11-14, task-5328e2df)
+
+Board, 2026-11-14, from a groupmate: "the skilling one doesn't show when I'm
+doing herblore". The badge now also comes up for Herblore, Cooking,
+Fletching, Crafting, Smithing, Firemaking, Prayer, Magic (skilling spells),
+Agility, Construction and Sailing. Farming stays out: RuneLite's Time
+Tracking covers it and it has no repeated AFK action to time.
+
+| Element | Nearest rule | Precedent | Verdict |
+|---|---|---|---|
+| Badge raised by an experience drop in the skill (`StatChanged`), held by further drops or any local-player animation, stopped after a per-skill gap (`XpSkilling`) | None: own-account stats and own animation | Base client XP Tracker (XP drops, rates, time to level) and Idle Notifier (own animation stopping); the plugin's own Activity alerts use the same XP + animation pair since 2026-11-03 | Allowed |
+| Not raised during a fight or a tick with Hitpoints XP (combat spells, bonecrusher), nor over an NPC or object badge (infernal harpoon / axe / pickaxe) | None | Same | Allowed |
+| "14 left, done in ~25s": what one action used up, from the own inventory's change between drops, divided into what is held; pace from the gap between drops | None: own inventory, nothing automated or suggested beyond a count | Base client XP Tracker's "actions left" and the Inventory fill line already here | Allowed |
+| Agility: laps from the game's "Your <course> lap count is: N." line, last lap time, marks of grace picked up (own inventory `ItemID.GRACE`) | None: reads `ChatMessage` | Base client Chat Commands plugin parses the same lap-count line (`KILLCOUNT_PATTERN`); base Agility plugin counts laps and marks | Allowed |
+| Per-skill switches (default on), new additive keys `skillingHerblore` … `skillingSailing` | Config keys freeze at publish | Appended to `published-config-keys.txt` | Allowed |
+
+Detection research, gameval (`runelite-api` 1.13.6, read with javap
+2026-11-14): `Skill.SAILING` exists, so Sailing is included through its XP
+drops. Animation ids such as `AnimationID.HUMAN_HERBING_VIAL` (363),
+`HUMAN_HERBING_GRIND` (364), `HUMAN_COOKING` (896),
+`HUMAN_CASTHIGHLVLALCHEMY` (713) and `HUMAN_CASTSUPERHEATITEM` (725) exist,
+but the badge does not list them: every one of these actions animates, and a
+per-recipe id list would go stale; "any animation" is what Idle Notifier and
+the plugin's own alerts already use. Not done: per-recipe output names, the
+herb sack and plank sack contents, and anything for Farming.
 ### Alert sounds, repeat until you're back, voice lines (added 2026-11-14, Board)
 
 Board, 2026-11-14, woodcutting AFK: the stopped alert should be able to keep

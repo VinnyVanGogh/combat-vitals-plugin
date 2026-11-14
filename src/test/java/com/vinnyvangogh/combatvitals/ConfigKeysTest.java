@@ -168,6 +168,10 @@ public class ConfigKeysTest
 			NEW_PROFILE.skillingThieving(), NEW_PROFILE.skillingRunecraft(), NEW_PROFILE.skillingHunter(),
 			NEW_PROFILE.skillingShowHeader(), NEW_PROFILE.skillingShowXp(), NEW_PROFILE.skillingGearWarning(),
 			NEW_PROFILE.skillingContainers(),
+			NEW_PROFILE.skillingHerblore(), NEW_PROFILE.skillingCooking(), NEW_PROFILE.skillingFletching(),
+			NEW_PROFILE.skillingCrafting(), NEW_PROFILE.skillingSmithing(), NEW_PROFILE.skillingFiremaking(),
+			NEW_PROFILE.skillingPrayer(), NEW_PROFILE.skillingMagic(), NEW_PROFILE.skillingAgility(),
+			NEW_PROFILE.skillingConstruction(), NEW_PROFILE.skillingSailing(),
 		};
 		for (boolean b : on)
 		{
