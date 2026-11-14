@@ -1,0 +1,28 @@
+Combat Vitals
+Copyright (c) 2026, VinnyVanGogh. Licensed under the BSD 2-Clause License (LICENSE).
+
+Bundled audio
+-------------
+
+src/main/resources/com/vinnyvangogh/combatvitals/sounds/*.wav
+  Soft chime, Music box and Retro blip are synthesised from sine and square
+  waves by tools/sounds/generate_packs.py. No samples or third-party audio;
+  they are this project's own work under its BSD 2-Clause licence.
+
+src/main/resources/com/vinnyvangogh/combatvitals/voice/*.wav
+  Rendered offline by tools/voice/generate_voice.py with:
+  - Kokoro-82M, by hexgrad, Apache License 2.0
+    https://huggingface.co/hexgrad/Kokoro-82M
+    The model card states the weights and voices are released under
+    Apache 2.0, which permits redistribution, including commercial use.
+    Voice "af_heart": a synthetic voice, not a recording or imitation of any
+    real person.
+  - kokoro-onnx, by thewh1teagle, MIT License
+    https://github.com/thewh1teagle/kokoro-onnx
+  The words spoken are listed in voice/lines.tsv.
+
+Code adapted from RuneLite
+--------------------------
+
+Volume to gain conversion in AlertSounds follows RuneLite's Notifier
+(BSD 2-Clause, Copyright (c) 2016-2017, Adam <Adam@sigterm.info>).

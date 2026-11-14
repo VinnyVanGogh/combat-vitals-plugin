@@ -284,7 +284,7 @@ precedents actually used are below.
 | Essence pouch contents from varbits `SMALL/MEDIUM/LARGE/GIANT/COLOSSAL_ESSENCE_POUCH`, capacity from the degradation varps and the Runecraft level | None: own-account varbits | Base client `runecraft/EssencePouchOverlay.java` (runelite master `bb0fa42`, lines 46-103 for the table, 122 `maxAmount`, 166 `getAmount`) reads exactly these; the capacity table is ported from it (BSD-2) | Allowed |
 | Log basket, fish barrel and coal bag contents from the game's own chat lines: Check ("The basket contains: 5 x Logs", "The barrel contains: ...", "The coal bag contains 12 coal"), emptied ("The basket is empty.", "You empty your basket into the bank.", "The coal bag is now empty."), full ("The barrel is full."), and one more per catch while the container is open ("You get some logs.", "You catch ...", "You manage to mine some coal.") | None: reads `ChatMessage`, sends nothing | Plugin Hub "GP Per Hour" (MosheBenZacharia/GP-Per-Hour @ `cce6706`, `itemcharges/items/U_LogBasket.java` 53-130, `U_FishBarrel.java` 56-190, `U_CoalBag.java` 50-101) tracks the same containers from the same lines. Chat wording is that plugin's, not re-captured in game here | Allowed |
 | Fill and Empty clicked on a container read from `MenuOptionClicked`, the amount from the inventory change that follows | Menu Restrictions: adding or removing entries | Read only, never consumed or changed; GP Per Hour's `TriggerItemContainer(...).menuOption("Fill").addDifference()` does the same | Allowed |
-| `Count containers as free inventory` (off by default) adds known free container space to the inventory line and to the inventory-full alert | None: own state, a notification only | The existing Inventory full alert (2026-11-03 table above) | Allowed |
+| `Count containers as free` (off by default) adds known free container space to the inventory line and to the inventory-full alert | None: own state, a notification only | The existing Inventory full alert (2026-11-03 table above) | Allowed |
 
 Not done, deliberately:
 
@@ -299,6 +299,52 @@ Not done, deliberately:
   coal only, so its space is not free space at any other rock.
 - **Herb sack, seed box, plank sack**: Herblore, Farming and Construction
   have no skilling badge, so there is no line to put them under.
+### Alert sounds, repeat until you're back, voice lines (added 2026-11-14, Board)
+
+Board, 2026-11-14, woodcutting AFK: the stopped alert should be able to keep
+going, gently, until the player comes back and clicks, say what happened in
+a voice ("You've stopped chopping yew logs."), and offer sound packs per
+alert. This reverses the 2026-11-03 note "no sound of the plugin's own"; the
+rows below are why that is allowed.
+
+API facts, read 2026-11-14 from the `runelite-parent-1.13.6` tag on GitHub
+(`runelite-client/src/main/java/...`): `net.runelite.client.audio.AudioPlayer`
+is an injectable `@Singleton` with `play(File, float)`, `play(Class, String,
+float)` and `play(InputStream, float)`, gain in dB, decoded by
+`javax.sound.sampled.AudioSystem` (WAV, AIFF, AU; no MP3 or OGG). `Notifier`
+plays through the same `AudioPlayer`, its gain `20 * log10(volume / 100)`,
+and its custom sound is `~/.runelite/notification.wav` or a file named by
+`Notification.soundName` in `RuneLite.NOTIFICATIONS_DIR`: one file per
+notification at most, played once. `Notification` is a Lombok `@With` value,
+so the plugin can send the same notification with `sound` OFF when it plays
+its own.
+
+| Element | Nearest rule | Precedent | Verdict |
+|---|---|---|---|
+| The plugin plays its own WAV clips, bundled in the jar under `com/vinnyvangogh/combatvitals/sounds/` and `.../voice/`, through RuneLite's `AudioPlayer` (`play(Class, String, float)`, or `play(InputStream, float)` for a voice line joined from parts in memory) | Plugin Hub: no subprocesses, no JNI, no runtime-downloaded code. Plain `javax.sound` via RuneLite's own player, no native code, no process started | Base client `Notifier` plays its bundled `notification.wav` the same way; Hub plugins Tick Beats Metronome and Clue Scroll Notifier ship and play their own sounds (from their Hub listings, found 2026-11-14; source not re-read) | Allowed |
+| "My sounds": the user's own WAV per alert at a fixed name, `~/.runelite/combat-vitals/sounds/<alert>.wav`; a missing file falls back to RuneLite's sound with one chat hint per alert per session | None: reads a file the user put in the plugin's own folder; fixed names, no path from config, so nothing outside the folder is reachable | Hub plugins Sound Alerts Expanded and Clue Scroll Notifier read replacement WAVs from their own folder in `.runelite` (from their READMEs via search, 2026-11-14) | Allowed |
+| "Repeat until I'm back": the alert's sound replays every N seconds (default 15) until a mouse press or key press in the client, the activity resuming, a logout or hop, or a maximum time (default 10 min). Off by default for every alert | Input Restrictions / automation: the plugin registers a `MouseListener` and `KeyListener` that only observe, return every event unchanged, and never consume, send, queue or synthesize input. It does not keep the player logged in or act on idleness; it only makes a noise | Base client `idlenotifier` notifies on idleness; `Notifier`'s own "Flash: until cancelled" keeps signalling until the player interacts with the client, the same stop condition | Allowed |
+| Voice lines: pre-rendered clips in the jar, joined at play time ("You've stopped" + "chopping" + "yew logs"), the resource read from the item that last landed in the player's own inventory | None: own inventory, no game information beyond what the alert text already says | Same inventory reads as the 2026-11-03 rows; the alert text itself is already "You have stopped woodcutting" | Allowed |
+| Clips generated **offline** by `tools/voice/generate_voice.py` with a redistributable TTS voice, committed as files | Hub: no subprocess or network at runtime. The generator is a developer tool in `tools/`, never in the jar; the plugin never calls `say`, an OS voice, or any service | n/a: build-time asset generation | Allowed |
+| Hub content: the voice is warm and friendly, a synthetic voice imitating no real person, words limited to what happened ("You've stopped fishing lobsters") | Plugin Hub review rejects offensive or explicit content | n/a | Allowed as long as the word list stays plain; the generator reads a reviewed word list only |
+
+Not done, deliberately, and why:
+
+- **No runtime TTS** (`say`, SAPI, espeak): each needs a subprocess or JNI,
+  both automatic rejections. Voice lines are pre-rendered only.
+- **No downloaded or streamed audio**: nothing is fetched; everything plays
+  from the jar or the user's own folder.
+- **No ramp-up and no input of any kind**: the repeat is soft by design (40%
+  default volume), never louder over time, and never clicks, types or
+  moves anything to "keep you logged in".
+- **macOS system voices are not used for the bundled clips**: Apple's licence
+  for its system voices covers personal, non-commercial use, not
+  redistribution in a published plugin (macOS SLA, "System Voices"; from
+  memory, not re-read this pass), so the generator uses an Apache-2.0 model.
+
+Bundle size: no Plugin Hub size limit was found in this pass (unverified,
+the plugin-hub README was not re-read). The clips are 16 kHz mono 16-bit
+WAV to keep the jar small; the PR states the jar size before and after.
 
 ---
 

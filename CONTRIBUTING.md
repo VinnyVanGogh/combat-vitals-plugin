@@ -3,7 +3,8 @@
 ## Prerequisites
 
 - A JDK capable of compiling targeting Java 11 bytecode (`options.release.set(11)` in `build.gradle`).
-- No external runtime dependencies beyond `net.runelite:client` (pinned to `1.12.37` in `build.gradle` for local reproducibility). Do not add transitive or third-party dependencies to `build.gradle`.
+- No external runtime dependencies beyond `net.runelite:client`. Do not add transitive or third-party dependencies to `build.gradle`.
+- Dev builds resolve `net.runelite:client` as `latest.release` and re-check repo.runelite.net on every run (`cacheDynamicVersionsFor 0`), so the developer client and the Plugin Hub plugins it loads are always current. `run` and `test` print the resolved version. Pin one for a bisect or comparison with `-PruneLiteVersion=1.13.6`; `--offline` works from the cache. Dev only: the Plugin Hub replaces `build.gradle` at submission.
 
 ## Commands
 

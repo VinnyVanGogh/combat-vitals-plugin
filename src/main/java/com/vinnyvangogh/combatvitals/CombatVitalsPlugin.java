@@ -3,6 +3,11 @@ package com.vinnyvangogh.combatvitals;
 import com.google.inject.Provides;
 import java.awt.Color;
 import java.awt.Rectangle;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -13,8 +18,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.BooleanSupplier;
 import javax.inject.Inject;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.UnsupportedAudioFileException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
@@ -55,13 +63,15 @@ import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.Notifier;
+import net.runelite.client.RuneLite;
+import net.runelite.client.audio.AudioPlayer;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatColorType;
 import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.config.ConfigManager;
-import net.runelite.client.config.Notification;
+import net.runelite.client.config.RuneLiteConfig;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -71,6 +81,10 @@ import net.runelite.client.hiscore.HiscoreEndpoint;
 import net.runelite.client.hiscore.HiscoreManager;
 import net.runelite.client.hiscore.HiscoreResult;
 import net.runelite.client.hiscore.HiscoreSkill;
+import net.runelite.client.input.KeyListener;
+import net.runelite.client.input.KeyManager;
+import net.runelite.client.input.MouseAdapter;
+import net.runelite.client.input.MouseManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginManager;
@@ -146,6 +160,71 @@ public class CombatVitalsPlugin extends Plugin
 
 	@Inject
 	private ChatMessageManager chatMessageManager;
+
+	/** RuneLite's own player, the one {@link Notifier} plays through. */
+	@Inject
+	private AudioPlayer audioPlayer;
+
+	/** RuneLite's notification settings, copied into a notification whose sound the plugin plays itself. */
+	@Inject
+	private RuneLiteConfig runeLiteConfig;
+
+	@Inject
+	private MouseManager mouseManager;
+
+	@Inject
+	private KeyManager keyManager;
+
+	/** Decodes and plays alert sounds off the client thread. */
+	@Inject
+	private ScheduledExecutorService executor;
+
+	/** Which alert, if any, is repeating until the player is back. */
+	private final AlertRepeat alertRepeat = new AlertRepeat();
+
+	/** Alert sound choices and the one-time "file missing" hints. */
+	private final AlertSounds alertSounds = new AlertSounds();
+
+	/** The item that last landed in the inventory, for voice lines ("yew logs"). */
+	private final GainedItems gainedItems = new GainedItems();
+	private String lastGainedItem;
+
+	/** The bundled voice word list; loaded at start. */
+	private VoiceLines voiceLines;
+
+	/**
+	 * A mouse press in the client means the player is back. Only listens: the
+	 * event is handed back unchanged and nothing is ever sent to the game.
+	 */
+	private final MouseAdapter backOnClick = new MouseAdapter()
+	{
+		@Override
+		public MouseEvent mousePressed(MouseEvent event)
+		{
+			alertRepeat.playerBack();
+			return event;
+		}
+	};
+
+	/** A key press in the client means the player is back. Only listens, never consumes. */
+	private final KeyListener backOnKey = new KeyListener()
+	{
+		@Override
+		public void keyTyped(KeyEvent event)
+		{
+		}
+
+		@Override
+		public void keyPressed(KeyEvent event)
+		{
+			alertRepeat.playerBack();
+		}
+
+		@Override
+		public void keyReleased(KeyEvent event)
+		{
+		}
+	};
 
 	/** Whether this start found the player logged in: with no stored version, a fresh install (UpdateNotes). */
 	private boolean startedLoggedIn;
@@ -312,6 +391,9 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.add(gameHealthBarOverlay);
 
 		knownSpots = KnownFishingSpots.load();
+		voiceLines = VoiceLines.load();
+		mouseManager.registerMouseListener(backOnClick);
+		keyManager.registerKeyListener(backOnKey);
 		final ShortestPathBridge bridge = new ShortestPathBridge(
 			() -> pluginManager.getPlugins(),
 			p -> pluginManager.isPluginEnabled((Plugin) p),
@@ -367,15 +449,21 @@ public class CombatVitalsPlugin extends Plugin
 		final List<String> lines = UpdateNotes.toShow(lastSeen, config.showUpdateNotes(), startedLoggedIn);
 		for (int i = 0; i < lines.size(); i++)
 		{
-			final String message = new ChatMessageBuilder()
-				.append(i == 0 ? ChatColorType.HIGHLIGHT : ChatColorType.NORMAL)
-				.append(lines.get(i))
-				.build();
-			chatMessageManager.queue(QueuedMessage.builder()
-				.type(ChatMessageType.CONSOLE)
-				.runeLiteFormattedMessage(message)
-				.build());
+			consoleLine(i == 0 ? ChatColorType.HIGHLIGHT : ChatColorType.NORMAL, lines.get(i));
 		}
+	}
+
+	/** One line in the game chat's console, local only: nothing is typed or sent. */
+	private void consoleLine(ChatColorType colour, String text)
+	{
+		final String message = new ChatMessageBuilder()
+			.append(colour)
+			.append(text)
+			.build();
+		chatMessageManager.queue(QueuedMessage.builder()
+			.type(ChatMessageType.CONSOLE)
+			.runeLiteFormattedMessage(message)
+			.build());
 	}
 
 	@Override
@@ -387,6 +475,9 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.remove(pillarOverlay);
 		overlayManager.remove(nextSpotOverlay);
 		overlayManager.remove(gameHealthBarOverlay);
+		mouseManager.unregisterMouseListener(backOnClick);
+		keyManager.unregisterKeyListener(backOnKey);
+		alertRepeat.stop();
 
 		// shutDown runs off the client thread; the sprite map belongs to it.
 		final NativeHealthBarHider<SpritePixels> hider = healthBarHider;
@@ -559,6 +650,9 @@ public class CombatVitalsPlugin extends Plugin
 		ticksUntilDrop = -1;
 		lastSpecEnergy = -1;
 		activityAlerts.clear();
+		alertRepeat.stop();
+		gainedItems.clear();
+		lastGainedItem = null;
 		inventoryFilling = -1;
 		inventoryEmpty = -1;
 		coinPouches = 0;
@@ -1007,6 +1101,12 @@ public class CombatVitalsPlugin extends Plugin
 		if (caught != -1)
 		{
 			skilling.caught(caught);
+		}
+
+		final int gained = gainedItems.observe(ids, quantities);
+		if (gained != -1)
+		{
+			lastGainedItem = client.getItemDefinition(gained).getName();
 		}
 	}
 
@@ -1879,16 +1979,37 @@ public class CombatVitalsPlugin extends Plugin
 		lastPosition = position;
 
 		final int pouchCap = config.alertCoinPouchCap();
-		for (ActivityAlerts.Alert alert : activityAlerts.tick(now, ActivityAlerts.ticks(config.alertStopSeconds()),
-			pouchCap, config.alertRunEnergyThreshold()))
+		sendAlerts(activityAlerts.tick(now, ActivityAlerts.ticks(config.alertStopSeconds()), pouchCap,
+			config.alertRunEnergyThreshold()), pouchCap);
+	}
+
+	/** This tick's alerts, then any repeat that is due. */
+	private void sendAlerts(List<ActivityAlerts.Alert> fired, int pouchCap)
+	{
+		// Back at it: experience again stops a repeat. Checked before this
+		// tick's alerts, so "inventory full" on the tick of the last catch
+		// still starts its own.
+		if (activityAlerts.experienced())
 		{
-			notifier.notify(notification(alert.type), ActivityAlerts.message(alert, pouchCap));
+			alertRepeat.activityResumed();
+		}
+
+		final long nowMs = System.currentTimeMillis();
+		for (ActivityAlerts.Alert alert : fired)
+		{
+			sendAlert(alert, pouchCap, nowMs);
+		}
+
+		final ActivityAlerts.Alert again = alertRepeat.due(nowMs);
+		if (again != null)
+		{
+			repeatAlert(again, pouchCap);
 		}
 	}
 
 	/**
 	 * Empty slots as Inventory full sees them: the inventory's alone, or with
-	 * Count containers as free inventory on, plus the known free space of the
+	 * Count containers as free on, plus the known free space of the
 	 * containers that take what the skill being worked gathers.
 	 */
 	private int alertEmpty()
@@ -1901,30 +2022,94 @@ public class CombatVitalsPlugin extends Plugin
 		return ContainerRow.combinedEmpty(inventoryEmpty, containerRows(active), true);
 	}
 
-	private Notification notification(ActivityAlerts.Type type)
+	/**
+	 * One alert: RuneLite's notification as the user set it up, with its
+	 * sound swapped for the plugin's when the alert has its own, and a repeat
+	 * when that is on. An alert switched off does nothing at all.
+	 */
+	private void sendAlert(ActivityAlerts.Alert alert, int pouchCap, long nowMs)
 	{
-		switch (type)
+		final AlertSettings settings = AlertSettings.of(config, alert.type);
+		if (!settings.enabled())
 		{
-			case INVENTORY_FULL:
-				return config.alertInventoryFull();
-			case GATHERING_STOPPED:
-				return config.alertGatheringStopped();
-			case THIEVING_STOPPED:
-				return config.alertThievingStopped();
-			case PRODUCTION_FINISHED:
-				return config.alertMakeFinished();
-			case SPOT_MOVED:
-				return config.alertSpotMoved();
-			case STUNNED:
-				return config.alertStunned();
-			case COIN_POUCH_CAP:
-				return config.alertCoinPouch();
-			case NECKLACE_BROKE:
-				return config.alertNecklaceBroke();
-			case LOW_RUN_ENERGY:
-			default:
-				return config.alertLowRunEnergy();
+			return;
 		}
+
+		final AlertSounds.Plan plan = soundPlan(settings, alert);
+		notifier.notify(plan.runelite ? settings.notification : AlertSettings.quiet(settings.notification, runeLiteConfig),
+			ActivityAlerts.message(alert, pouchCap));
+		play(plan, settings.volume);
+		if (alertSounds.shouldHint(plan, alert.type))
+		{
+			consoleLine(ChatColorType.HIGHLIGHT, "Combat Vitals: no sound file at " + plan.file.getPath()
+				+ ", so RuneLite's sound played instead.");
+		}
+		alertRepeat.fired(alert, settings.repeat, nowMs, config.repeatEverySeconds(), config.repeatMaxMinutes());
+	}
+
+	/**
+	 * A repeat: only the sound again. RuneLite's own sound can only be played
+	 * by notifying again; the plugin's sounds play without another tray
+	 * notification. Stops if the alert was switched off meanwhile.
+	 */
+	private void repeatAlert(ActivityAlerts.Alert alert, int pouchCap)
+	{
+		final AlertSettings settings = AlertSettings.of(config, alert.type);
+		if (!settings.enabled() || !settings.repeat)
+		{
+			alertRepeat.stop();
+			return;
+		}
+
+		final AlertSounds.Plan plan = soundPlan(settings, alert);
+		if (plan.runelite)
+		{
+			notifier.notify(settings.notification, ActivityAlerts.message(alert, pouchCap));
+		}
+		else
+		{
+			play(plan, settings.volume);
+		}
+	}
+
+	private AlertSounds.Plan soundPlan(AlertSettings settings, ActivityAlerts.Alert alert)
+	{
+		return AlertSounds.plan(settings.sound, alert, lastGainedItem, voiceLines,
+			path -> AlertSounds.class.getResource(path) != null,
+			new File(RuneLite.RUNELITE_DIR, AlertSounds.USER_FOLDER), File::canRead);
+	}
+
+	/** Plays the plugin's own sound off the client thread; RuneLite's own is the Notifier's to play. */
+	private void play(AlertSounds.Plan plan, int volume)
+	{
+		if (plan.runelite)
+		{
+			return;
+		}
+		final float gain = AlertSounds.gain(volume);
+		executor.execute(() ->
+		{
+			try
+			{
+				if (plan.file != null)
+				{
+					audioPlayer.play(plan.file, gain);
+				}
+				else if (plan.resources.size() == 1)
+				{
+					audioPlayer.play(AlertSounds.class, plan.resources.get(0), gain);
+				}
+				else
+				{
+					final byte[] joined = AlertSounds.join(plan.resources, AlertSounds.class::getResourceAsStream);
+					audioPlayer.play(new ByteArrayInputStream(joined), gain);
+				}
+			}
+			catch (IOException | UnsupportedAudioFileException | LineUnavailableException e)
+			{
+				log.warn("Could not play the alert sound", e);
+			}
+		});
 	}
 
 	/**
