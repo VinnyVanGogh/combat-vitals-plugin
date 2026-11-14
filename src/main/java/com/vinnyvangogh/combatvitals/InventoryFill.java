@@ -57,12 +57,7 @@ final class InventoryFill
 		{
 			return Slot.FIXED;
 		}
-		if (name != null && TOOL.matcher(name.toLowerCase(Locale.ROOT)).matches())
-		{
-			return Slot.FIXED;
-		}
-		// A log basket or fish barrel holds its slot for the whole trip.
-		if (SkillingContainer.fromItemName(name) != null)
+		if (toolOrContainer(name))
 		{
 			return Slot.FIXED;
 		}
@@ -78,6 +73,16 @@ final class InventoryFill
 			}
 		}
 		return Slot.FILLING;
+	}
+
+	/** A tool, or a log basket, fish barrel, coal bag or pouch: each holds its slot for the whole trip. */
+	private static boolean toolOrContainer(String name)
+	{
+		if (name == null)
+		{
+			return false;
+		}
+		return TOOL.matcher(name.toLowerCase(Locale.ROOT)).matches() || SkillingContainer.fromItemName(name) != null;
 	}
 
 	/**
