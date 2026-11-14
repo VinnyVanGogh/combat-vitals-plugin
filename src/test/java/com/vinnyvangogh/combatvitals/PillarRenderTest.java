@@ -29,7 +29,7 @@ public class PillarRenderTest
 	private static final Color FISHING = SkillColours.of(Skill.FISHING);
 	private static final SkillIconManager ICONS = new SkillIconManager();
 
-	private static Pillar xp(double fraction, boolean idle)
+	static Pillar xp(double fraction, boolean idle)
 	{
 		final XpProgress p = XpProgress.of(Experience.getXpForLevel(16)
 			+ (int) ((Experience.getXpForLevel(17) - Experience.getXpForLevel(16)) * fraction));
@@ -44,7 +44,7 @@ public class PillarRenderTest
 			.build();
 	}
 
-	private static Pillar inventory(int empty, boolean idle)
+	static Pillar inventory(int empty, boolean idle)
 	{
 		final double fill = InventoryFill.fraction(InventoryFill.SLOTS - empty, empty);
 		return Pillar.builder()
@@ -57,7 +57,7 @@ public class PillarRenderTest
 			.build();
 	}
 
-	private static Pillar target(int hp, int max)
+	static Pillar target(int hp, int max)
 	{
 		final double f = (double) hp / max;
 		return Pillar.builder()
@@ -69,7 +69,7 @@ public class PillarRenderTest
 			.build();
 	}
 
-	private static BufferedImage render(Pillar pillar, PillarStyle style, PillarLabels labels)
+	static BufferedImage render(Pillar pillar, PillarStyle style, PillarLabels labels)
 	{
 		final BufferedImage image = new BufferedImage(BOX.width + 8, BOX.height + 8, BufferedImage.TYPE_INT_ARGB);
 		final Graphics2D g = image.createGraphics();
@@ -302,7 +302,7 @@ public class PillarRenderTest
 		return c.getRed() * 3 + c.getGreen() * 6 + c.getBlue();
 	}
 
-	private static BufferedImage scaled(BufferedImage image, int factor)
+	static BufferedImage scaled(BufferedImage image, int factor)
 	{
 		final BufferedImage out = new BufferedImage(image.getWidth() * factor, image.getHeight() * factor,
 			BufferedImage.TYPE_INT_ARGB);
