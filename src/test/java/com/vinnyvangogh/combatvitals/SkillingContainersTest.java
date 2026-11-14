@@ -73,6 +73,63 @@ public class SkillingContainersTest
 		assertEquals(-1, contents.contents(SkillingContainer.LOG_BASKET));
 	}
 
+	// --- Check dialog, full by landing, kept across logins ------------------
+
+	/** The Board's screenshot 2026-11-14: Check answers in the item dialog, "<br>" between the lines. */
+	@Test
+	public void checkDialogTextSetsTheCount()
+	{
+		assertTrue(contents.message("The basket contains: 14 x Yew logs", 100));
+		assertEquals(14, contents.contents(SkillingContainer.LOG_BASKET));
+	}
+
+	@Test
+	public void aLogLandingInTheInventoryWhileTheBasketIsOpenMeansFull()
+	{
+		contents.carried(open(SkillingContainer.LOG_BASKET), capacities());
+		contents.message("You get some yew logs.", 200);
+		assertTrue(contents.inventoryChanged(1, 2, 200));
+		assertEquals(28, contents.contents(SkillingContainer.LOG_BASKET));
+	}
+
+	@Test
+	public void fullByLandingWorksWhicheverEventComesFirst()
+	{
+		contents.carried(open(SkillingContainer.LOG_BASKET), capacities());
+		contents.inventoryChanged(1, 2, 300);
+		contents.message("You get some yew logs.", 300);
+		assertEquals(28, contents.contents(SkillingContainer.LOG_BASKET));
+	}
+
+	@Test
+	public void aLogIntoTheOpenBasketIsNotFull()
+	{
+		contents.carried(open(SkillingContainer.LOG_BASKET), capacities());
+		contents.message("The basket contains: 14 x Yew logs", 400);
+		contents.message("You get some yew logs.", 401);
+		contents.inventoryChanged(1, 2, 405);
+		assertEquals(15, contents.contents(SkillingContainer.LOG_BASKET));
+	}
+
+	@Test
+	public void aClosedBasketIsNeverMarkedFull()
+	{
+		contents.message("You get some yew logs.", 500);
+		contents.inventoryChanged(1, 2, 500);
+		assertEquals(-1, contents.contents(SkillingContainer.LOG_BASKET));
+	}
+
+	@Test
+	public void aCountKeptFromTheLastLoginComesBack()
+	{
+		contents.restore(SkillingContainer.LOG_BASKET, 14);
+		assertEquals(14, contents.contents(SkillingContainer.LOG_BASKET));
+		contents.message("The basket contains: 3 x Logs", 600);
+		contents.restore(SkillingContainer.LOG_BASKET, 14);
+		assertEquals("this session's count wins", 3, contents.contents(SkillingContainer.LOG_BASKET));
+		assertEquals(Integer.valueOf(3), contents.known().get(SkillingContainer.LOG_BASKET));
+	}
+
 	// --- Option off: the inventory line is exactly as it was ---------------
 
 	@Test
