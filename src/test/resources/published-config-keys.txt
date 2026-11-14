@@ -121,3 +121,8 @@ volumeThievingStopped int
 # 2026-11-14: the two halves' master switches.
 combatVitals boolean
 skillingVitals boolean
+# 2026-11-14: one sound, volume and repeat for every alert (sidebar panel task).
+alertSoundShared boolean
+alertSoundAll AlertSound
+alertVolumeAll int
+alertRepeatAll boolean

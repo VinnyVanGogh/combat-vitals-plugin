@@ -38,6 +38,7 @@ plugin list, and every setting you have saved.
 - [About that number](#about-that-number)
 - [Watching it work](#watching-it-work)
 - [How it compares to Opponent Information](#how-it-compares-to-opponent-information)
+- [Sidebar panel](#sidebar-panel)
 - [Settings](#settings)
 - [Compatibility](#compatibility)
 - [Privacy and network use](#privacy-and-network-use)
@@ -285,6 +286,100 @@ the case that broke every earlier iteration of this overlay.
 | Combat stat comparison panel | Yes | Yes |
 | Shows your own health too | No | Yes |
 
+## Sidebar panel
+
+The plugin has its own button in RuneLite's sidebar (a small health bar over
+a skilling bar). It holds every setting from RuneLite's settings list, the
+same settings with the same values, laid out to be easier to find: presets at
+the top, then five tabs. Change something in either place and the other shows
+it. Timeouts and update notes stay in the settings list, under Advanced.
+
+The screenshots are rendered from the real panel by `./gradlew screenshots`
+(`VitalsSidePanelShots`).
+
+### Presets
+
+<img src="docs/images/panel-presets.png" alt="Presets, with Skiller's preview open" width="240">
+
+A whole setup in one click. A preset only changes the few settings it lists;
+everything else stays as you set it. Click a preset to see exactly what it
+would change, then Apply. Undo puts those settings back as they were.
+
+| Preset | What it sets |
+|---|---|
+| Skiller | Skilling vitals and the skilling badge on, skilling side pillars, every alert as a Voice line that repeats until you are back |
+| PvM | Combat vitals on: readout over the target, the panel, your own health, NPC targets, the stat comparison, the combat side pillar |
+| Minimal | Just the health bar over your target: no panel, no own health, no stat comparison, no side pillars, Skilling vitals off |
+| Everything | Both halves on: readout, panel, your own health, the stat comparison, the skilling badge, both side pillars |
+
+Walkthrough: click Skiller, read the list (each line is a setting, what it is
+now, and what it becomes), click Apply. Changed your mind? Click Undo.
+
+### Combat tab
+
+<img src="docs/images/panel-combat.png" alt="The Combat tab with its guide open" width="240">
+
+Your target's health while you fight: in a small panel, and over the target
+itself. Also your own health, and the game's own health bar and chat. Combat
+vitals at the top turns this whole half on or off.
+
+1. Leave Combat vitals ticked.
+2. Tick Show over target for the readout over the monster, Show panel for the box.
+3. Pick Display: hitpoints, percentage, or both.
+4. Tick Hide game health bar to see only this plugin's bar.
+
+### Targets tab
+
+<img src="docs/images/panel-targets.png" alt="The Targets tab with its guide open" width="240">
+
+Who gets a readout: monsters, players, and how big targets like bosses show.
+
+1. Tick NPC targets for monsters; Player targets for PvP.
+2. Set Big target is to Bosses only, then Big targets to Both for hitpoints and percent on bosses.
+
+### Skilling tab
+
+<img src="docs/images/panel-skilling.png" alt="The Skilling tab with its guide open" width="240">
+
+A badge over your head while you fish, cut, mine, thieve, runecraft or hunt:
+XP to level, inventory, catches, boosts, and the next fishing spot. Skilling
+vitals at the top turns this whole half on or off.
+
+1. Leave Skilling vitals and Skilling badge ticked.
+2. Untick any skill you do not want a badge for.
+3. Under Rows, untick rows you do not read; Badge layout on the Look tab makes it smaller.
+4. Once you stop: choose how long the badge stays after you stop.
+
+### Alerts tab
+
+<img src="docs/images/panel-alerts.png" alt="The Alerts tab with its guide open" width="240">
+
+A notification when something needs you: inventory full, you stopped
+gathering or thieving, the fishing spot moved, and more. Each alert is a row:
+tick it on or off, and **Test** plays it as it is set up now. **Same for every
+alert** gives them all one sound, volume and repeat (sound packs included);
+untick it and each alert's own sound, volume and Repeat show in its row.
+
+1. Tick Same for every alert.
+2. Pick Voice line as the sound and set the volume, e.g. 40.
+3. Tick Repeat every alert if you want it again until you are back.
+4. Click Test on Inventory full to hear it.
+
+### Look tab
+
+<img src="docs/images/panel-look.png" alt="The Look tab with its guide open" width="240">
+
+How things look: the readout's style and position, health colours, the badge's
+size, place and colours, and the side pillars. The preview at the top redraws
+as you change things: the health colours as a bar fading from full to empty,
+and where the skilling badge sits for its position, offset and size. It is a
+sketch, not the game's own drawing.
+
+1. Pick a Style for the readout over your target.
+2. Change the three health colours; the preview bar shows the fade.
+3. Move the badge with Badge position and Badge offset; the preview shows where.
+4. Side pillars: pick Combat, Skilling or Both.
+
 ## Settings
 
 <p align="center">
@@ -305,8 +400,25 @@ the case that broke every earlier iteration of this overlay.
 | **Side pillars** | <img src="docs/images/settings-side-pillars.png" alt="Side pillars settings" width="280"> |
 | **Advanced** | <img src="docs/images/settings-advanced.png" alt="Advanced settings" width="280"> |
 
-The screenshots predate the two master switches and the section names above;
-the settings in each section are the same.
+The screenshots predate the two master switches and the regrouped sections.
+
+</details>
+
+RuneLite's list now has six sections, all collapsed, each the twin of a
+sidebar panel tab with the same settings in the same order: **Combat
+readout** (Combat tab), **Combat targets** (Targets), **Skilling badge**
+(Skilling, which now also holds what was "Skilling: badge details" and the
+next fishing spot), **Alerts and sounds** (Alerts: each alert's switch, then
+"Same for every alert", the repeat timing, then each alert's own sound),
+**Look** (colours, styles, positions and sizes, and the side pillars), and
+**Advanced**. The tables below keep their old headings; every setting and its
+key is unchanged.
+
+<details>
+<summary>Old section names</summary>
+
+Combat: display, Combat: targets, Skilling: badge, Skilling: badge details,
+Skilling: activity alerts, Skilling: alert sounds, Side pillars, Advanced.
 
 </details>
 
@@ -474,7 +586,16 @@ does the same.
 
 ### Skilling: alert sounds
 
-Closed by default. Every activity alert has three settings here:
+One sound for all of them, or each its own:
+
+| Setting | Default | What it does |
+|---|---|---|
+| Same for every alert | Off | On: the four settings below replace every alert's own sound, volume and Repeat; each alert still turns on and off by itself. Off: each alert's own, as below |
+| Sound for all | RuneLite | The same choices as each alert's own, sound packs included |
+| Volume for all | 40 | Volume of the plugin's own sounds for every alert |
+| Repeat every alert | Off | Every alert repeats until you are back |
+
+Every activity alert has three settings of its own:
 
 | Setting | Default | What it does |
 |---|---|---|

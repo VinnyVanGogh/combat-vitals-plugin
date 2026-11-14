@@ -67,6 +67,27 @@ tasks.named('test') {
 	dependsOn 'printRuneLiteVersion'
 }
 
+// The sidebar panel's UI tests and screenshots drive Swing components
+// directly (SwingDriver, copied from GIM Utilities): no display, no OS input.
+tasks.named('test', Test) {
+	systemProperty 'java.awt.headless', 'true'
+}
+
+// Renders the README's sidebar panel screenshots (VitalsSidePanelShots) into
+// docs/images. ./gradlew test renders the same shots into build/screenshots.
+tasks.register('screenshots', Test) {
+	description = 'Renders the README sidebar panel screenshots into docs/images'
+	group = 'documentation'
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+	filter {
+		includeTestsMatching 'com.vinnyvangogh.combatvitals.VitalsSidePanelShots'
+	}
+	systemProperty 'java.awt.headless', 'true'
+	systemProperty 'screenshots.dir', file('docs/images').absolutePath
+	outputs.upToDateWhen { false }
+}
+
 tasks.register('run', JavaExec) {
 	dependsOn 'printRuneLiteVersion'
 	classpath = sourceSets.test.runtimeClasspath

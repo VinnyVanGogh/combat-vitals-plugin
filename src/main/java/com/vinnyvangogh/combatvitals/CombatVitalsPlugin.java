@@ -23,6 +23,7 @@ import java.util.function.BooleanSupplier;
 import javax.inject.Inject;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.UnsupportedAudioFileException;
+import javax.swing.SwingUtilities;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
@@ -72,6 +73,7 @@ import net.runelite.client.chat.ChatColorType;
 import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
+import net.runelite.client.config.ConfigItemDescriptor;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneLiteConfig;
 import net.runelite.client.eventbus.EventBus;
@@ -90,6 +92,9 @@ import net.runelite.client.input.MouseManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginManager;
+import net.runelite.client.ui.ClientToolbar;
+import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.ui.components.colorpicker.ColorPickerManager;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.Text;
@@ -184,6 +189,17 @@ public class CombatVitalsPlugin extends Plugin
 	/** Decodes and plays alert sounds off the client thread. */
 	@Inject
 	private ScheduledExecutorService executor;
+
+	@Inject
+	private ClientToolbar clientToolbar;
+
+	/** RuneLite's colour picker, for the sidebar panel's colour settings, as its settings list uses it. */
+	@Inject
+	private ColorPickerManager colorPickerManager;
+
+	/** The sidebar panel and its button; null while the plugin is off. Swing thread. */
+	private VitalsSidePanel sidePanel;
+	private NavigationButton navButton;
 
 	/** Which alert, if any, is repeating until the player is back. */
 	private final AlertRepeat alertRepeat = new AlertRepeat();
@@ -438,12 +454,54 @@ public class CombatVitalsPlugin extends Plugin
 			}
 		});
 
+		startSidePanel();
+
 		// Installed or turned on mid-session: no LOGGED_IN is coming, so say it now.
 		startedLoggedIn = client.getGameState() == GameState.LOGGED_IN;
 		if (startedLoggedIn)
 		{
 			clientThread.invoke(this::postUpdateNotes);
 		}
+	}
+
+	/**
+	 * The sidebar panel, built from RuneLite's own description of this
+	 * plugin's settings. RuneLite starts plugins on the Swing thread, where the
+	 * panel is built; its config writes go to the executor.
+	 */
+	private void startSidePanel()
+	{
+		final Map<String, ConfigItemDescriptor> items = new HashMap<>();
+		for (ConfigItemDescriptor d : configManager.getConfigDescriptor(config).getItems())
+		{
+			items.put(d.key(), d);
+		}
+		sidePanel = new VitalsSidePanel(ConfigStore.of(configManager, executor), items, colorPickerManager,
+			type -> clientThread.invoke(() -> testAlert(type)));
+		navButton = NavigationButton.builder()
+			.tooltip(VitalsSidePanel.TITLE)
+			.icon(VitalsSidePanel.icon())
+			.priority(7)
+			.panel(sidePanel)
+			.build();
+		clientToolbar.addNavigation(navButton);
+	}
+
+	/**
+	 * The panel's Test button: the alert as it is set up now, sound and all,
+	 * even while it is switched off. Never repeats. Client thread.
+	 */
+	private void testAlert(ActivityAlerts.Type type)
+	{
+		final AlertSettings settings = AlertSettings.of(config, type);
+		final ActivityAlerts.Alert alert = new ActivityAlerts.Alert(type, null);
+		final AlertSounds.Plan plan = soundPlan(settings, alert);
+		if (plan.runelite)
+		{
+			notifier.notify(settings.notification.withEnabled(true),
+				"Test: " + ActivityAlerts.message(alert, config.alertCoinPouchCap()));
+		}
+		play(plan, settings.volume);
 	}
 
 	/**
@@ -491,6 +549,9 @@ public class CombatVitalsPlugin extends Plugin
 		mouseManager.unregisterMouseListener(backOnClick);
 		keyManager.unregisterKeyListener(backOnKey);
 		alertRepeat.stop();
+		clientToolbar.removeNavigation(navButton);
+		navButton = null;
+		sidePanel = null;
 
 		// shutDown runs off the client thread; the sprite map belongs to it.
 		final NativeHealthBarHider<SpritePixels> hider = healthBarHider;
@@ -564,14 +625,27 @@ public class CombatVitalsPlugin extends Plugin
 			!STATUS_BARS_DISABLED.equals(right), width == null ? SidePillars.WIDTH : width);
 	}
 
-	/** "Reset session" is a tick box that unticks itself once the counts are zeroed. */
+	/**
+	 * "Reset session" is a tick box that unticks itself once the counts are
+	 * zeroed. Any change, made in RuneLite's list or the sidebar panel,
+	 * redraws the panel on the Swing thread, so the two always agree.
+	 */
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
-		if (CombatVitalsConfig.GROUP.equals(event.getGroup()) && config.skillingSessionReset())
+		if (!CombatVitalsConfig.GROUP.equals(event.getGroup()))
+		{
+			return;
+		}
+		if (config.skillingSessionReset())
 		{
 			session.reset();
 			configManager.setConfiguration(CombatVitalsConfig.GROUP, "skillingSessionReset", false);
+		}
+		final VitalsSidePanel panel = sidePanel;
+		if (panel != null)
+		{
+			SwingUtilities.invokeLater(panel::refresh);
 		}
 	}
 
