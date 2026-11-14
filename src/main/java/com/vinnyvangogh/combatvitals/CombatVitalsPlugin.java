@@ -12,6 +12,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -347,6 +349,15 @@ public class CombatVitalsPlugin extends Plugin
 	/** Slot class per item id: definitions never change within a session. */
 	private final Map<Integer, InventoryFill.Slot> slotClasses = new HashMap<>();
 
+	/** Log basket, fish barrel and coal bag contents, from the game's chat lines; forgotten on logout. */
+	private final ContainerContents containerContents = new ContainerContents();
+
+	/** Each skilling container carried or worn, with its capacity; essence pouches are filled in per read. */
+	private final Map<SkillingContainer, Integer> containersCarried = new EnumMap<>(SkillingContainer.class);
+
+	/** Every essence pouch carried. */
+	private final Set<EssencePouch> pouchesCarried = EnumSet.noneOf(EssencePouch.class);
+
 	/** Your tile last tick, so walking away reads as stopping on purpose. */
 	private WorldPoint lastPosition;
 
@@ -592,6 +603,10 @@ public class CombatVitalsPlugin extends Plugin
 			case LOGIN_SCREEN:
 				// Logging out ends the session's counts; a hop does not.
 				session.clear();
+				// Never carried over a logout: the containers show "?" until checked again.
+				containerContents.clear();
+				containersCarried.clear();
+				pouchesCarried.clear();
 				// fall through
 			case HOPPING:
 				opponent = null;
@@ -809,6 +824,15 @@ public class CombatVitalsPlugin extends Plugin
 	{
 		final String option = event.getMenuOption();
 
+		// Fill, Empty or Empty to bank on a basket, barrel or coal bag, in the
+		// inventory or the bank; read only, the click goes through untouched.
+		final SkillingContainer clickedContainer =
+			SkillingContainer.fromItemName(Text.removeTags(event.getMenuTarget()));
+		if (clickedContainer != null)
+		{
+			containerContents.clicked(clickedContainer, option, client.getTickCount());
+		}
+
 		if (event.isItemOp())
 		{
 			if ("Drink".equalsIgnoreCase(option) || "Eat".equalsIgnoreCase(option))
@@ -1016,12 +1040,19 @@ public class CombatVitalsPlugin extends Plugin
 			activityAlerts.necklaceBroke();
 		}
 
+		containerContents.message(message);
+
 		final FishingCatches.Fish fish = FishingCatches.fromCatchMessage(message);
 		if (fish != null)
 		{
 			skilling.caught(fish.getItemId());
 			// A catch is the proof the gear was there after all.
 			gearWarning = null;
+			// Minnows and karambwanji stack in the inventory; the barrel takes neither.
+			if (!client.getItemDefinition(fish.getItemId()).isStackable())
+			{
+				containerContents.fishCaught();
+			}
 		}
 	}
 
@@ -1040,12 +1071,22 @@ public class CombatVitalsPlugin extends Plugin
 			return;
 		}
 
+		if (event.getContainerId() == InventoryID.WORN)
+		{
+			// A worn forestry basket or fish sack barrel, or a Smithing cape for the coal bag.
+			scanContainers();
+			return;
+		}
+
 		if (event.getContainerId() != InventoryID.INV || event.getItemContainer() == null)
 		{
 			return;
 		}
 
+		final int fillingBefore = inventoryFilling;
 		countInventory(event.getItemContainer());
+		scanContainers();
+		containerContents.inventoryChanged(fillingBefore, inventoryFilling, client.getTickCount());
 
 		final Item[] items = event.getItemContainer().getItems();
 		final int[] ids = new int[items.length];
@@ -1675,6 +1716,8 @@ public class CombatVitalsPlugin extends Plugin
 	{
 		final XpProgress xp = XpProgress.of(client.getSkillExperience(skill));
 		final int free = inventoryFree();
+		final List<ContainerRow> containers = free < 0 || !config.skillingContainers()
+			? Collections.emptyList() : containerRows(skill);
 		return SkillingReadout.builder()
 			.skill(skill)
 			.real(client.getRealSkillLevel(skill))
@@ -1687,8 +1730,115 @@ public class CombatVitalsPlugin extends Plugin
 			.sessionCells(sessionCells(skill, xp, now))
 			.tickMillis(now)
 			.inventoryFill(free < 0 ? -1 : InventoryFill.fraction(inventoryFilling, inventoryEmpty))
-			.inventoryLabel(InventoryFill.label(free, config.skillingInventoryCount()))
-			.inventoryFree(free);
+			.inventoryLabel(ContainerRow.inventoryLabel(free, config.skillingInventoryCount(), containers,
+				config.skillingContainersAsInventory()))
+			.inventoryFree(free)
+			.containers(containers)
+			.containerCount(config.skillingInventoryCount());
+	}
+
+	/**
+	 * The containers carried that take what the skill gathers, each with what
+	 * is known of its contents: chat-tracked ones from {@link ContainerContents},
+	 * essence pouches summed from their varbits.
+	 */
+	private List<ContainerRow> containerRows(Skill skill)
+	{
+		if (containersCarried.isEmpty())
+		{
+			return Collections.emptyList();
+		}
+		final Map<SkillingContainer, Integer> capacities = new EnumMap<>(containersCarried);
+		int pouchHeld = 0;
+		if (capacities.containsKey(SkillingContainer.ESSENCE_POUCHES))
+		{
+			final int runecraft = client.getRealSkillLevel(Skill.RUNECRAFT);
+			int pouchCapacity = 0;
+			for (EssencePouch pouch : pouchesCarried)
+			{
+				pouchHeld += client.getVarbitValue(pouch.getAmountVarbit());
+				pouchCapacity += pouch.capacity(pouchDegradation(pouch), runecraft);
+			}
+			capacities.put(SkillingContainer.ESSENCE_POUCHES, pouchCapacity);
+		}
+		final int pouches = pouchHeld;
+		return ContainerRow.rows(skill, capacities, kind ->
+			kind == SkillingContainer.ESSENCE_POUCHES ? pouches : containerContents.contents(kind));
+	}
+
+	private int pouchDegradation(EssencePouch pouch)
+	{
+		if (pouch.getDegradationVar() < 0)
+		{
+			return 0;
+		}
+		return pouch.isDegradationIsVarbit() ? client.getVarbitValue(pouch.getDegradationVar())
+			: client.getVarpValue(pouch.getDegradationVar());
+	}
+
+	/**
+	 * Which skilling containers are carried or worn, open or closed, with
+	 * their capacities. Run on inventory and equipment changes, never per tick.
+	 */
+	private void scanContainers()
+	{
+		containersCarried.clear();
+		pouchesCarried.clear();
+		final Set<SkillingContainer> open = EnumSet.noneOf(SkillingContainer.class);
+		scanContainers(client.getItemContainer(InventoryID.INV), open);
+		final boolean smithingCape = scanContainers(client.getItemContainer(InventoryID.WORN), open);
+		containersCarried.replaceAll((kind, ignored) -> fixedCapacity(kind, smithingCape));
+		containerContents.carried(open, containersCarried);
+	}
+
+	/** @return whether a Smithing cape is among the items, for the coal bag's 36 */
+	private boolean scanContainers(ItemContainer items, Set<SkillingContainer> open)
+	{
+		if (items == null)
+		{
+			return false;
+		}
+		boolean smithingCape = false;
+		for (Item item : items.getItems())
+		{
+			if (item.getId() <= 0)
+			{
+				continue;
+			}
+			final String name = client.getItemDefinition(item.getId()).getName();
+			smithingCape |= name.startsWith("Smithing cape");
+			final SkillingContainer kind = SkillingContainer.fromItemName(name);
+			if (kind != null)
+			{
+				containersCarried.put(kind, 0);
+				if (SkillingContainer.isOpen(name))
+				{
+					open.add(kind);
+				}
+				final EssencePouch pouch = EssencePouch.fromItemName(name);
+				if (pouch != null)
+				{
+					pouchesCarried.add(pouch);
+				}
+			}
+		}
+		return smithingCape;
+	}
+
+	/** Capacity of a basket, barrel or coal bag; essence pouches are read with their varbits. */
+	private static int fixedCapacity(SkillingContainer kind, boolean smithingCape)
+	{
+		switch (kind)
+		{
+			case LOG_BASKET:
+				return SkillingContainer.BASKET_CAPACITY;
+			case FISH_BARREL:
+				return SkillingContainer.BARREL_CAPACITY;
+			case COAL_BAG:
+				return SkillingContainer.coalBagCapacity(smithingCape);
+			default:
+				return 0;
+		}
 	}
 
 	/** The session row's cells in the chosen badge layout. */
@@ -1812,6 +1962,7 @@ public class CombatVitalsPlugin extends Plugin
 			if (inventory != null)
 			{
 				countInventory(inventory);
+				scanContainers();
 			}
 		}
 
@@ -1821,7 +1972,7 @@ public class CombatVitalsPlugin extends Plugin
 		now.animating = self.getAnimation() != -1;
 		now.moved = lastPosition != null && position != null && !position.equals(lastPosition);
 		now.filling = inventoryFilling;
-		now.empty = inventoryEmpty;
+		now.empty = alertEmpty();
 		now.coinPouches = inventoryEmpty < 0 ? -1 : coinPouches;
 		// Hundredths of a percent, as the base client's Idle Notifier reads it.
 		now.runEnergy = client.getEnergy() / 100;
@@ -1854,6 +2005,21 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			repeatAlert(again, pouchCap);
 		}
+	}
+
+	/**
+	 * Empty slots as Inventory full sees them: the inventory's alone, or with
+	 * Count containers as free on, plus the known free space of the
+	 * containers that take what the skill being worked gathers.
+	 */
+	private int alertEmpty()
+	{
+		if (!config.skillingContainersAsInventory() || inventoryEmpty < 0)
+		{
+			return inventoryEmpty;
+		}
+		final Skill active = activityAlerts.active() != null ? activityAlerts.active() : skilling.skill();
+		return ContainerRow.combinedEmpty(inventoryEmpty, containerRows(active), true);
 	}
 
 	/**

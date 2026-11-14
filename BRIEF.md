@@ -264,6 +264,41 @@ definition sets its own bar height is drawn a few pixels off.
 |---|---|---|---|
 | Once per plugin version, on the first login after an update, a few `CONSOLE` lines in the game chat saying what is new; a fresh install gets one welcome line. `Show update notes in chat` (default on) turns it off | "No autotyping" / "No modifying outgoing chat messages": both are about the player's chatbox input and what they send. This posts only into the local chat history through `ChatMessageManager`, nothing is typed, sent or changed, and it carries no game information at all | Base client `Notifier`'s "Game message" notification queues a `CONSOLE` `QueuedMessage` through `ChatMessageManager` the same way (from memory of the client source; the jar check was gated on 2026-11-09, re-read `Notifier` before the Hub PR) | Allowed, with precedent |
 
+### Skilling containers, compliance (added 2026-11-14, task-c4cedbb0)
+
+Board, 2026-11-14: "Inv 27/28 free" ignores a log basket you carry. Show
+each carried container's free space under the inventory line, and optionally
+count it as free inventory.
+
+**Correction to the task brief.** The brief names RuneLite's Item Charges
+plugin as the precedent for the fish barrel, log basket, gem bag, coal bag
+and herb sack. It is not: on runelite master
+(`bb0fa42b3d9329ffe31115f1f20042c455def2e3`, read 2026-11-14)
+`itemcharges/ItemChargeType.java` lists no such type, and the only
+"basket" in `ItemWithCharge.java` (lines 97-106) is the fruit basket. The
+precedents actually used are below.
+
+| Element | Nearest rule | Precedent | Verdict |
+|---|---|---|---|
+| Containers carried, by item name, from `ItemContainerChanged` for `InventoryID.INV` and `InventoryID.WORN` | None: own inventory | The plugin already reads both (Inventory fill, gear check) | Allowed |
+| Essence pouch contents from varbits `SMALL/MEDIUM/LARGE/GIANT/COLOSSAL_ESSENCE_POUCH`, capacity from the degradation varps and the Runecraft level | None: own-account varbits | Base client `runecraft/EssencePouchOverlay.java` (runelite master `bb0fa42`, lines 46-103 for the table, 122 `maxAmount`, 166 `getAmount`) reads exactly these; the capacity table is ported from it (BSD-2) | Allowed |
+| Log basket, fish barrel and coal bag contents from the game's own chat lines: Check ("The basket contains: 5 x Logs", "The barrel contains: ...", "The coal bag contains 12 coal"), emptied ("The basket is empty.", "You empty your basket into the bank.", "The coal bag is now empty."), full ("The barrel is full."), and one more per catch while the container is open ("You get some logs.", "You catch ...", "You manage to mine some coal.") | None: reads `ChatMessage`, sends nothing | Plugin Hub "GP Per Hour" (MosheBenZacharia/GP-Per-Hour @ `cce6706`, `itemcharges/items/U_LogBasket.java` 53-130, `U_FishBarrel.java` 56-190, `U_CoalBag.java` 50-101) tracks the same containers from the same lines. Chat wording is that plugin's, not re-captured in game here | Allowed |
+| Fill and Empty clicked on a container read from `MenuOptionClicked`, the amount from the inventory change that follows | Menu Restrictions: adding or removing entries | Read only, never consumed or changed; GP Per Hour's `TriggerItemContainer(...).menuOption("Fill").addDifference()` does the same | Allowed |
+| `Count containers as free` (off by default) adds known free container space to the inventory line and to the inventory-full alert | None: own state, a notification only | The existing Inventory full alert (2026-11-03 table above) | Allowed |
+
+Not done, deliberately:
+
+- **Never a guess.** A container not checked or emptied since login shows
+  `?/28`, and counts as no space in the combined number, until you Check it.
+  Nothing is stored between sessions.
+- **Gem bag**: capacity is 60 *per gem type* and its check output is one
+  line per gem; free space is not one number, and counting it as inventory
+  would hide a full inventory once one gem type is full. Left for a
+  follow-up.
+- **Coal bag** is shown while mining but not counted as inventory: it takes
+  coal only, so its space is not free space at any other rock.
+- **Herb sack, seed box, plank sack**: Herblore, Farming and Construction
+  have no skilling badge, so there is no line to put them under.
 ### Alert sounds, repeat until you're back, voice lines (added 2026-11-14, Board)
 
 Board, 2026-11-14, woodcutting AFK: the stopped alert should be able to keep

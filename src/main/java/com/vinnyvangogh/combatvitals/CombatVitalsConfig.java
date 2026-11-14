@@ -518,6 +518,37 @@ public interface CombatVitalsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "skillingContainers",
+		name = "Show containers",
+		description =
+			"Under the inventory line, a line for each container you carry that holds what you are gathering: "
+				+ "\"Log basket 12/28 free\" while woodcutting, the fish barrel while fishing, the coal bag while "
+				+ "mining, essence pouches while runecrafting. A basket, barrel or coal bag shows \"?\" until you "
+				+ "Check it once after logging in; the plugin never guesses what is inside.",
+		section = skillingSection,
+		position = 6
+	)
+	default boolean skillingContainers()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingContainersAsInventory",
+		name = "Count containers as free",
+		description =
+			"Add a container's free space to the inventory line, \"Inv 27/28 free (+16 basket)\", and only "
+				+ "notify Inventory full once the container is full too. The coal bag takes coal only, so it is "
+				+ "never counted; a container not yet checked counts as no space.",
+		section = skillingSection,
+		position = 6
+	)
+	default boolean skillingContainersAsInventory()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "skillingIdleMode",
 		name = "Once idle",
 		description =

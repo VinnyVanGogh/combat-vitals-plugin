@@ -167,7 +167,7 @@ class PillarOverlay extends Overlay
 			.number(PillarText.inventoryNumber(skilling.getInventoryFree(), count))
 			.divisions(InventoryFill.SLOTS)
 			.idle(skilling.isIdle())
-			.tooltip(PillarText.inventoryTooltip(skilling.getInventoryFree(), count))
+			.tooltip(PillarText.inventoryTooltip(skilling.getInventoryFree(), count, skilling.getContainers()))
 			.build();
 	}
 

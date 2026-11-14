@@ -126,6 +126,16 @@ wear hold their slot for the whole trip, so they shrink the capacity instead.
 A harpoon and 27 fish is solid red. It uses the health colours from Display,
 run backwards.
 
+**Containers.** Carry a container that holds what you are gathering and it
+gets its own line under the inventory line: `Log basket 12/28 free` while
+woodcutting (log basket or forestry basket), the fish barrel while fishing,
+the coal bag while mining, your essence pouches while runecrafting. The
+plugin reads the basket, barrel and coal bag from the game's own messages, so
+until you Check one after logging in it shows `?/28 (check the basket once)`
+rather than a guess. Turn on *Count containers as free* to read
+`Inv 27/28 free (+16 basket)` and get *Inventory full* only once the basket
+is full too. The coal bag takes coal only, so it is never counted.
+
 | Nearly empty (27/28 free) | Half full | Full (harpoon + 27 fish) |
 |:---:|:---:|:---:|
 | <img src="docs/images/inventory-fill-empty.png" alt="Inventory fill nearly empty at 27/28 free" width="260"> | <img src="docs/images/inventory-fill-half.png" alt="Inventory fill half full" width="260"> | <img src="docs/images/inventory-fill-full.png" alt="Inventory fill completely full" width="260"> |
@@ -323,6 +333,8 @@ the case that broke every earlier iteration of this overlay.
 | Show spec energy | On | Remaining special attack energy when wielding a spec skilling tool |
 | Notify on boost drop | Off | RuneLite notification when the badge's boost drops or wears off |
 | Show inventory fill | On | `Inv 26/28 free` on a bar under the badge, green to red as the inventory fills; stackables, tools and equipment do not count toward the fill |
+| Show containers | On | A line per carried log basket, fish barrel, coal bag or essence pouches under the inventory line, for the skill they serve: `Log basket 12/28 free`, or `?/28` until checked |
+| Count containers as free | Off | `Inv 27/28 free (+16 basket)`, and Inventory full waits for the container to fill too; the coal bag and unchecked containers never count |
 | Next spot path | Off | Mark the nearest fishing spot of the same kind when yours moves, or only from the badge's right-click menu: its tile outlined, a line from you to it, an arrow at the screen's edge while it is off screen. The mark stays until you fish again |
 | Next spot: Shortest Path | On | Also send the next spot to Shortest Path for a walking path, when it is installed. Shortest Path ends its own path within its *Finish distance* (5 tiles by default), which is why the mark is drawn as well |
 
