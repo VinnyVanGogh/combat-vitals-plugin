@@ -59,9 +59,11 @@ import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.OverheadTextChanged;
 import net.runelite.api.events.StatChanged;
 import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.gameval.VarbitID;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.Notifier;
 import net.runelite.client.RuneLite;
 import net.runelite.client.audio.AudioPlayer;
@@ -349,8 +351,15 @@ public class CombatVitalsPlugin extends Plugin
 	/** Slot class per item id: definitions never change within a session. */
 	private final Map<Integer, InventoryFill.Slot> slotClasses = new HashMap<>();
 
-	/** Log basket, fish barrel and coal bag contents, from the game's chat lines; forgotten on logout. */
+	/**
+	 * Log basket, fish barrel and coal bag contents, from the game's chat lines and Check dialogs;
+	 * kept per account (RuneScape profile config) so a login starts from the last known count.
+	 */
 	private final ContainerContents containerContents = new ContainerContents();
+	/** Counts as last written to the profile config; null until restored after a login. */
+	private Map<SkillingContainer, Integer> containersSaved;
+	/** The Check dialog text already read, so one dialog is read once. */
+	private String containerDialog;
 
 	/** Each skilling container carried or worn, with its capacity; essence pouches are filled in per read. */
 	private final Map<SkillingContainer, Integer> containersCarried = new EnumMap<>(SkillingContainer.class);
@@ -603,8 +612,10 @@ public class CombatVitalsPlugin extends Plugin
 			case LOGIN_SCREEN:
 				// Logging out ends the session's counts; a hop does not.
 				session.clear();
-				// Never carried over a logout: the containers show "?" until checked again.
+				// Another account may log in next: its own counts are restored from its profile.
 				containerContents.clear();
+				containersSaved = null;
+				containerDialog = null;
 				containersCarried.clear();
 				pouchesCarried.clear();
 				// fall through
@@ -1040,7 +1051,7 @@ public class CombatVitalsPlugin extends Plugin
 			activityAlerts.necklaceBroke();
 		}
 
-		containerContents.message(message);
+		containerContents.message(message, client.getTickCount());
 
 		final FishingCatches.Fish fish = FishingCatches.fromCatchMessage(message);
 		if (fish != null)
@@ -1051,7 +1062,7 @@ public class CombatVitalsPlugin extends Plugin
 			// Minnows and karambwanji stack in the inventory; the barrel takes neither.
 			if (!client.getItemDefinition(fish.getItemId()).isStackable())
 			{
-				containerContents.fishCaught();
+				containerContents.fishCaught(client.getTickCount());
 			}
 		}
 	}
@@ -1415,9 +1426,72 @@ public class CombatVitalsPlugin extends Plugin
 		tickAlerts();
 		readStatusBars();
 		tickSpotPathing();
+		readContainerDialog();
+		keepContainerCounts();
 		readout = buildReadout();
 		selfReadout = buildSelfReadout();
 		skillingReadout = buildSkillingReadout();
+	}
+
+	/**
+	 * A container's Check answers in the item dialog (Objectbox), not in chat: "The basket contains:<br>14 x Yew
+	 * logs". Read once per dialog, with line breaks as spaces.
+	 */
+	private void readContainerDialog()
+	{
+		final Widget text = client.getWidget(InterfaceID.Objectbox.TEXT);
+		if (text == null || text.isHidden() || text.getText() == null)
+		{
+			containerDialog = null;
+			return;
+		}
+		final String message = Text.removeTags(text.getText().replace("<br>", " ")).trim();
+		if (!message.equals(containerDialog))
+		{
+			containerDialog = message;
+			containerContents.message(message, client.getTickCount());
+		}
+	}
+
+	/**
+	 * Restores this account's container counts once its profile is known after a login, then writes any count
+	 * that changed, so the next login starts from it instead of "?".
+	 */
+	private void keepContainerCounts()
+	{
+		if (client.getGameState() != GameState.LOGGED_IN || configManager.getRSProfileKey() == null)
+		{
+			return;
+		}
+		if (containersSaved == null)
+		{
+			containersSaved = new EnumMap<>(SkillingContainer.class);
+			for (SkillingContainer container : SkillingContainer.values())
+			{
+				final Integer count = configManager.getRSProfileConfiguration(CombatVitalsConfig.GROUP,
+					containerKey(container), Integer.class);
+				if (count != null)
+				{
+					containerContents.restore(container, count);
+					containersSaved.put(container, count);
+				}
+			}
+		}
+		for (Map.Entry<SkillingContainer, Integer> entry : containerContents.known().entrySet())
+		{
+			if (!entry.getValue().equals(containersSaved.get(entry.getKey())))
+			{
+				configManager.setRSProfileConfiguration(CombatVitalsConfig.GROUP, containerKey(entry.getKey()),
+					entry.getValue());
+				containersSaved.put(entry.getKey(), entry.getValue());
+			}
+		}
+	}
+
+	/** The profile config key a container's count is kept under. */
+	static String containerKey(SkillingContainer container)
+	{
+		return "containerCount." + container.name();
 	}
 
 	/** Runs a due next-spot search, at most once a tick, and publishes what to mark. */
