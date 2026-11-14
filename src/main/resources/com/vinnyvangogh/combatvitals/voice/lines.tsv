@@ -1,0 +1,89 @@
+# Voice lines: the one word list for both the plugin (VoiceLines.java) and
+# the clip generator (tools/voice/generate_voice.py). Tab separated:
+#   kind	key	clip	spoken
+# kind phrase:   a fixed opening, key = its name in VoiceLines
+# kind alert:    a whole line for one ActivityAlerts.Type, key = the type
+# kind verb:     the activity, key = the Skill
+# kind resource: what you were gathering, key = Skill|item name in lower case;
+#                several items may share one clip
+# Each clip is voice/<clip>.wav. Keep the words plain: this ships on the Plugin Hub.
+phrase	stopped	stopped	You've stopped
+phrase	stopped-gathering	stopped-gathering	You've stopped gathering.
+phrase	finished	finished	You've finished
+alert	INVENTORY_FULL	inventory-full	Your inventory is full.
+alert	SPOT_MOVED	spot-moved	Your fishing spot moved.
+alert	STUNNED	stunned	Ouch, you've been stunned.
+alert	COIN_POUCH_CAP	coin-pouches	Time to open your coin pouches.
+alert	NECKLACE_BROKE	necklace-broke	Your dodgy necklace crumbled.
+alert	LOW_RUN_ENERGY	low-run-energy	You're low on run energy.
+alert	PRODUCTION_FINISHED	all-done	All done!
+verb	WOODCUTTING	verb-chopping	chopping
+verb	FISHING	verb-fishing	fishing
+verb	MINING	verb-mining	mining
+verb	HUNTER	verb-hunting	hunting
+verb	THIEVING	verb-thieving	thieving
+verb	COOKING	verb-cooking	cooking
+verb	FLETCHING	verb-fletching	fletching
+verb	CRAFTING	verb-crafting	crafting
+verb	SMITHING	verb-smithing	smithing
+resource	WOODCUTTING|logs	res-logs	logs
+resource	WOODCUTTING|achey tree logs	res-achey-logs	achey logs
+resource	WOODCUTTING|oak logs	res-oak-logs	oak logs
+resource	WOODCUTTING|willow logs	res-willow-logs	willow logs
+resource	WOODCUTTING|teak logs	res-teak-logs	teak logs
+resource	WOODCUTTING|juniper logs	res-juniper-logs	juniper logs
+resource	WOODCUTTING|maple logs	res-maple-logs	maple logs
+resource	WOODCUTTING|mahogany logs	res-mahogany-logs	mahogany logs
+resource	WOODCUTTING|arctic pine logs	res-arctic-pine-logs	arctic pine logs
+resource	WOODCUTTING|yew logs	res-yew-logs	yew logs
+resource	WOODCUTTING|blisterwood logs	res-blisterwood-logs	blisterwood logs
+resource	WOODCUTTING|magic logs	res-magic-logs	magic logs
+resource	WOODCUTTING|redwood logs	res-redwood-logs	redwood logs
+resource	FISHING|raw shrimps	res-shrimps	shrimps
+resource	FISHING|raw anchovies	res-anchovies	anchovies
+resource	FISHING|raw sardine	res-sardines	sardines
+resource	FISHING|raw herring	res-herring	herring
+resource	FISHING|raw mackerel	res-mackerel	mackerel
+resource	FISHING|raw cod	res-cod	cod
+resource	FISHING|raw bass	res-bass	bass
+resource	FISHING|raw trout	res-trout	trout
+resource	FISHING|raw salmon	res-salmon	salmon
+resource	FISHING|raw pike	res-pike	pike
+resource	FISHING|raw tuna	res-tuna	tuna
+resource	FISHING|raw lobster	res-lobsters	lobsters
+resource	FISHING|raw swordfish	res-swordfish	swordfish
+resource	FISHING|raw monkfish	res-monkfish	monkfish
+resource	FISHING|raw karambwan	res-karambwans	karambwans
+resource	FISHING|raw shark	res-sharks	sharks
+resource	FISHING|raw anglerfish	res-anglerfish	anglerfish
+resource	FISHING|raw dark crab	res-dark-crabs	dark crabs
+resource	FISHING|raw cave eel	res-cave-eels	cave eels
+resource	FISHING|raw slimy eel	res-slimy-eels	slimy eels
+resource	FISHING|infernal eel	res-infernal-eels	infernal eels
+resource	FISHING|sacred eel	res-sacred-eels	sacred eels
+resource	FISHING|leaping trout	res-leaping-trout	leaping trout
+resource	FISHING|leaping salmon	res-leaping-salmon	leaping salmon
+resource	FISHING|leaping sturgeon	res-leaping-sturgeon	leaping sturgeon
+resource	MINING|clay	res-clay	clay
+resource	MINING|copper ore	res-copper-ore	copper ore
+resource	MINING|tin ore	res-tin-ore	tin ore
+resource	MINING|iron ore	res-iron-ore	iron ore
+resource	MINING|silver ore	res-silver-ore	silver ore
+resource	MINING|coal	res-coal	coal
+resource	MINING|gold ore	res-gold-ore	gold ore
+resource	MINING|mithril ore	res-mithril-ore	mithril ore
+resource	MINING|adamantite ore	res-adamantite-ore	adamantite ore
+resource	MINING|runite ore	res-runite-ore	runite ore
+resource	MINING|amethyst	res-amethyst	amethyst
+resource	MINING|rune essence	res-rune-essence	rune essence
+resource	MINING|pure essence	res-pure-essence	pure essence
+resource	MINING|sandstone (1kg)	res-sandstone	sandstone
+resource	MINING|sandstone (2kg)	res-sandstone	sandstone
+resource	MINING|sandstone (5kg)	res-sandstone	sandstone
+resource	MINING|sandstone (10kg)	res-sandstone	sandstone
+resource	MINING|granite (500g)	res-granite	granite
+resource	MINING|granite (2kg)	res-granite	granite
+resource	MINING|granite (5kg)	res-granite	granite
+resource	HUNTER|chinchompa	res-chinchompas	chinchompas
+resource	HUNTER|red chinchompa	res-red-chinchompas	red chinchompas
+resource	HUNTER|black chinchompa	res-black-chinchompas	black chinchompas
