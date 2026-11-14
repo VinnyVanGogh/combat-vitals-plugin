@@ -183,7 +183,7 @@ public class VitalsHalvesTest
 		assertTrue(plugin.contains("skillingReadout = VitalsHalves.skilling(config) ? buildSkillingReadout() : null;"));
 		assertTrue("activity alerts", plugin.contains("if (!VitalsHalves.skilling(config))\n\t\t{\n\t\t\talertRepeat.stop();"));
 		assertTrue("with combat off no target readout takes the badge's place, so a fight keeps the badge",
-			plugin.contains("(VitalsHalves.combat(config) && combat.showTarget())"));
+			plugin.contains("(overHead && VitalsHalves.combat(config) && combat.showTarget())"));
 		assertTrue("boost alerts",plugin.contains("warning != SkillingState.Warning.NONE && VitalsHalves.skilling(config)"));
 	}
 
