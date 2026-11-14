@@ -316,6 +316,21 @@ public class ActivityAlertsTest
 
 	// --- Helpers ------------------------------------------------------------
 
+	/** What stops a repeating alert: experience on a tick, and only that tick. */
+	@Test
+	public void experiencedIsTrueOnlyOnTheTickWithExperience()
+	{
+		assertFalse("login baseline is not experience", alerts.experienced());
+		catchFish();
+		assertTrue(alerts.experienced());
+		step(null);
+		assertFalse(alerts.experienced());
+
+		alerts.xp(Skill.FISHING, ++fishingXp);
+		alerts.clear();
+		assertFalse("logout forgets it", alerts.experienced());
+	}
+
 	private void catchFish()
 	{
 		alerts.xp(Skill.FISHING, ++fishingXp);

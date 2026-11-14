@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- Alert sounds (Board, 2026-11-14), new closed `Alert sounds` section, all keys new and additive. Per activity alert: a sound (`sound<Alert>`: RuneLite / Soft chime / Music box / Retro blip / Voice line / My sounds, default RuneLite, which is exactly the old behaviour), a volume for the plugin's own sounds (`volume<Alert>`, 1-100, default 40), and `Repeat` (`repeat<Alert>`, default off). With a sound of the plugin's own, RuneLite's notification still shows (tray, flash, focus as set up) with its own sound turned off for that alert (`AlertSettings.quiet`); the plugin plays through RuneLite's `AudioPlayer`.
+- Repeat until you're back: an alert with `Repeat` on sounds again every `repeatEverySeconds` (default 15 s) until a mouse press or key press in the client, experience again in a gathering, thieving or make-X skill, a logout or hop, or `repeatMaxMinutes` (default 10). Soft and never louder over time. The plugin only listens to input; it never sends any (`AlertRepeat`).
+- Voice lines: "You've stopped" + the activity + what you were gathering ("You've stopped chopping yew logs."), joined in memory from short clips listed in `voice/lines.tsv`; an unknown item says "You've stopped chopping", an unknown activity "You've stopped gathering." (`VoiceLines`). The clips are rendered offline by `tools/voice/generate_voice.py` (Kokoro-82M, Apache-2.0; see NOTICE). Until they are bundled, Voice line falls back to RuneLite's sound.
+- My sounds: your own WAV per alert at `~/.runelite/combat-vitals/sounds/<alert>.wav` (for example `gathering-stopped.wav`). A missing file plays RuneLite's sound and says so in the chat once.
+- Sound packs Soft chime, Music box and Retro blip, synthesised by `tools/sounds/generate_packs.py`: the project's own, no third-party audio (117 KB).
+
 ## [1.1.0] - 2026-11-06
 
 The first update since the Plugin Hub release (`7e9eac9`, 2026-09-02): PRs #2 to #21 and the fixes from the Board's in-game test of 2026-11-04. In short: a skilling badge for fishing, woodcutting, mining, thieving, hunter and runecraft (level, boost timer, XP, session rates, inventory fill, catchable fish, missing-gear warning, idle state); activity alerts; side pillars; a path to the next fishing spot through Shortest Path; separate display for bosses; overhead chat kept readable above the readout; and an opt-in option to hide the game's own health bar. Pinned to RuneLite 1.13.6, the Hub's `runelite.version`.

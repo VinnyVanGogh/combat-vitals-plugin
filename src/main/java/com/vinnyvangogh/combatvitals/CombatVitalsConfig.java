@@ -64,9 +64,17 @@ public interface CombatVitalsConfig extends Config
 	String alertsSection = "alerts";
 
 	@ConfigSection(
+		name = "Alert sounds",
+		description = "What each activity alert sounds like, how loud, and whether it repeats until you are back",
+		position = 6,
+		closedByDefault = true
+	)
+	String alertSoundsSection = "alertSounds";
+
+	@ConfigSection(
 		name = "Advanced",
 		description = "Timeouts and diagnostics",
-		position = 6,
+		position = 7,
 		closedByDefault = true
 	)
 	String advancedSection = "advanced";
@@ -1138,6 +1146,372 @@ public interface CombatVitalsConfig extends Config
 	default int alertRunEnergyThreshold()
 	{
 		return 10;
+	}
+
+	String SOUND_HELP = " RuneLite: your RuneLite notification sound, as before. Soft chime, Music box, Retro blip: "
+		+ "bundled sounds. Voice line: says what happened. My sounds: your own WAV in "
+		+ ".runelite/combat-vitals/sounds/";
+	String VOLUME_HELP = "Volume of this alert's own sounds. RuneLite's sound keeps RuneLite's volume.";
+	String REPEAT_HELP = " again every 'Repeat every (s)', softly, until you click or press a key in the client, "
+		+ "start again, log out, or 'Repeat for (min)' runs out. Only listens; never sends any input.";
+
+	@Range(min = 5, max = 120)
+	@ConfigItem(
+		keyName = "repeatEverySeconds",
+		name = "Repeat every (s)",
+		description = "For alerts with Repeat on: seconds between repeats.",
+		section = alertSoundsSection,
+		position = 0
+	)
+	default int repeatEverySeconds()
+	{
+		return 15;
+	}
+
+	@Range(min = 1, max = 60)
+	@ConfigItem(
+		keyName = "repeatMaxMinutes",
+		name = "Repeat for (min)",
+		description = "For alerts with Repeat on: stop repeating after this many minutes even if you are not back.",
+		section = alertSoundsSection,
+		position = 1
+	)
+	default int repeatMaxMinutes()
+	{
+		return 10;
+	}
+
+	@ConfigItem(
+		keyName = "soundInventoryFull",
+		name = "Full inv sound",
+		description = "What the inventory full alert sounds like." + SOUND_HELP + "inventory-full.wav",
+		section = alertSoundsSection,
+		position = 2
+	)
+	default AlertSound soundInventoryFull()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeInventoryFull",
+		name = "Full inv volume",
+		description = VOLUME_HELP,
+		section = alertSoundsSection,
+		position = 3
+	)
+	default int volumeInventoryFull()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatInventoryFull",
+		name = "Repeat full inv",
+		description = "Sound the inventory full alert" + REPEAT_HELP,
+		section = alertSoundsSection,
+		position = 4
+	)
+	default boolean repeatInventoryFull()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundGatheringStopped",
+		name = "Gathering sound",
+		description = "What the stopped gathering alert sounds like." + SOUND_HELP + "gathering-stopped.wav",
+		section = alertSoundsSection,
+		position = 5
+	)
+	default AlertSound soundGatheringStopped()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeGatheringStopped",
+		name = "Gathering volume",
+		description = VOLUME_HELP,
+		section = alertSoundsSection,
+		position = 6
+	)
+	default int volumeGatheringStopped()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatGatheringStopped",
+		name = "Repeat gathering",
+		description = "Sound the stopped gathering alert" + REPEAT_HELP,
+		section = alertSoundsSection,
+		position = 7
+	)
+	default boolean repeatGatheringStopped()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundSpotMoved",
+		name = "Spot moved sound",
+		description = "What the fishing spot moved alert sounds like." + SOUND_HELP + "spot-moved.wav",
+		section = alertSoundsSection,
+		position = 8
+	)
+	default AlertSound soundSpotMoved()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeSpotMoved",
+		name = "Spot moved volume",
+		description = VOLUME_HELP,
+		section = alertSoundsSection,
+		position = 9
+	)
+	default int volumeSpotMoved()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatSpotMoved",
+		name = "Repeat spot moved",
+		description = "Sound the fishing spot moved alert" + REPEAT_HELP,
+		section = alertSoundsSection,
+		position = 10
+	)
+	default boolean repeatSpotMoved()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundThievingStopped",
+		name = "Thieving sound",
+		description = "What the stopped thieving alert sounds like." + SOUND_HELP + "thieving-stopped.wav",
+		section = alertSoundsSection,
+		position = 11
+	)
+	default AlertSound soundThievingStopped()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeThievingStopped",
+		name = "Thieving volume",
+		description = VOLUME_HELP,
+		section = alertSoundsSection,
+		position = 12
+	)
+	default int volumeThievingStopped()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatThievingStopped",
+		name = "Repeat thieving",
+		description = "Sound the stopped thieving alert" + REPEAT_HELP,
+		section = alertSoundsSection,
+		position = 13
+	)
+	default boolean repeatThievingStopped()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundStunned",
+		name = "Stunned sound",
+		description = "What the stunned alert sounds like." + SOUND_HELP + "stunned.wav",
+		section = alertSoundsSection,
+		position = 14
+	)
+	default AlertSound soundStunned()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeStunned",
+		name = "Stunned volume",
+		description = VOLUME_HELP,
+		section = alertSoundsSection,
+		position = 15
+	)
+	default int volumeStunned()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatStunned",
+		name = "Repeat stunned",
+		description = "Sound the stunned alert" + REPEAT_HELP,
+		section = alertSoundsSection,
+		position = 16
+	)
+	default boolean repeatStunned()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundCoinPouch",
+		name = "Coin pouch sound",
+		description = "What the coin pouch alert sounds like." + SOUND_HELP + "coin-pouch-cap.wav",
+		section = alertSoundsSection,
+		position = 17
+	)
+	default AlertSound soundCoinPouch()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeCoinPouch",
+		name = "Coin pouch volume",
+		description = VOLUME_HELP,
+		section = alertSoundsSection,
+		position = 18
+	)
+	default int volumeCoinPouch()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatCoinPouch",
+		name = "Repeat coin pouch",
+		description = "Sound the coin pouch alert" + REPEAT_HELP,
+		section = alertSoundsSection,
+		position = 19
+	)
+	default boolean repeatCoinPouch()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundNecklaceBroke",
+		name = "Necklace sound",
+		description = "What the dodgy necklace alert sounds like." + SOUND_HELP + "necklace-broke.wav",
+		section = alertSoundsSection,
+		position = 20
+	)
+	default AlertSound soundNecklaceBroke()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeNecklaceBroke",
+		name = "Necklace volume",
+		description = VOLUME_HELP,
+		section = alertSoundsSection,
+		position = 21
+	)
+	default int volumeNecklaceBroke()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatNecklaceBroke",
+		name = "Repeat necklace",
+		description = "Sound the dodgy necklace alert" + REPEAT_HELP,
+		section = alertSoundsSection,
+		position = 22
+	)
+	default boolean repeatNecklaceBroke()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundMakeFinished",
+		name = "Make-X sound",
+		description = "What the make-X finished alert sounds like." + SOUND_HELP + "production-finished.wav",
+		section = alertSoundsSection,
+		position = 23
+	)
+	default AlertSound soundMakeFinished()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeMakeFinished",
+		name = "Make-X volume",
+		description = VOLUME_HELP,
+		section = alertSoundsSection,
+		position = 24
+	)
+	default int volumeMakeFinished()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatMakeFinished",
+		name = "Repeat make-X",
+		description = "Sound the make-X finished alert" + REPEAT_HELP,
+		section = alertSoundsSection,
+		position = 25
+	)
+	default boolean repeatMakeFinished()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundLowRunEnergy",
+		name = "Low energy sound",
+		description = "What the low run energy alert sounds like." + SOUND_HELP + "low-run-energy.wav",
+		section = alertSoundsSection,
+		position = 26
+	)
+	default AlertSound soundLowRunEnergy()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeLowRunEnergy",
+		name = "Low energy volume",
+		description = VOLUME_HELP,
+		section = alertSoundsSection,
+		position = 27
+	)
+	default int volumeLowRunEnergy()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatLowRunEnergy",
+		name = "Repeat low energy",
+		description = "Sound the low run energy alert" + REPEAT_HELP,
+		section = alertSoundsSection,
+		position = 28
+	)
+	default boolean repeatLowRunEnergy()
+	{
+		return false;
 	}
 
 	@ConfigItem(
