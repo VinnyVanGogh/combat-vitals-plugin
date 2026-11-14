@@ -59,6 +59,20 @@ public class CombatStateTest
 		assertTrue(CombatState.attackable(new String[] {"attack", null, null, null, null}, -1));
 	}
 
+	/** A kill despawns the target: the plugin disengages, and the fight then times out with no target held. */
+	@Test
+	public void aKilledTargetsFightTimesOut()
+	{
+		final CombatState combat = new CombatState();
+		combat.engage(true);
+		combat.hit(true, T0);
+		assertTrue(combat.showTarget());
+		combat.disengage(T0);
+		combat.expire(T0.plusSeconds(6), TIMEOUT, false);
+		assertFalse("skilling badge is free again", combat.showTarget());
+		assertFalse(combat.inCombat(T0.plusSeconds(6), TIMEOUT));
+	}
+
 	@Test
 	public void nullActionsAreNotAttackable()
 	{
