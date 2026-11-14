@@ -25,9 +25,10 @@ Don't want one half? Turn off **Combat vitals** or **Skilling vitals** at the
 top of the settings and every overlay, side pillar and alert of that half goes
 with it; the other half stays exactly as you set it. Both are on by default.
 
-The plugin is listed as *Combat & Skilling Vitals* on the Plugin Hub and is
-still the same plugin: it keeps its Hub id `combat-vitals`, its name in the
-plugin list, and every setting you have saved.
+Combat & Skilling Vitals used to be called *Combat Vitals*. It is still the
+same plugin: it keeps its Hub id `combat-vitals`, its on/off state and every
+setting you have saved. If you had pinned it in the plugin list, pin it again:
+RuneLite remembers pins by name.
 
 ---
 
@@ -273,7 +274,7 @@ the case that broke every earlier iteration of this overlay.
 
 ## How it compares to Opponent Information
 
-| | Opponent Information | Combat Vitals |
+| | Opponent Information | Combat & Skilling Vitals |
 |---|---|---|
 | Corner panel | Yes | Yes |
 | Drawn at the target | No | Yes |
@@ -288,7 +289,7 @@ the case that broke every earlier iteration of this overlay.
 ## Settings
 
 <p align="center">
-  <img src="docs/images/settings.png" alt="The Combat Vitals settings panel" width="300">
+  <img src="docs/images/settings.png" alt="The Combat & Skilling Vitals settings panel" width="300">
 </p>
 
 <details>
