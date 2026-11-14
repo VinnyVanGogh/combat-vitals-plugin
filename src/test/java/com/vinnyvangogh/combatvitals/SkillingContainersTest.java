@@ -75,6 +75,18 @@ public class SkillingContainersTest
 
 	// --- Check dialog, full by landing, kept across logins ------------------
 
+	/** The Board's screenshot 2026-11-14: Empty into the inventory says only "You empty your basket." */
+	@Test
+	public void emptyingIntoTheInventoryZeroesTheBasket()
+	{
+		contents.message("The basket contains: 21 x Oak logs", 100);
+		assertTrue(contents.message("You empty your basket.", 101));
+		assertEquals(0, contents.contents(SkillingContainer.LOG_BASKET));
+		contents.message("The basket contains: 5 x Logs", 102);
+		assertTrue(contents.message("You empty your basket into the bank.", 103));
+		assertEquals(0, contents.contents(SkillingContainer.LOG_BASKET));
+	}
+
 	/** The Board's screenshot 2026-11-14: Check answers in the item dialog, "<br>" between the lines. */
 	@Test
 	public void checkDialogTextSetsTheCount()

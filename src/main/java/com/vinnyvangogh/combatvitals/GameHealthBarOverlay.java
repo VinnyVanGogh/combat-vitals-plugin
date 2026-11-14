@@ -40,7 +40,7 @@ class GameHealthBarOverlay extends Overlay
 	public Dimension render(Graphics2D graphics)
 	{
 		final WorldView view = client.getTopLevelWorldView();
-		if (!config.hideGameHealthBar() || view == null)
+		if (!VitalsHalves.hideGameHealthBar(config) || view == null)
 		{
 			return null;
 		}

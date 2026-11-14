@@ -31,7 +31,7 @@ class SkillingBadgeOverlay extends Overlay
 	public Dimension render(Graphics2D graphics)
 	{
 		final SkillingReadout readout = plugin.getSkillingReadout();
-		if (readout == null || !config.skillingEnabled() || config.skillingPosition() != BadgePosition.FIXED)
+		if (readout == null || !VitalsHalves.skillingBadge(config) || config.skillingPosition() != BadgePosition.FIXED)
 		{
 			return null;
 		}

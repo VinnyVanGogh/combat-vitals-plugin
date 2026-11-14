@@ -19,62 +19,93 @@ public interface CombatVitalsConfig extends Config
 {
 	String GROUP = "combat-vitals";
 
-	@ConfigSection(
-		name = "Display",
-		description = "What the readout shows and where",
+	/*
+	 * The two master switches sit above every section (positions 0 and 1);
+	 * the sections follow grouped by half, combat then skilling, then the
+	 * shared ones. Section names and positions are display only: the section
+	 * key strings below and every keyName are frozen (ConfigKeyFreezeTest).
+	 */
+
+	@ConfigItem(
+		keyName = "combatVitals",
+		name = "Combat vitals",
+		description = "Health for your target and for you: the panel, the readout over the target, your own "
+			+ "health, the game health bar swap and the combat side pillar. Off turns all of it off.",
 		position = 0
+	)
+	default boolean combatVitals()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingVitals",
+		name = "Skilling vitals",
+		description = "The skilling badge, the skilling side pillars, the next fishing spot, and the activity "
+			+ "and boost alerts. Off turns all of it off.",
+		position = 1
+	)
+	default boolean skillingVitals()
+	{
+		return true;
+	}
+
+	@ConfigSection(
+		name = "Combat: display",
+		description = "What the combat readout shows and where",
+		position = 2
 	)
 	String displaySection = "display";
 
 	@ConfigSection(
-		name = "Targets",
+		name = "Combat: targets",
 		description = "Which opponents the readout appears for",
-		position = 1
+		position = 3
 	)
 	String targetSection = "targets";
 
 	@ConfigSection(
-		name = "Skilling vitals",
+		name = "Skilling: badge",
 		description = "A badge over your head while you work a fishing spot or other skilling NPC",
-		position = 2
+		position = 4
 	)
 	String skillingSection = "skilling";
 
 	@ConfigSection(
-		name = "Skilling badge",
+		name = "Skilling: badge details",
 		description = "What the skilling badge shows, for which skills, where, and once you stop",
-		position = 3,
+		position = 5,
 		closedByDefault = true
 	)
 	String skillingBadgeSection = "skillingBadge";
 
 	@ConfigSection(
-		name = "Side pillars",
-		description = "Vitals on the bars beside the side panel, like RuneLite's Status Bars",
-		position = 4,
-		closedByDefault = true
-	)
-	String pillarsSection = "pillars";
-
-	@ConfigSection(
-		name = "Activity alerts",
+		name = "Skilling: activity alerts",
 		description = "RuneLite notifications for gathering, thieving and make-X: inventory full, stopped, and more",
-		position = 5
+		position = 6
 	)
 	String alertsSection = "alerts";
 
 	@ConfigSection(
-		name = "Alert sounds",
+		name = "Skilling: alert sounds",
 		description = "What each activity alert sounds like, how loud, and whether it repeats until you are back",
-		position = 6,
+		position = 7,
 		closedByDefault = true
 	)
 	String alertSoundsSection = "alertSounds";
 
 	@ConfigSection(
+		name = "Side pillars",
+		description = "Combat or skilling vitals on the bars beside the side panel, like RuneLite's Status Bars",
+		position = 8,
+		closedByDefault = true
+	)
+	String pillarsSection = "pillars";
+
+	@ConfigSection(
 		name = "Advanced",
 		description = "Timeouts and diagnostics",
-		position = 7,
+		position = 9,
 		closedByDefault = true
 	)
 	String advancedSection = "advanced";
@@ -677,7 +708,7 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingShowXp",
 		name = "XP row",
 		description = "The row with your progress to the next level. The inventory row and catch list have their "
-			+ "own switches in Skilling vitals.",
+			+ "own switches in Skilling: badge.",
 		section = skillingBadgeSection,
 		position = 10
 	)
