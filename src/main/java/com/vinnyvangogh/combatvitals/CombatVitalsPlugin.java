@@ -105,9 +105,13 @@ import net.runelite.client.util.Text;
  */
 @Slf4j
 @PluginDescriptor(
+	// The name stays "Combat Vitals": the Hub shows displayName from
+	// runelite-plugin.properties ("Combat & Skilling Vitals"); this name is the
+	// one the client already knows the installed plugin by.
 	name = "Combat Vitals",
-	description = "Health for your target and for you, drawn over the target or in a panel",
-	tags = {"combat", "vitals", "health", "hitpoints", "hp", "overlay", "overhead", "opponent", "pvp", "pvm"}
+	description = "Combat: health for your target and for you. Skilling: a badge, alerts and side pillars while you skill",
+	tags = {"combat", "vitals", "health", "hitpoints", "hp", "overlay", "overhead", "opponent", "pvp", "pvm",
+		"skilling", "woodcutting", "fishing", "mining", "thieving", "runecraft", "hunter", "inventory", "idle", "xp"}
 )
 public class CombatVitalsPlugin extends Plugin
 {
@@ -407,7 +411,7 @@ public class CombatVitalsPlugin extends Plugin
 			() -> pluginManager.getPlugins(),
 			p -> pluginManager.isPluginEnabled((Plugin) p),
 			ShortestPathBridge.clientThreadEventPoster(clientThread::invoke, eventBus::post));
-		spotPathing = new SpotPathing(config::fishingSpotPath, router(bridge, config::fishingSpotShortestPath));
+		spotPathing = new SpotPathing(() -> VitalsHalves.fishingSpotPath(config),router(bridge, config::fishingSpotShortestPath));
 
 		stockPlugin = findPlugin(STOCK_PLUGIN_NAME);
 		statusBarsPlugin = findPlugin(STATUS_BARS_NAME);
@@ -546,7 +550,7 @@ public class CombatVitalsPlugin extends Plugin
 	 */
 	private void readStatusBars()
 	{
-		if (config.pillarMode() == PillarMode.OFF || statusBarsPlugin == null
+		if (VitalsHalves.pillarMode(config) == PillarMode.OFF || statusBarsPlugin == null
 			|| !pluginManager.isPluginEnabled(statusBarsPlugin))
 		{
 			statusBars = SidePillars.StatusBars.OFF;
@@ -813,7 +817,7 @@ public class CombatVitalsPlugin extends Plugin
 		}
 
 		final SkillingState.Warning warning = skilling.boostChanged(skill, change, tick);
-		if (warning != SkillingState.Warning.NONE)
+		if (warning != SkillingState.Warning.NONE && VitalsHalves.skilling(config))
 		{
 			final String message = warning == SkillingState.Warning.EXPIRED
 				? skill.getName() + " boost has worn off"
@@ -1304,7 +1308,7 @@ public class CombatVitalsPlugin extends Plugin
 			return;
 		}
 
-		if (config.hideGameHealthBar())
+		if (VitalsHalves.hideGameHealthBar(config))
 		{
 			if (hider.apply())
 			{
@@ -1432,9 +1436,10 @@ public class CombatVitalsPlugin extends Plugin
 		tickSpotPathing();
 		readContainerDialog();
 		keepContainerCounts();
-		readout = buildReadout();
-		selfReadout = buildSelfReadout();
-		skillingReadout = buildSkillingReadout();
+		// A half switched off builds nothing, so none of its overlays or pillars draws.
+		readout = VitalsHalves.combat(config) ? buildReadout() : null;
+		selfReadout = VitalsHalves.combat(config) ? buildSelfReadout() : null;
+		skillingReadout = VitalsHalves.skilling(config) ? buildSkillingReadout() : null;
 	}
 
 	/**
@@ -1506,7 +1511,7 @@ public class CombatVitalsPlugin extends Plugin
 			return;
 		}
 		spotPathing.tick(this::pickSpot, CombatVitalsPlugin::spotTile);
-		nextSpot = config.fishingSpotPath() == FishingSpotPath.OFF ? null : spotPathing.target();
+		nextSpot = VitalsHalves.fishingSpotPath(config) == FishingSpotPath.OFF ? null : spotPathing.target();
 	}
 
 	/** Where a spot NPC stands: spots move by relocating, the same NPC on a new tile. */
@@ -1565,7 +1570,7 @@ public class CombatVitalsPlugin extends Plugin
 		final Rectangle bounds = config.skillingPosition() == BadgePosition.FIXED && skillingBadgeOverlay != null
 			? skillingBadgeOverlay.getBounds()
 			: badgeBounds;
-		if (spotPathing == null || config.fishingSpotPath() == FishingSpotPath.OFF || badge == null
+		if (spotPathing == null || VitalsHalves.fishingSpotPath(config) == FishingSpotPath.OFF || badge == null
 			|| badge.getSkill() != Skill.FISHING || bounds == null)
 		{
 			return;
@@ -1759,12 +1764,12 @@ public class CombatVitalsPlugin extends Plugin
 	}
 
 	/**
-	 * Off, a fight with a target while the badge is over your head (its health bar takes over), or any combat
-	 * with Hide during combat.
+	 * Off, a fight with a target while the badge is over your head (its health bar takes over, unless Combat
+	 * vitals is off and there is none), or any combat with Hide during combat.
 	 */
 	private boolean badgeHidden(boolean fighting, boolean overHead)
 	{
-		return !config.skillingEnabled() || (overHead && combat.showTarget())
+		return !VitalsHalves.skillingBadge(config) || (overHead && VitalsHalves.combat(config) && combat.showTarget())
 			|| (fighting && config.skillingHideInCombat());
 	}
 
@@ -2071,6 +2076,13 @@ public class CombatVitalsPlugin extends Plugin
 	/** This tick's alerts, then any repeat that is due. */
 	private void sendAlerts(List<ActivityAlerts.Alert> fired, int pouchCap)
 	{
+		// Skilling vitals off: no alert, and one already repeating stops.
+		if (!VitalsHalves.skilling(config))
+		{
+			alertRepeat.stop();
+			return;
+		}
+
 		// Back at it: experience again stops a repeat. Checked before this
 		// tick's alerts, so "inventory full" on the tick of the last catch
 		// still starts its own.

@@ -1,16 +1,33 @@
-# Combat Vitals
+# Combat & Skilling Vitals
 
-Opponent health for NPC and player targets, drawn over the target instead of
-only in a corner panel, and honest about what the number is worth.
+One plugin, two halves, each with its own switch at the top of the settings.
 
-A standalone replacement for RuneLite's built-in **Opponent Information**.
+**Combat vitals.** Opponent health for NPC and player targets, drawn over the
+target instead of only in a corner panel, and honest about what the number is
+worth. A standalone replacement for RuneLite's built-in **Opponent
+Information**, with your own health drawn the same way.
+
+**Skilling vitals.** While you fish, chop, mine, thieve, hunt or runecraft: a
+badge over your head with your level, boost, progress to the next level,
+inventory fill and session rates; notifications for inventory full and for
+going idle; and the same vitals on side pillars beside the side panel.
 
 <p align="center">
-  <img src="docs/images/hero.png" alt="Overhead health readout on a player target, showing 30 / 91 (33%)" width="640">
+  <img src="docs/images/hero.png" alt="Overhead health readout on a player target, showing 30 / 91 (33%)" width="420">
+  <img src="docs/images/woodcutting-badge.png" alt="Skilling badge over the player while woodcutting" width="300">
 </p>
 
-<p align="center"><em>A player target at 33%. The number comes from the hiscores;
-the bar is sized to the text so the two never collide.</em></p>
+<p align="center"><em>Left, combat: a player target at 33%. The number comes from
+the hiscores; the bar is sized to the text so the two never collide. Right,
+skilling: the woodcutting badge over your own head.</em></p>
+
+Don't want one half? Turn off **Combat vitals** or **Skilling vitals** at the
+top of the settings and every overlay, side pillar and alert of that half goes
+with it; the other half stays exactly as you set it. Both are on by default.
+
+The plugin is listed as *Combat & Skilling Vitals* on the Plugin Hub and is
+still the same plugin: it keeps its Hub id `combat-vitals`, its name in the
+plugin list, and every setting you have saved.
 
 ---
 
@@ -159,7 +176,7 @@ plugin does not know shows no fish.
 
 **Activity alerts.** RuneLite notifications for the moments you would
 otherwise miss while looking at something else, each with its own toggle in
-the *Activity alerts* section. They go through RuneLite's notifier, so your
+the *Skilling: activity alerts* section. They go through RuneLite's notifier, so your
 RuneLite notification settings (tray, flash, sound, focus) decide how they
 arrive. By default the sound is RuneLite's; *Alert sounds* can give any
 alert a sound of its own, a voice line, or your own file, and can repeat it
@@ -280,17 +297,33 @@ the case that broke every earlier iteration of this overlay.
 | Section | Screenshot |
 |---|---|
 | **Overview** | <img src="docs/images/settings.png" alt="Main settings overview" width="280"> |
-| **Display** | <img src="docs/images/settings-display.png" alt="Display settings" width="280"> |
-| **Targets** | <img src="docs/images/settings-targets.png" alt="Targets settings" width="280"> |
-| **Skilling vitals** | <img src="docs/images/settings-skilling-vitals.png" alt="Skilling vitals settings" width="280"> |
-| **Skilling badge** | <img src="docs/images/settings-skilling-badge.png" alt="Skilling badge settings" width="280"> |
+| **Combat: display** | <img src="docs/images/settings-display.png" alt="Display settings" width="280"> |
+| **Combat: targets** | <img src="docs/images/settings-targets.png" alt="Targets settings" width="280"> |
+| **Skilling: badge** | <img src="docs/images/settings-skilling-vitals.png" alt="Skilling badge settings" width="280"> |
+| **Skilling: badge details** | <img src="docs/images/settings-skilling-badge.png" alt="Skilling badge details settings" width="280"> |
+| **Skilling: activity alerts** | <img src="docs/images/alerts-settings.png" alt="Activity alerts settings" width="280"> |
 | **Side pillars** | <img src="docs/images/settings-side-pillars.png" alt="Side pillars settings" width="280"> |
-| **Activity alerts** | <img src="docs/images/alerts-settings.png" alt="Activity alerts settings" width="280"> |
 | **Advanced** | <img src="docs/images/settings-advanced.png" alt="Advanced settings" width="280"> |
+
+The screenshots predate the two master switches and the section names above;
+the settings in each section are the same.
 
 </details>
 
-### Display
+### Master switches
+
+At the top of the settings, above every section.
+
+| Setting | Default | What it does |
+|---|---|---|
+| Combat vitals | On | Off: no corner panel, no readout over the target or over you, no game health bar swap, no combat side pillar |
+| Skilling vitals | On | Off: no skilling badge, no skilling side pillars, no next fishing spot mark or path, no activity alerts or boost notifications; an alert already repeating stops |
+
+Both halves on and Side pillars set to Both: the combat pillar shows while you
+fight and the skilling pillars otherwise, as before. With one half off, its
+pillars never show and the other half's take the bars.
+
+### Combat: display
 
 | Setting | Default | What it does |
 |---|---|---|
@@ -307,7 +340,7 @@ the case that broke every earlier iteration of this overlay.
 | Hide game health bar | Off | Replace the game's own health bar: your target and you get the readout, and every other player and NPC that shows a bar gets a plain one in the game's place, so no bar goes missing |
 | Chat above readout | On | While the readout or skilling badge is over you or your opponent, take the game's overhead chat line off the moment it is posted and draw it above the readout instead, so it shows once and never under the readout. Off: the game draws its own line and the plugin adds nothing. A skilling NPC is never touched |
 
-### Targets
+### Combat: targets
 
 | Setting | Default | What it does |
 |---|---|---|
@@ -322,7 +355,7 @@ the case that broke every earlier iteration of this overlay.
 | Big target is | Bosses + max HP | Bosses only, Bosses + max HP, or Max HP only. A boss is an NPC the game's boss health bar is showing, or one on a bundled list from the OSRS wiki's Boss page. Unknown max HP counts as an other target |
 | Big target max HP | 200 | Max HP at or above which an NPC is a big target, 1–10000 |
 
-### Skilling vitals
+### Skilling: badge
 
 | Setting | Default | What it does |
 |---|---|---|
@@ -341,7 +374,7 @@ the case that broke every earlier iteration of this overlay.
 A fish above your level is dimmed with `Lv 15` over it in red; hover it for
 `Needs Fishing 15`.
 
-### Skilling badge
+### Skilling: badge details
 
 | Setting | Default | What it does |
 |---|---|---|
@@ -349,7 +382,7 @@ A fish above your level is dimmed with `Lv 15` over it in red; hover it for
 | Idle badge for (s) | 60 | How long `Not fishing` stays up |
 | Idle header colour | Red | The header's colour while idle |
 | Fishing, Woodcutting, Mining, Thieving, Runecraft, Hunter | On | Which skills get a badge |
-| Header row, XP row | On | Turn rows off; the inventory row and catch list are in Skilling vitals |
+| Header row, XP row | On | Turn rows off; the inventory row and catch list are in Skilling: badge |
 | XP shown as | Both | `64%`, `1,234 xp`, or both |
 | Inventory count | Free slots | `Inv 26/28 free` or `Inv 2/28 used` |
 | Session count | Off | A row with what you caught, chopped or mined this session and for how long, `24 caught in 3m`, after the skill's icon (one per experience drop). Resets on logout |
@@ -402,7 +435,7 @@ the bank (`SidePillars`).
 
 <p align="center"><em>From left: skilling pillars (XP progress on left, inventory fill on right); full inventory indicator; combat target health pillar; detailed hover tooltip. Also supports placing combat health on the right pillar (<a href="docs/images/side-pillars-combat-right.png">preview</a>) and active skilling pillars for <a href="docs/images/side-pillars-woodcutting.png">Woodcutting</a> and <a href="docs/images/side-pillars-thieving.png">Thieving</a>.</em></p>
 
-### Activity alerts
+### Skilling: activity alerts
 
 Every alert is a RuneLite notification with its own toggle, and follows your
 RuneLite notification settings.
@@ -439,7 +472,7 @@ does the same.
   5. boss-vs-everything-else.png: side-by-side or comparison of big target vs standard NPC display.
 -->
 
-### Alert sounds
+### Skilling: alert sounds
 
 Closed by default. Every activity alert has three settings here:
 
