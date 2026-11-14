@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Voice lines: "You've stopped" + the activity + what you were gathering ("You've stopped chopping yew logs."), joined in memory from short clips listed in `voice/lines.tsv`; an unknown item says "You've stopped chopping", an unknown activity "You've stopped gathering." (`VoiceLines`). The clips are rendered offline by `tools/voice/generate_voice.py` (Kokoro-82M, Apache-2.0; see NOTICE). Until they are bundled, Voice line falls back to RuneLite's sound.
 - My sounds: your own WAV per alert at `~/.runelite/combat-vitals/sounds/<alert>.wav` (for example `gathering-stopped.wav`). A missing file plays RuneLite's sound and says so in the chat once.
 - Sound packs Soft chime, Music box and Retro blip, synthesised by `tools/sounds/generate_packs.py`: the project's own, no third-party audio (117 KB).
+### Changed
+- Dev builds use the newest RuneLite (Board, 2026-11-14): `build.gradle` resolves `latest.release` instead of pinning 1.13.6, re-checks for a newer release on every run, and `run`/`test` print the resolved version. `-PruneLiteVersion=<x>` still pins one. Dev only; the Plugin Hub replaces `build.gradle`.
 
 ## [1.1.0] - 2026-11-06
 

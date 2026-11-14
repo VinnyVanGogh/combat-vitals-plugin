@@ -13,15 +13,25 @@ repositories {
 	mavenCentral()
 }
 
-// Pinned rather than the template's 'latest.release'. The Plugin Hub manifest
-// points at one commit of this repo, so the build that commit produces has to
-// be reproducible; a floating dependency means a build that passed yesterday
-// can fail today for reasons nothing in this repo changed. Check
-// https://repo.runelite.net/net/runelite/client/maven-metadata.xml to bump.
-// 1.13.6 is the Plugin Hub's runelite.version; -PruneLiteVersion=1.13.5
-// checks the previous release still builds and passes.
-def runeLiteVersion = project.findProperty('runeLiteVersion') ?: '1.13.6'
+// Dev builds float on the newest RuneLite release (Board, 2026-11-14), the
+// same 'latest.release' RuneLite's example-plugin template uses, so the dev
+// client and the Plugin Hub plugins it loads are always the current ones.
+// This only affects dev: the Plugin Hub replaces build.gradle at submission
+// (build=standard) and builds against its own runelite.version.
+// Trade-off: a RuneLite release can break this build on a day nothing in this
+// repo changed. Pin one version to compare or bisect:
+//   ./gradlew build -PruneLiteVersion=1.13.6
+// Releases: https://repo.runelite.net/net/runelite/client/maven-metadata.xml
+def runeLiteVersion = project.findProperty('runeLiteVersion') ?: 'latest.release'
 def pluginMainClass = 'com.vinnyvangogh.combatvitals.CombatVitalsPluginTest'
+
+// Re-check repo.runelite.net for a newer release on every run instead of
+// Gradle's default 24h cache of dynamic versions. Only the RuneLite
+// dependencies are dynamic, so in practice this scopes to them. --offline
+// still resolves from the cache.
+configurations.configureEach {
+	resolutionStrategy.cacheDynamicVersionsFor 0, 'seconds'
+}
 
 dependencies {
 	compileOnly group: 'net.runelite', name:'client', version: runeLiteVersion
@@ -41,7 +51,24 @@ tasks.withType(JavaCompile).configureEach {
 	options.release.set(11)
 }
 
+// Says which RuneLite a run or test used, so a failure on a floating version
+// names the release it failed against.
+tasks.register('printRuneLiteVersion') {
+	description = 'Prints the RuneLite client version this build resolved.'
+	doLast {
+		def client = configurations.testRuntimeClasspath.incoming.resolutionResult.allComponents.find {
+			it.moduleVersion?.group == 'net.runelite' && it.moduleVersion?.name == 'client'
+		}
+		logger.lifecycle("RuneLite client: ${client?.moduleVersion?.version ?: 'not resolved'} (requested '${runeLiteVersion}')")
+	}
+}
+
+tasks.named('test') {
+	dependsOn 'printRuneLiteVersion'
+}
+
 tasks.register('run', JavaExec) {
+	dependsOn 'printRuneLiteVersion'
 	classpath = sourceSets.test.runtimeClasspath
 	mainClass = pluginMainClass
 
