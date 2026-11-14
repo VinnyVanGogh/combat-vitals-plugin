@@ -70,6 +70,12 @@ final class ContainerContents
 		return n == null ? -1 : n;
 	}
 
+	/** Carried open at the last scan. */
+	boolean isOpen(SkillingContainer container)
+	{
+		return open.contains(container);
+	}
+
 	/** Every known count, for the plugin to keep across logins. */
 	Map<SkillingContainer, Integer> known()
 	{

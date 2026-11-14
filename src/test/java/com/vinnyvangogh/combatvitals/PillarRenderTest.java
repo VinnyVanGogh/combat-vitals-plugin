@@ -57,6 +57,22 @@ public class PillarRenderTest
 			.build();
 	}
 
+	/** The inventory pillar with an open log basket holding {@code inBasket}, at the default colours. */
+	private static Pillar withBasket(int inBasket, int empty)
+	{
+		final SkillingReadout readout = SkillingReadout.builder()
+			.inventoryFill(InventoryFill.fraction(InventoryFill.SLOTS - empty, empty))
+			.inventoryFree(empty)
+			.containers(java.util.Collections.singletonList(new ContainerRow(SkillingContainer.LOG_BASKET,
+				inBasket, SkillingContainer.BASKET_CAPACITY, true)))
+			.build();
+		return InventoryPillar.of(readout, DEFAULTS, PillarIcons.backpack());
+	}
+
+	private static final CombatVitalsConfig DEFAULTS = new CombatVitalsConfig()
+	{
+	};
+
 	private static Pillar target(int hp, int max)
 	{
 		final double f = (double) hp / max;
@@ -99,11 +115,34 @@ public class PillarRenderTest
 			{"inv-idle", inventory(18, true), PillarStyle.STATUS_BARS, PillarLabels.ICON_AND_NUMBER},
 			{"target-12-of-50", target(12, 50), PillarStyle.STATUS_BARS, PillarLabels.ICON_AND_NUMBER},
 		};
+		sheet(states, new Color(62, 53, 41), "pillars-sheet.png");
+	}
 
+	/** The open basket under the inventory, on a dark and a light game background, both styles. */
+	@Test
+	public void writesTheBasketStatesForThePr() throws IOException
+	{
+		assertTrue(OUT.isDirectory() || OUT.mkdirs());
+		final Object[][] states = {
+			{"basket-0-inv-27", withBasket(0, 27), PillarStyle.STATUS_BARS, PillarLabels.ICON_AND_NUMBER},
+			{"basket-14-inv-27", withBasket(14, 27), PillarStyle.STATUS_BARS, PillarLabels.ICON_AND_NUMBER},
+			{"basket-14-inv-10", withBasket(14, 10), PillarStyle.STATUS_BARS, PillarLabels.ICON_AND_NUMBER},
+			{"basket-28-inv-10", withBasket(28, 10), PillarStyle.STATUS_BARS, PillarLabels.ICON_AND_NUMBER},
+			{"basket-28-inv-1", withBasket(28, 1), PillarStyle.STATUS_BARS, PillarLabels.ICON_AND_NUMBER},
+			{"basket-14-inv-10-flat", withBasket(14, 10), PillarStyle.FLAT, PillarLabels.ICON_AND_NUMBER},
+			{"inv-27-today", inventory(27, false), PillarStyle.STATUS_BARS, PillarLabels.ICON_AND_NUMBER},
+		};
+		sheet(states, new Color(62, 53, 41), "basket-sheet-dark.png");
+		sheet(states, new Color(200, 190, 160), "basket-sheet-light.png");
+		assertTrue(new File(OUT, "basket-sheet-light.png").isFile());
+	}
+
+	private static void sheet(Object[][] states, Color background, String name) throws IOException
+	{
 		final BufferedImage sheet = new BufferedImage(states.length * 40 + 8, BOX.height + 16,
 			BufferedImage.TYPE_INT_ARGB);
 		final Graphics2D g = sheet.createGraphics();
-		g.setColor(new Color(62, 53, 41));
+		g.setColor(background);
 		g.fillRect(0, 0, sheet.getWidth(), sheet.getHeight());
 		for (int i = 0; i < states.length; i++)
 		{
@@ -113,8 +152,42 @@ public class PillarRenderTest
 			g.drawImage(one, 8 + i * 40, 4, null);
 		}
 		g.dispose();
-		ImageIO.write(scaled(sheet, 2), "png", new File(OUT, "pillars-sheet.png"));
-		assertTrue(new File(OUT, "pillars-sheet.png").isFile());
+		ImageIO.write(scaled(sheet, 2), "png", new File(OUT, name));
+		assertTrue(new File(OUT, name).isFile());
+	}
+
+	/** Basket 14 of 28 and 18 slots used: the bottom quarter violet, the next third the inventory's colour. */
+	@Test
+	public void theBasketFillsBelowTheInventory()
+	{
+		for (PillarStyle style : PillarStyle.values())
+		{
+			final Pillar pillar = withBasket(14, 10);
+			final BufferedImage image = render(pillar, style, PillarLabels.NONE);
+			final int x = BOX.x + BOX.width / 2;
+			final int bottom = BOX.y + BOX.height - 2;
+			final int basketTop = bottom - (int) (BOX.height * 14 / 56.0);
+			final int fillTop = bottom - (int) (BOX.height * 32 / 56.0);
+			final Color low = new Color(image.getRGB(x, bottom - 8), true);
+			final Color high = new Color(image.getRGB(x, (basketTop + fillTop) / 2), true);
+			assertTrue(style + ": basket violet at the bottom, was " + low, low.getBlue() > low.getGreen() + 40);
+			assertTrue(style + ": inventory above it, was " + high, high.getBlue() < high.getGreen());
+			final Color empty = new Color(image.getRGB(x, fillTop - 20), true);
+			assertTrue(style + ": empty above the fill, was " + empty,
+				Math.max(empty.getRed(), Math.max(empty.getGreen(), empty.getBlue())) < 60);
+		}
+	}
+
+	@Test
+	public void noBasketDrawsExactlyTodaysPillar()
+	{
+		final Pillar today = inventory(18, false);
+		final Pillar withNothingUnder = today.toBuilder().baseFraction(0.3).build();
+		for (PillarStyle style : PillarStyle.values())
+		{
+			assertTrue(style.toString(), same(render(today, style, PillarLabels.ICON_AND_NUMBER),
+				render(withNothingUnder, style, PillarLabels.ICON_AND_NUMBER)));
+		}
 	}
 
 	@Test

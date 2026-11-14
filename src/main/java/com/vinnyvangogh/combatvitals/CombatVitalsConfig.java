@@ -990,6 +990,34 @@ public interface CombatVitalsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "pillarContainers",
+		name = "Containers on the pillar",
+		description = "With a log basket or fish barrel carried open and its contents known, the inventory "
+			+ "pillar shows both as one bar: the container fills first, at the bottom in its own colour, then "
+			+ "the inventory on top, and the number is the free space of the two together. Off, or with the "
+			+ "container closed or not yet checked, the pillar shows the inventory alone.",
+		section = pillarsSection,
+		position = 5
+	)
+	default boolean pillarContainers()
+	{
+		return true;
+	}
+
+	@Alpha
+	@ConfigItem(
+		keyName = "pillarContainerColour",
+		name = "Container colour",
+		description = "The open log basket's or fish barrel's part of the inventory pillar.",
+		section = pillarsSection,
+		position = 6
+	)
+	default Color pillarContainerColour()
+	{
+		return new Color(142, 92, 222, 230);
+	}
+
+	@ConfigItem(
 		keyName = "fishingSpotPath",
 		name = "Next spot path",
 		description =
