@@ -36,7 +36,7 @@ final class ContainerContents
 
 	private static final Pattern BASKET_CHECK = Pattern.compile("^The basket contains:(.*)$");
 	private static final Pattern BASKET_EMPTY = Pattern.compile(
-		"^(?:(?:Your|The) basket is empty|You empty your basket into the bank)\\.?$");
+		"^(?:(?:Your|The) basket is empty|You empty your basket(?: into the bank)?)\\.?$");
 	private static final Pattern BASKET_ADD = Pattern.compile("^You get some (?:[\\w' -]+ )?logs[.!]?$");
 	private static final Pattern BASKET_EXTRA = Pattern.compile("^The nature offerings enabled you to chop an extra log\\.?$");
 
