@@ -572,6 +572,14 @@ client, follow
 
 There are no dependencies beyond RuneLite itself, deliberately.
 
+Development builds use the newest RuneLite release (`latest.release`) and check
+for a newer one on every run; `run` and `test` print the version they resolved
+(`RuneLite client: 1.x.y`). A RuneLite release can therefore break the build on a
+day nothing here changed. To compare against a fixed version, pin it:
+`./gradlew build -PruneLiteVersion=1.13.6`. `--offline` builds from the cache.
+The Plugin Hub replaces `build.gradle` when it builds the plugin, so none of this
+affects the published version.
+
 ## Credit
 
 The ratio-to-health recovery is derived from `OpponentInfoOverlay` in the
