@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Changed
+- Dev builds use the newest RuneLite (Board, 2026-11-14): `build.gradle` resolves `latest.release` instead of pinning 1.13.6, re-checks for a newer release on every run, and `run`/`test` print the resolved version. `-PruneLiteVersion=<x>` still pins one. Dev only; the Plugin Hub replaces `build.gradle`.
+
 ## [1.1.0] - 2026-11-06
 
 The first update since the Plugin Hub release (`7e9eac9`, 2026-09-02): PRs #2 to #21 and the fixes from the Board's in-game test of 2026-11-04. In short: a skilling badge for fishing, woodcutting, mining, thieving, hunter and runecraft (level, boost timer, XP, session rates, inventory fill, catchable fish, missing-gear warning, idle state); activity alerts; side pillars; a path to the next fishing spot through Shortest Path; separate display for bosses; overhead chat kept readable above the readout; and an opt-in option to hide the game's own health bar. Pinned to RuneLite 1.13.6, the Hub's `runelite.version`.
