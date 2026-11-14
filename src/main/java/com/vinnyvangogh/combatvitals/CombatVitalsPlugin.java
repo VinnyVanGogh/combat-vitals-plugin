@@ -1158,6 +1158,10 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			opponent = null;
 			readout = null;
+			// The fight is over too: without this it stayed engaged with no opponent
+			// to time out against, and the skilling badge never came back (Board,
+			// 2026-11-14: still hidden 20 s into woodcutting after a kill).
+			combat.disengage(Instant.now());
 		}
 
 		if (event.getNpc() == skillingTarget)
@@ -2163,15 +2167,12 @@ public class CombatVitalsPlugin extends Plugin
 
 	private void expireOpponent()
 	{
-		if (opponent == null)
-		{
-			return;
-		}
-
+		// Runs with no opponent too: a fight whose target despawned still has to
+		// time out, or it holds the skilling badge off for good.
 		// Only interacting with the opponent itself holds it; interacting with
 		// anything else, a fishing spot included, lets the timeout run.
 		final Player self = client.getLocalPlayer();
-		final boolean stillOnTarget = self != null && self.getInteracting() == opponent;
+		final boolean stillOnTarget = opponent != null && self != null && self.getInteracting() == opponent;
 
 		if (combat.expire(Instant.now(), timeout(), stillOnTarget))
 		{
