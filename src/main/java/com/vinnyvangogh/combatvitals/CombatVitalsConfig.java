@@ -968,8 +968,9 @@ public interface CombatVitalsConfig extends Config
 
 	@ConfigItem(
 		keyName = "skillingHideInCombat",
-		name = "Hide during combat",
-		description = "Hide the badge while you are being hit or hitting back. Fighting a target always replaces it.",
+		name = "Hide in combat (over head)",
+		description = "Over your head only: hide the badge while you are being hit or hitting back. Fighting a target"
+			+ " always replaces it there. Fixed or over the spot, a fight never hides it; it says 'in combat' instead.",
 		section = skillingBadgeSection,
 		position = 20
 	)

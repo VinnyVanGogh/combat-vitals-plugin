@@ -43,6 +43,16 @@ final class SkillingText
 		return "Not " + activity(skill);
 	}
 
+	/**
+	 * "Not woodcutting | in combat": the header with the fight's tag
+	 * ({@link BadgeCombat#tag}), or the header alone without one. The bar is
+	 * the header's own separator, the one Spec and the boost source use.
+	 */
+	static String withCombatTag(String header, String tag)
+	{
+		return tag == null ? header : header + " | " + tag;
+	}
+
 	/** The activity's name in a sentence, "fishing", "hunting". */
 	private static String activity(Skill skill)
 	{
