@@ -4,7 +4,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
+import lombok.AllArgsConstructor;
 import lombok.Value;
 import net.runelite.api.Skill;
 
@@ -17,12 +19,30 @@ import net.runelite.api.Skill;
  * Pure: counts in, text out.
  */
 @Value
+@AllArgsConstructor
 class ContainerRow
 {
 	SkillingContainer kind;
 	/** Items inside, or -1 while unknown. */
 	int contents;
 	int capacity;
+	/** Carried open: what the skill gathers goes straight in. */
+	boolean open;
+
+	/** A row whose open state does not matter: shown as closed. */
+	ContainerRow(SkillingContainer kind, int contents, int capacity)
+	{
+		this(kind, contents, capacity, false);
+	}
+
+	/**
+	 * Open, known and holding what the skill gathers: its space is the
+	 * inventory's, so the inventory pillar shows the two as one bar.
+	 */
+	boolean joinsInventory()
+	{
+		return open && contents >= 0 && capacity > 0 && kind.isCountsAsInventory();
+	}
 
 	/** Free space, or -1 while the contents are unknown. */
 	int free()
@@ -63,6 +83,13 @@ class ContainerRow
 	static List<ContainerRow> rows(Skill skill, Map<SkillingContainer, Integer> capacities,
 		ToIntFunction<SkillingContainer> contents)
 	{
+		return rows(skill, capacities, contents, kind -> false);
+	}
+
+	/** @param open whether each container is carried open */
+	static List<ContainerRow> rows(Skill skill, Map<SkillingContainer, Integer> capacities,
+		ToIntFunction<SkillingContainer> contents, Predicate<SkillingContainer> open)
+	{
 		if (skill == null || capacities.isEmpty())
 		{
 			return Collections.emptyList();
@@ -73,7 +100,7 @@ class ContainerRow
 			final Integer capacity = capacities.get(kind);
 			if (capacity != null && kind.getSkill() == skill)
 			{
-				rows.add(new ContainerRow(kind, contents.applyAsInt(kind), capacity));
+				rows.add(new ContainerRow(kind, contents.applyAsInt(kind), capacity, open.test(kind)));
 			}
 		}
 		return rows;

@@ -33,18 +33,34 @@ final class Bars
 	/** Filled from the bottom, {@code fraction} of the height, for the side pillars. */
 	static void up(Graphics2D graphics, Rectangle box, double fraction, Color colour, Color background)
 	{
+		up(graphics, box, fraction, colour, 0, null, background);
+	}
+
+	/** As above, the bottom {@code baseFraction} of the height in {@code baseColour}. */
+	static void up(Graphics2D graphics, Rectangle box, double fraction, Color colour, double baseFraction,
+		Color baseColour, Color background)
+	{
 		graphics.setColor(background);
 		graphics.fillRect(box.x, box.y, box.width, box.height);
 
+		fromBottom(graphics, box, fraction, colour);
+		if (baseColour != null)
+		{
+			fromBottom(graphics, box, baseFraction, baseColour);
+		}
+
+		graphics.setColor(BORDER);
+		graphics.drawRect(box.x, box.y, box.width, box.height);
+	}
+
+	private static void fromBottom(Graphics2D graphics, Rectangle box, double fraction, Color colour)
+	{
 		final int filled = (int) Math.round(box.height * clamp(fraction));
 		if (filled > 0)
 		{
 			graphics.setColor(colour);
 			graphics.fillRect(box.x, box.y + box.height - filled, box.width, filled);
 		}
-
-		graphics.setColor(BORDER);
-		graphics.drawRect(box.x, box.y, box.width, box.height);
 	}
 
 	private static double clamp(double fraction)

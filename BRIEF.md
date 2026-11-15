@@ -431,6 +431,37 @@ already offers "Remove others' menu options"); no hint arrows or highlights
 for Forestry objects (the base Woodcutting plugin draws its own); nothing
 here sends input, and Repeat still stops on a click or key press.
 
+### Training methods: the Blast Furnace pump, compliance (added 2026-11-14, task-20b05b6b)
+
+Board, 2026-11-14, training Strength at the Blast Furnace pump: the same
+badge as skilling, a countdown to when you must click again and to the
+pump's own stop, and an alert with a voice line a little before each.
+
+Facts, read 2026-11-14: OSRS Wiki, Pump (Blast Furnace): object 9090,
+option Operate, "Operating the pump yields 2 Strength experience every
+tick", "The pump can be operated for up to 100 minutes before automatically
+stopping. However, you are typically logged out after 5 minutes ... this can
+be changed in the Settings menu." Gameval (`runelite-api` 1.13.6, javap):
+`ObjectID.BLAST_FURNACE_PUMP = 9090`, `AnimationID.BLAST_FURNACE_HUMAN_AIR_PUMP
+= 2432`. The game's idle setting goes from 5 to 25 minutes (third-party
+guides, 2026; the Board's "~25-30 min" is this). The Board's "forced stop
+every hour" is the wiki's 100 minutes. RuneLite's `IdleNotifierPlugin`
+(`checkIdleLogout`, master, read 2026-11-14) reads the logout as
+`min(getKeyboardIdleTicks(), getMouseIdleTicks())` against
+`getIdleTimeout()`, all client ticks (`Constants.CLIENT_TICK_LENGTH`, 20 ms).
+
+| Element | Nearest rule | Precedent | Verdict |
+|---|---|---|---|
+| Badge raised by the player's own Operate click on the pump plus animating beside it, held by Strength XP or animation; same rows as skilling (`TrainingMethod`, `ObjectSkilling`) | None: own click, own animation, own stats | The tree/rock object badge here since 2026-11-04; base Blast Furnace plugin highlights the same objects | Allowed |
+| "Re-click in 4:12": time left on the client's idle logout from its own idle counters, and an alert a minute before | Must not keep a player logged in or act on idleness | Base client Idle Notifier's "Idle logout" warning reads exactly these counters and warns 20 s ahead; Logout Timer plugin sets the timeout itself. This only counts down and makes a sound; it never moves, clicks or types | Allowed |
+| "Stops in 97:30": 100 minutes from the click, an alert a minute before | None: a fixed, published game rule and the player's own click time | Base client Timers plugin counts down known game durations (potions, teleblock) | Allowed |
+| "You've stopped pumping": no animation or Strength XP for the stopped delay; not on walking away or a fight | None | Idle Notifier; the plugin's own stopped alerts since 2026-11-03 | Allowed |
+| New additive keys for the three alerts, appended to `published-config-keys.txt` | Config keys freeze at publish | Same as every earlier row | Allowed |
+
+Not done: no input of any kind to stay logged in, and nothing for the
+coal/ore runs, Giants' Foundry or other methods yet (`TrainingMethod` is the
+table they slot into).
+
 ---
 
 ## Phase 0.5, Measure before building

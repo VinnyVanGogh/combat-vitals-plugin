@@ -2,7 +2,8 @@
 # the clip generator (tools/voice/generate_voice.py). Tab separated:
 #   kind	key	clip	spoken
 # kind phrase:   a fixed opening, key = its name in VoiceLines
-# kind alert:    a whole line for one ActivityAlerts.Type, key = the type
+# kind alert:    a whole line for one ActivityAlerts.Type, key = the type, or
+#                type|TrainingMethod for that method's own line
 # kind verb:     the activity, key = the Skill
 # kind resource: what you were gathering, key = Skill|item name in lower case;
 #                several items may share one clip
@@ -19,6 +20,11 @@ alert	COIN_POUCH_CAP	coin-pouches	Time to open your coin pouches.
 alert	NECKLACE_BROKE	necklace-broke	Your dodgy necklace crumbled.
 alert	LOW_RUN_ENERGY	low-run-energy	You're low on run energy.
 alert	PRODUCTION_FINISHED	all-done	All done!
+alert	METHOD_STOPPED	method-stopped	You've stopped training.
+alert	METHOD_STOPPED|BLAST_FURNACE_PUMP	pump-stopped	You've stopped pumping.
+alert	RECLICK_SOON	reclick-soon	Click soon, or you'll be logged out.
+alert	AUTO_STOP_SOON	method-stopping	Your training stops soon. Click again.
+alert	AUTO_STOP_SOON|BLAST_FURNACE_PUMP	pump-stopping	The pump stops soon. Click it again.
 alert	BIRD_NEST	bird-nest	A bird's nest fell!
 alert	CLUE_DROP	clue-drop	You got a clue!
 alert	FORESTRY_EVENT	forestry-event	A Forestry event started!

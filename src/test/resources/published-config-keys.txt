@@ -121,6 +121,14 @@ volumeThievingStopped int
 # 2026-11-14: the two halves' master switches.
 combatVitals boolean
 skillingVitals boolean
+# 2026-11-14: an open container on the inventory pillar.
+pillarContainers boolean
+pillarContainerColour Color
+# 2026-11-14: one sound, volume and repeat for every alert (sidebar panel task).
+alertSoundShared boolean
+alertSoundAll AlertSound
+alertVolumeAll int
+alertRepeatAll boolean
 # 2026-11-14: the badge's XP-drop skills (task-5328e2df).
 skillingHerblore boolean
 skillingCooking boolean
@@ -133,6 +141,23 @@ skillingMagic boolean
 skillingAgility boolean
 skillingConstruction boolean
 skillingSailing boolean
+# 2026-11-14: the sidebar's Live section, folded or open (task-df2618a5).
+sidebarLiveOpen boolean
+# 2026-11-14: the Blast Furnace pump's alerts (task-20b05b6b).
+alertMethodStopped Notification
+alertReclickSoon Notification
+alertAutoStopSoon Notification
+alertMethodWarnSeconds int
+soundMethodStopped AlertSound
+volumeMethodStopped int
+repeatMethodStopped boolean
+soundReclickSoon AlertSound
+volumeReclickSoon int
+repeatReclickSoon boolean
+soundAutoStopSoon AlertSound
+volumeAutoStopSoon int
+repeatAutoStopSoon boolean
+# 2026-11-14: skilling notifications (task-be51ad0f).
 alertBirdNest Notification
 alertClueDrop Notification
 alertForestryEvent Notification

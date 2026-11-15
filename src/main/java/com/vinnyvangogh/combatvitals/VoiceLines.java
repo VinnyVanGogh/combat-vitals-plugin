@@ -181,12 +181,22 @@ final class VoiceLines
 		return ids;
 	}
 
-	/** The alert's own line, or the more particular one for what exactly happened. */
+	/**
+	 * The most particular line first: a skilling event's detail ("You got a
+	 * hard clue!"), then a training method's own ("You've stopped pumping."),
+	 * then the type's, or null.
+	 */
 	private String wholeLine(ActivityAlerts.Alert alert)
 	{
 		final String detailKey = SkillingEvents.voiceKey(alert);
 		final String detail = detailKey == null ? null : details.get(key(detailKey));
-		return detail != null ? detail : alerts.get(key(alert.type.name()));
+		if (detail != null)
+		{
+			return detail;
+		}
+		final String own = alert.method == null ? null
+			: alerts.get(key(alert.type.name() + "|" + alert.method.name()));
+		return own != null ? own : alerts.get(key(alert.type.name()));
 	}
 
 	/** The resource clip for an item gathered with a skill, or null. */

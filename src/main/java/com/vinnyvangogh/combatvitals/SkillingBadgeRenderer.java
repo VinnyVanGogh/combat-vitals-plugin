@@ -387,7 +387,7 @@ class SkillingBadgeRenderer
 	 * The header's words: the level and boost while working, "Not fishing" once stopped, each followed by
 	 * "in combat" or "under attack" while a fight is on.
 	 */
-	private static String headerText(SkillingReadout readout)
+	static String headerText(SkillingReadout readout)
 	{
 		return SkillingText.withCombatTag(headerWords(readout), readout.getCombatTag());
 	}
@@ -396,12 +396,12 @@ class SkillingBadgeRenderer
 	{
 		if (readout.isIdle())
 		{
-			return SkillingText.idleHeader(readout.getSkill());
+			return SkillingText.idleHeader(readout.getSkill(), readout.getMethod());
 		}
 
 		final int seconds = SkillingText.seconds(readout.getTicksUntilDrop(),
 			System.currentTimeMillis() - readout.getTickMillis());
-		return SkillingText.text(readout.getSkill().getName(), readout.getReal(), readout.getBoosted(), seconds,
+		return SkillingText.text(SkillingText.headerName(readout.getSkill(), readout.getMethod()), readout.getReal(), readout.getBoosted(), seconds,
 			!readout.isTimerConfirmed(), readout.getSpecPercent(), readout.getSource(), readout.getWarning());
 	}
 
