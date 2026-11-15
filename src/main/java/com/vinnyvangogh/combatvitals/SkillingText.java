@@ -43,6 +43,43 @@ final class SkillingText
 		return "Not " + activity(skill);
 	}
 
+	/** "Not pumping" for a training method, or the skill's header without one. */
+	static String idleHeader(Skill skill, TrainingMethod method)
+	{
+		return method == null ? idleHeader(skill) : "Not " + method.verb();
+	}
+
+	/** "Pumping (Blast Furnace) | Strength": the header's name for a training method, or the skill's name. */
+	static String headerName(Skill skill, TrainingMethod method)
+	{
+		return method == null ? skill.getName() : method.label() + " | " + skill.getName();
+	}
+
+	/**
+	 * "Re-click in 4:12 | Stops in 97:30": the training method's line, either
+	 * half left out while unknown, null with both.
+	 *
+	 * @param reclickMillis until the idle logout, or -1
+	 * @param stopTicks     game ticks until the game stops the method, or -1
+	 */
+	static String methodTimers(long reclickMillis, int stopTicks)
+	{
+		final String reclick = reclickMillis < 0 ? null : "Re-click in " + clock(reclickMillis);
+		final String stops = stopTicks < 0 ? null : "Stops in " + clock(stopTicks * (long) Constants.GAME_TICK_LENGTH);
+		if (reclick == null)
+		{
+			return stops;
+		}
+		return stops == null ? reclick : reclick + " | " + stops;
+	}
+
+	/** "97:05": whole minutes, then seconds, rounded up so 0:00 means now. */
+	static String clock(long millis)
+	{
+		final long seconds = (Math.max(0, millis) + 999) / 1000;
+		return String.format("%d:%02d", seconds / 60, seconds % 60);
+	}
+
 	/**
 	 * "Not woodcutting | in combat": the header with the fight's tag
 	 * ({@link BadgeCombat#tag}), or the header alone without one. The bar is

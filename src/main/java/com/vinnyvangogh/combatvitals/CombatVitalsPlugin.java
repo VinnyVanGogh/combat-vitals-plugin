@@ -29,6 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.Constants;
 import net.runelite.api.EquipmentInventorySlot;
 import net.runelite.api.GameState;
 import net.runelite.api.Item;
@@ -322,6 +323,15 @@ public class CombatVitalsPlugin extends Plugin
 	 * swing starts, instead of flickering off for the walk.
 	 */
 	private boolean objectBadge;
+
+	/** The training method the clicked object starts (the Blast Furnace pump), or null for a tree or rock. */
+	private TrainingMethod objectMethod;
+
+	/** The tick {@link #objectMethod}'s object was clicked: the game's own stop counts from it. */
+	private int objectClickTick = -1;
+
+	/** The pump's stopped, idle logout and auto stop alerts and countdowns. */
+	private final TrainingSession trainingSession = new TrainingSession();
 
 	/** Herblore, the Make-X skills, Firemaking, Prayer, Magic, Agility, Construction, Sailing: by XP drop. */
 	private final XpSkilling xpSkilling = new XpSkilling();
@@ -750,6 +760,9 @@ public class CombatVitalsPlugin extends Plugin
 		objectSkilling.forget();
 		objectBadge = false;
 		objectSpot = null;
+		objectMethod = null;
+		objectClickTick = -1;
+		trainingSession.clear();
 		xpSkilling.clear();
 		xpBadge = false;
 		productionInputs.forget();
@@ -809,6 +822,8 @@ public class CombatVitalsPlugin extends Plugin
 			// Either way any tree or rock is over.
 			objectSkilling.forget();
 			objectBadge = false;
+			// A fight or an NPC is not the pump stopping by itself: no alert.
+			trainingSession.end();
 			// Turning to anything else (a banker, an attacker) is leaving the spot.
 			turnedTo(target);
 			turnedToNpc(target, clicked != null ? clicked : fight ? null : skillingSkill(target), fight);
@@ -922,6 +937,7 @@ public class CombatVitalsPlugin extends Plugin
 		activityAlerts.xp(skill, event.getXp());
 		session.xp(skill, event.getXp(), System.currentTimeMillis());
 		xpSkilling.xp(skill, event.getXp());
+		trainingSession.xp(skill, event.getXp());
 
 		final BoostTracker.Change change = boosts.observe(skill, real, boosted);
 		if ((change == BoostTracker.Change.DROP || change == BoostTracker.Change.EXPIRED)
@@ -1065,6 +1081,7 @@ public class CombatVitalsPlugin extends Plugin
 			objectBadge = false;
 		}
 		objectSkilling.forget();
+		trainingSession.end();
 	}
 
 	/**
@@ -1075,24 +1092,22 @@ public class CombatVitalsPlugin extends Plugin
 	private void clickedObject(MenuOptionClicked event, String option)
 	{
 		final WorldView view = client.getTopLevelWorldView();
-		ObjectComposition composition = client.getObjectDefinition(event.getId());
-		if (composition != null && composition.getImpostorIds() != null)
+		final ObjectComposition composition = objectDefinition(event.getId());
+		if (view == null || composition == null)
 		{
-			final ObjectComposition impostor = composition.getImpostor();
-			if (impostor != null)
-			{
-				composition = impostor;
-			}
+			endObjectBadge();
+			return;
 		}
 
-		final Skill skill = composition == null || view == null
-			? null
-			: SkillingActions.forOption(option, composition.getName());
+		// A training method (the Blast Furnace pump) by the clicked id; else a skilling option by name.
+		final TrainingMethod method = TrainingMethod.forObject(event.getId(), option);
+		final Skill skill = method != null ? method.skill() : SkillingActions.forOption(option, composition.getName());
 		if (skill == null)
 		{
 			endObjectBadge();
 			return;
 		}
+		clickedMethod(method);
 
 		// On to the next rock: the badge lingers through the walk, and the
 		// new swing cancels the linger.
@@ -1108,6 +1123,33 @@ public class CombatVitalsPlugin extends Plugin
 		objectSpot = at;
 		objectSpotSize = size;
 		objectSkilling.clicked(skill, at.getX(), at.getY(), at.getPlane(), size, size, client.getTickCount());
+	}
+
+	/** An object's definition, its impostor when it has one in force, or null. */
+	private ObjectComposition objectDefinition(int id)
+	{
+		final ObjectComposition composition = client.getObjectDefinition(id);
+		if (composition == null || composition.getImpostorIds() == null)
+		{
+			return composition;
+		}
+		final ObjectComposition impostor = composition.getImpostor();
+		return impostor != null ? impostor : composition;
+	}
+
+	/**
+	 * A skilling object clicked: remembered for the training session. The
+	 * pump clicked again keeps its session, and the game's stop restarts
+	 * from this click; anything else ends it.
+	 */
+	private void clickedMethod(TrainingMethod method)
+	{
+		if (method == null || trainingSession.method() != method)
+		{
+			trainingSession.end();
+		}
+		objectMethod = method;
+		objectClickTick = client.getTickCount();
 	}
 
 	private static boolean isObjectOption(MenuAction action)
@@ -1761,6 +1803,7 @@ public class CombatVitalsPlugin extends Plugin
 				skillingTarget = null;
 				skilling.engage(objectSkilling.skill());
 				objectBadge = true;
+				startTraining();
 				break;
 			case DISENGAGE:
 				skilling.disengage(now);
@@ -1768,6 +1811,7 @@ public class CombatVitalsPlugin extends Plugin
 			case RELEASE:
 				skilling.release();
 				objectBadge = false;
+				trainingSession.end();
 				break;
 			default:
 				break;
@@ -1777,6 +1821,19 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			objectBadge = false;
 			objectSkilling.forget();
+		}
+	}
+
+	/** The object badge came up: for a training method its session starts, for a tree or rock any session ends. */
+	private void startTraining()
+	{
+		if (objectMethod == null)
+		{
+			trainingSession.end();
+		}
+		else
+		{
+			trainingSession.start(objectMethod, objectClickTick, client.getTickCount());
 		}
 	}
 
@@ -2006,25 +2063,55 @@ public class CombatVitalsPlugin extends Plugin
 	private SkillingReadout.SkillingReadoutBuilder baseReadout(Skill skill, long now)
 	{
 		final XpProgress xp = XpProgress.of(client.getSkillExperience(skill));
-		final int free = inventoryFree();
-		final List<ContainerRow> containers = free < 0 || !config.skillingContainers()
-			? Collections.emptyList() : containerRows(skill);
-		return SkillingReadout.builder()
+		final SkillingReadout.SkillingReadoutBuilder builder = SkillingReadout.builder()
 			.skill(skill)
 			.real(client.getRealSkillLevel(skill))
 			.boosted(client.getBoostedSkillLevel(skill))
 			.colour(skillColour(skill))
-			.gearText(skill == Skill.FISHING ? gearWarning(now) : null)
 			.header(config.skillingShowHeader())
 			.xp(xp)
 			.xpText(config.skillingShowXp() ? xp.text(config.skillingXpDisplay()) : null)
 			.sessionCells(sessionCells(skill, xp, now))
 			.tickMillis(now)
+			.containerCount(config.skillingInventoryCount());
+
+		final TrainingMethod method = trainingMethod(skill);
+		if (method != null)
+		{
+			return methodRows(builder, method);
+		}
+		final int free = inventoryFree();
+		final List<ContainerRow> containers = free < 0 || !config.skillingContainers()
+			? Collections.emptyList() : containerRows(skill);
+		return builder
+			.gearText(skill == Skill.FISHING ? gearWarning(now) : null)
 			.inventoryFill(free < 0 ? -1 : InventoryFill.fraction(inventoryFilling, inventoryEmpty))
 			.inventoryLabel(inventoryLabel(skill, free, containers))
 			.inventoryFree(free)
-			.containers(containers)
-			.containerCount(config.skillingInventoryCount());
+			.containers(containers);
+	}
+
+	/** The training method the badge for this skill is about, working or "Not pumping", or null. */
+	private TrainingMethod trainingMethod(Skill skill)
+	{
+		final TrainingMethod method = trainingSession.method();
+		return method != null && method.skill() == skill ? method : null;
+	}
+
+	/**
+	 * A training method's badge: the same header, XP and session rows, and
+	 * in place of the inventory line "Re-click in 4:12 | Stops in 97:30" on a
+	 * bar filling towards the game's own stop. No line once stopped.
+	 */
+	private SkillingReadout.SkillingReadoutBuilder methodRows(SkillingReadout.SkillingReadoutBuilder builder,
+		TrainingMethod method)
+	{
+		final int stopTicks = trainingSession.stopTicksLeft();
+		final int autoStop = method.autoStopTicks();
+		return builder
+			.method(method)
+			.inventoryFill(stopTicks < 0 || autoStop <= 0 ? 0 : 1 - (double) stopTicks / autoStop)
+			.inventoryLabel(SkillingText.methodTimers(trainingSession.reclickMillis(), stopTicks));
 	}
 
 	/**
@@ -2269,8 +2356,25 @@ public class CombatVitalsPlugin extends Plugin
 		lastPosition = position;
 
 		final int pouchCap = config.alertCoinPouchCap();
-		sendAlerts(activityAlerts.tick(now, ActivityAlerts.ticks(config.alertStopSeconds()), pouchCap,
-			config.alertRunEnergyThreshold()), pouchCap);
+		final int stopTicks = ActivityAlerts.ticks(config.alertStopSeconds());
+		final List<ActivityAlerts.Alert> fired = new ArrayList<>(activityAlerts.tick(now, stopTicks, pouchCap,
+			config.alertRunEnergyThreshold()));
+		fired.addAll(tickTraining(now.tick, now.animating, stopTicks));
+		sendAlerts(fired, pouchCap);
+	}
+
+	/**
+	 * The training method's tick: its countdowns for the badge and its
+	 * alerts. The idle logout is read the way RuneLite's Idle Notifier reads
+	 * it, in client ticks of 20 ms.
+	 */
+	private List<ActivityAlerts.Alert> tickTraining(int tick, boolean animating, int stopTicks)
+	{
+		final long idle = Math.min(client.getKeyboardIdleTicks(), client.getMouseIdleTicks())
+			* (long) Constants.CLIENT_TICK_LENGTH;
+		final long logout = client.getIdleTimeout() * (long) Constants.CLIENT_TICK_LENGTH;
+		return trainingSession.tick(tick, animating, idle, logout, stopTicks,
+			config.alertMethodWarnSeconds() * 1000L);
 	}
 
 	/** This tick's alerts, then any repeat that is due. */
@@ -2286,7 +2390,7 @@ public class CombatVitalsPlugin extends Plugin
 		// Back at it: experience again stops a repeat. Checked before this
 		// tick's alerts, so "inventory full" on the tick of the last catch
 		// still starts its own.
-		if (activityAlerts.experienced())
+		if (activityAlerts.experienced() || trainingSession.resumed())
 		{
 			alertRepeat.activityResumed();
 		}
