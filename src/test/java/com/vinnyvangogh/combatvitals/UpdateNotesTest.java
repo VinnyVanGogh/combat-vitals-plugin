@@ -111,8 +111,21 @@ public class UpdateNotesTest
 				line.toLowerCase(Locale.ROOT).contains("fix"));
 		}
 		assertTrue(UpdateNotes.NOTES.get(UpdateNotes.NOTES.size() - 1)
-			.contains("Configure Combat Vitals > Skilling badge"));
+			.contains("Configure Combat & Skilling Vitals > Skilling badge"));
 		assertTrue(UpdateNotes.TITLE.contains(UpdateNotes.VERSION));
 		assertTrue(UpdateNotes.WELCOME.contains(UpdateNotes.VERSION));
+	}
+
+	@Test
+	public void theTitleSaysTheRenameAndNoLineUsesTheOldNameAlone()
+	{
+		assertEquals("Combat Vitals is now Combat & Skilling Vitals, updated to " + UpdateNotes.VERSION
+			+ ". What's new:", UpdateNotes.TITLE);
+		final List<String> rest = new ArrayList<>(UpdateNotes.NOTES);
+		rest.add(UpdateNotes.WELCOME);
+		for (String line : rest)
+		{
+			assertFalse("old name: " + line, line.contains("Combat Vitals"));
+		}
 	}
 }

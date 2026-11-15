@@ -95,7 +95,7 @@ import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.Text;
 
 /**
- * Combat Vitals — a standalone replacement for the stock Opponent Information
+ * Combat & Skilling Vitals — a standalone replacement for the stock Opponent Information
  * plugin, with overhead rendering.
  *
  * The readout is rebuilt once per game tick and published as an immutable
@@ -105,10 +105,13 @@ import net.runelite.client.util.Text;
  */
 @Slf4j
 @PluginDescriptor(
-	// The name stays "Combat Vitals": the Hub shows displayName from
-	// runelite-plugin.properties ("Combat & Skilling Vitals"); this name is the
-	// one the client already knows the installed plugin by.
-	name = "Combat Vitals",
+	// Equal to displayName in runelite-plugin.properties (PluginNameTest).
+	// RuneLite keys the on/off state by the class name (PluginManager
+	// isPluginEnabled), settings by the config group and the Hub install by
+	// the manifest's internalName, so renaming this keeps all three. The one
+	// thing keyed by this name is the plugin list's pin (PluginListPanel
+	// pinnedPlugins), so anyone who pinned "Combat Vitals" pins it again.
+	name = PluginName.NAME,
 	description = "Combat: health for your target and for you. Skilling: a badge, alerts and side pillars while you skill",
 	tags = {"combat", "vitals", "health", "hitpoints", "hp", "overlay", "overhead", "opponent", "pvp", "pvm",
 		"skilling", "woodcutting", "fishing", "mining", "thieving", "runecraft", "hunter", "inventory", "idle", "xp"}
@@ -2141,7 +2144,7 @@ public class CombatVitalsPlugin extends Plugin
 		play(plan, settings.volume);
 		if (alertSounds.shouldHint(plan, alert.type))
 		{
-			consoleLine(ChatColorType.HIGHLIGHT, "Combat Vitals: no sound file at " + plan.file.getPath()
+			consoleLine(ChatColorType.HIGHLIGHT, PluginName.NAME + ": no sound file at " + plan.file.getPath()
 				+ ", so RuneLite's sound played instead.");
 		}
 		alertRepeat.fired(alert, settings.repeat, nowMs, config.repeatEverySeconds(), config.repeatMaxMinutes());

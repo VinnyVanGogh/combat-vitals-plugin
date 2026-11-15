@@ -1,4 +1,4 @@
-# Contributing to Combat Vitals
+# Contributing to Combat & Skilling Vitals
 
 ## Prerequisites
 
@@ -15,7 +15,7 @@
 # Run unit tests only
 ./gradlew test
 
-# Launch the RuneLite developer client (--developer-mode --debug) with Combat Vitals loaded
+# Launch the RuneLite developer client (--developer-mode --debug) with Combat & Skilling Vitals loaded
 ./gradlew run
 
 # Launch a second isolated developer client with its own .runelite directory
