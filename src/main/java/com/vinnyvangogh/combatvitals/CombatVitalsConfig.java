@@ -1347,6 +1347,97 @@ public interface CombatVitalsConfig extends Config
 		return 10;
 	}
 
+	@ConfigItem(
+		keyName = "alertBirdNest",
+		name = "Bird nest",
+		description = "Notify when a bird's nest falls out of the tree you are chopping. A clue nest goes to the "
+			+ "Clue drop alert instead, or comes here when that one is off.",
+		section = alertsSection,
+		position = 12
+	)
+	default Notification alertBirdNest()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "alertClueDrop",
+		name = "Clue drop",
+		description = "Notify, with the tier, when skilling gives you a clue: a clue nest, a clue geode while "
+			+ "mining, a clue bottle while fishing, or a scroll box.",
+		section = alertsSection,
+		position = 13
+	)
+	default Notification alertClueDrop()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "alertForestryEvent",
+		name = "Forestry event",
+		description = "Notify when a Forestry event (Rising Roots, Struggling Sapling, Flowering Bush, Leprechaun, "
+			+ "Poachers, Pheasant Control, Bee Hive, Enchantment Ritual, Friendly Ent) starts near you while you "
+			+ "are chopping. RuneLite's Woodcutting plugin has its own per-event alerts; turn one off if you get two.",
+		section = alertsSection,
+		position = 14
+	)
+	default Notification alertForestryEvent()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "alertPet",
+		name = "Pet",
+		description = "Notify when you get a pet, or would have got one you already have.",
+		section = alertsSection,
+		position = 15
+	)
+	default Notification alertPet()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "alertLevelUp",
+		name = "Level up",
+		description = "Notify when you gain a level, in the skills chosen below.",
+		section = alertsSection,
+		position = 16
+	)
+	default Notification alertLevelUp()
+	{
+		// Off: the game already shows a level-up dialogue.
+		return Notification.OFF;
+	}
+
+	@ConfigItem(
+		keyName = "alertLevelUpSkills",
+		name = "Level up skills",
+		description = "All skills, or only the non-combat ones (everything but Attack, Strength, Defence, "
+			+ "Hitpoints, Ranged, Prayer and Magic).",
+		section = alertsSection,
+		position = 17
+	)
+	default LevelUpSkills alertLevelUpSkills()
+	{
+		return LevelUpSkills.ALL;
+	}
+
+	@ConfigItem(
+		keyName = "alertRandomEvent",
+		name = "Random event",
+		description = "Notify when a random event is here for you: only when it is talking to you, never "
+			+ "someone else's. RuneLite's Random Events plugin can send the same alert.",
+		section = alertsSection,
+		position = 18
+	)
+	default Notification alertRandomEvent()
+	{
+		return Notification.OFF;
+	}
+
 	String SOUND_HELP = " RuneLite: your RuneLite notification sound, as before. Soft chime, Music box, Retro blip: "
 		+ "bundled sounds. Voice line: says what happened. My sounds: your own WAV in "
 		+ ".runelite/combat-vitals/sounds/";
@@ -1709,6 +1800,228 @@ public interface CombatVitalsConfig extends Config
 		position = 28
 	)
 	default boolean repeatLowRunEnergy()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundBirdNest",
+		name = "Bird nest sound",
+		description = "What the bird nest alert sounds like." + SOUND_HELP + "bird-nest.wav",
+		section = alertSoundsSection,
+		position = 29
+	)
+	default AlertSound soundBirdNest()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeBirdNest",
+		name = "Bird nest volume",
+		description = VOLUME_HELP,
+		section = alertSoundsSection,
+		position = 30
+	)
+	default int volumeBirdNest()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatBirdNest",
+		name = "Repeat bird nest",
+		description = "Sound the bird nest alert" + REPEAT_HELP,
+		section = alertSoundsSection,
+		position = 31
+	)
+	default boolean repeatBirdNest()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundClueDrop",
+		name = "Clue drop sound",
+		description = "What the clue drop alert sounds like." + SOUND_HELP + "clue-drop.wav",
+		section = alertSoundsSection,
+		position = 32
+	)
+	default AlertSound soundClueDrop()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeClueDrop",
+		name = "Clue drop volume",
+		description = VOLUME_HELP,
+		section = alertSoundsSection,
+		position = 33
+	)
+	default int volumeClueDrop()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatClueDrop",
+		name = "Repeat clue drop",
+		description = "Sound the clue drop alert" + REPEAT_HELP,
+		section = alertSoundsSection,
+		position = 34
+	)
+	default boolean repeatClueDrop()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundForestryEvent",
+		name = "Forestry sound",
+		description = "What the Forestry event alert sounds like." + SOUND_HELP + "forestry-event.wav",
+		section = alertSoundsSection,
+		position = 35
+	)
+	default AlertSound soundForestryEvent()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeForestryEvent",
+		name = "Forestry volume",
+		description = VOLUME_HELP,
+		section = alertSoundsSection,
+		position = 36
+	)
+	default int volumeForestryEvent()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatForestryEvent",
+		name = "Repeat Forestry",
+		description = "Sound the Forestry event alert" + REPEAT_HELP,
+		section = alertSoundsSection,
+		position = 37
+	)
+	default boolean repeatForestryEvent()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundPet",
+		name = "Pet sound",
+		description = "What the pet alert sounds like." + SOUND_HELP + "pet.wav",
+		section = alertSoundsSection,
+		position = 38
+	)
+	default AlertSound soundPet()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumePet",
+		name = "Pet volume",
+		description = VOLUME_HELP,
+		section = alertSoundsSection,
+		position = 39
+	)
+	default int volumePet()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatPet",
+		name = "Repeat pet",
+		description = "Sound the pet alert" + REPEAT_HELP,
+		section = alertSoundsSection,
+		position = 40
+	)
+	default boolean repeatPet()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundLevelUp",
+		name = "Level up sound",
+		description = "What the level up alert sounds like." + SOUND_HELP + "level-up.wav",
+		section = alertSoundsSection,
+		position = 41
+	)
+	default AlertSound soundLevelUp()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeLevelUp",
+		name = "Level up volume",
+		description = VOLUME_HELP,
+		section = alertSoundsSection,
+		position = 42
+	)
+	default int volumeLevelUp()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatLevelUp",
+		name = "Repeat level up",
+		description = "Sound the level up alert" + REPEAT_HELP,
+		section = alertSoundsSection,
+		position = 43
+	)
+	default boolean repeatLevelUp()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundRandomEvent",
+		name = "Random sound",
+		description = "What the random event alert sounds like." + SOUND_HELP + "random-event.wav",
+		section = alertSoundsSection,
+		position = 44
+	)
+	default AlertSound soundRandomEvent()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeRandomEvent",
+		name = "Random volume",
+		description = VOLUME_HELP,
+		section = alertSoundsSection,
+		position = 45
+	)
+	default int volumeRandomEvent()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatRandomEvent",
+		name = "Repeat random",
+		description = "Sound the random event alert" + REPEAT_HELP,
+		section = alertSoundsSection,
+		position = 46
+	)
+	default boolean repeatRandomEvent()
 	{
 		return false;
 	}

@@ -127,6 +127,35 @@ public class VoiceLinesTest
 		}
 	}
 
+	@Test
+	public void skillingEventsSayWhatExactlyHappened()
+	{
+		assertEquals(paths("bird-nest"),
+			lines.compose(alert(ActivityAlerts.Type.BIRD_NEST, Skill.WOODCUTTING), null, ALL));
+		assertEquals(paths("clue-hard"), lines.compose(
+			new ActivityAlerts.Alert(ActivityAlerts.Type.CLUE_DROP, null, "Clue geode (hard)"), null, ALL));
+		assertEquals(paths("clue-nest-fell"), lines.compose(
+			new ActivityAlerts.Alert(ActivityAlerts.Type.BIRD_NEST, null, "Clue nest (easy)"), null, ALL));
+		assertEquals(paths("pet-duplicate"), lines.compose(
+			new ActivityAlerts.Alert(ActivityAlerts.Type.PET, null, SkillingEvents.DUPLICATE), null, ALL));
+		for (SkillingEvents.Forestry kind : SkillingEvents.Forestry.values())
+		{
+			final List<String> said = lines.compose(
+				new ActivityAlerts.Alert(ActivityAlerts.Type.FORESTRY_EVENT, null, kind.title), null, ALL);
+			assertEquals(kind.name(), 1, said.size());
+			assertTrue(kind + ": " + said, said.get(0).contains("forestry-"));
+			assertFalse(kind + " has its own line", said.equals(paths("forestry-event")));
+		}
+	}
+
+	@Test
+	public void aMissingDetailClipFallsBackToTheAlertsLine()
+	{
+		final Predicate<String> noTier = p -> !p.equals(VoiceLines.path("clue-hard"));
+		assertEquals(paths("clue-drop"), lines.compose(
+			new ActivityAlerts.Alert(ActivityAlerts.Type.CLUE_DROP, null, "Clue geode (hard)"), null, noTier));
+	}
+
 	private static ActivityAlerts.Alert stopped(Skill skill)
 	{
 		return alert(ActivityAlerts.Type.GATHERING_STOPPED, skill);

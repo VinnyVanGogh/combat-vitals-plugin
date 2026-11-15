@@ -56,7 +56,14 @@ final class ActivityAlerts
 		STUNNED,
 		COIN_POUCH_CAP,
 		NECKLACE_BROKE,
-		LOW_RUN_ENERGY
+		LOW_RUN_ENERGY,
+		/** The rest are {@link SkillingEvents}': news while skilling, not stopping. */
+		BIRD_NEST,
+		CLUE_DROP,
+		FORESTRY_EVENT,
+		PET,
+		LEVEL_UP,
+		RANDOM_EVENT
 	}
 
 	/** One alert to send, with the skill it is about when there is one. */
@@ -64,17 +71,26 @@ final class ActivityAlerts
 	{
 		final Type type;
 		final Skill skill;
+		/** What exactly happened, for the skilling events ("Clue geode (easy)"); null otherwise. */
+		final String detail;
 
 		Alert(Type type, Skill skill)
 		{
+			this(type, skill, null);
+		}
+
+		Alert(Type type, Skill skill, String detail)
+		{
 			this.type = type;
 			this.skill = skill;
+			this.detail = detail;
 		}
 
 		@Override
 		public String toString()
 		{
-			return skill == null ? type.name() : type + "(" + skill + ")";
+			final String base = skill == null ? type.name() : type + "(" + skill + ")";
+			return detail == null ? base : base + "[" + detail + "]";
 		}
 	}
 
@@ -347,6 +363,11 @@ final class ActivityAlerts
 	/** The notification text for an alert. */
 	static String message(Alert alert, int pouchCap)
 	{
+		final String event = SkillingEvents.message(alert);
+		if (event != null)
+		{
+			return event;
+		}
 		switch (alert.type)
 		{
 			case INVENTORY_FULL:

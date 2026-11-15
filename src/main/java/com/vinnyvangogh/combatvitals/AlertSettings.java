@@ -22,6 +22,10 @@ final class AlertSettings
 
 	static AlertSettings of(CombatVitalsConfig config, ActivityAlerts.Type type)
 	{
+		if (SkillingEvents.isEvent(type))
+		{
+			return ofEvent(config, type);
+		}
 		switch (type)
 		{
 			case INVENTORY_FULL:
@@ -52,6 +56,33 @@ final class AlertSettings
 			default:
 				return new AlertSettings(config.alertLowRunEnergy(), config.soundLowRunEnergy(),
 					config.volumeLowRunEnergy(), config.repeatLowRunEnergy());
+		}
+	}
+
+	/** The skilling events' settings ({@link SkillingEvents#TYPES}). */
+	private static AlertSettings ofEvent(CombatVitalsConfig config, ActivityAlerts.Type type)
+	{
+		switch (type)
+		{
+			case BIRD_NEST:
+				return new AlertSettings(config.alertBirdNest(), config.soundBirdNest(),
+					config.volumeBirdNest(), config.repeatBirdNest());
+			case CLUE_DROP:
+				return new AlertSettings(config.alertClueDrop(), config.soundClueDrop(),
+					config.volumeClueDrop(), config.repeatClueDrop());
+			case FORESTRY_EVENT:
+				return new AlertSettings(config.alertForestryEvent(), config.soundForestryEvent(),
+					config.volumeForestryEvent(), config.repeatForestryEvent());
+			case PET:
+				return new AlertSettings(config.alertPet(), config.soundPet(),
+					config.volumePet(), config.repeatPet());
+			case LEVEL_UP:
+				return new AlertSettings(config.alertLevelUp(), config.soundLevelUp(),
+					config.volumeLevelUp(), config.repeatLevelUp());
+			case RANDOM_EVENT:
+			default:
+				return new AlertSettings(config.alertRandomEvent(), config.soundRandomEvent(),
+					config.volumeRandomEvent(), config.repeatRandomEvent());
 		}
 	}
 

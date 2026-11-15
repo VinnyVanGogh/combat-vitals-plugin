@@ -47,15 +47,19 @@ import net.runelite.api.WorldView;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ClientTick;
+import net.runelite.api.events.GameObjectDespawned;
+import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.HitsplatApplied;
 import net.runelite.api.events.InteractingChanged;
 import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.events.ItemSpawned;
 import net.runelite.api.events.MenuOpened;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.NpcChanged;
 import net.runelite.api.events.NpcDespawned;
+import net.runelite.api.events.NpcSpawned;
 import net.runelite.api.events.OverheadTextChanged;
 import net.runelite.api.events.StatChanged;
 import net.runelite.api.events.VarbitChanged;
@@ -364,6 +368,8 @@ public class CombatVitalsPlugin extends Plugin
 
 	/** Every alert is pure state here; the plugin only feeds it and sends what it returns. */
 	private final ActivityAlerts activityAlerts = new ActivityAlerts();
+	/** Nests, Forestry, clues, pets, level-ups and randoms: news while skilling. */
+	private final SkillingEvents skillingEvents = new SkillingEvents();
 
 	/** The coin pouch item's name, shared by every pouch variant. */
 	private static final String COIN_POUCH = "Coin pouch";
@@ -662,6 +668,10 @@ public class CombatVitalsPlugin extends Plugin
 					holder.releaseAll();
 				}
 				break;
+			case LOADING:
+				// Every object in view despawns and spawns again: not new Forestry events.
+				skillingEvents.sceneLoading();
+				break;
 			default:
 				break;
 		}
@@ -693,6 +703,7 @@ public class CombatVitalsPlugin extends Plugin
 		ticksUntilDrop = -1;
 		lastSpecEnergy = -1;
 		activityAlerts.clear();
+		skillingEvents.clear();
 		alertRepeat.stop();
 		gainedItems.clear();
 		lastGainedItem = null;
@@ -706,6 +717,8 @@ public class CombatVitalsPlugin extends Plugin
 	@Subscribe
 	public void onInteractingChanged(InteractingChanged event)
 	{
+		randomEventTurnedTo(event.getSource(), event.getTarget());
+
 		// The single gate the whole compliance argument rests on: this plugin
 		// only ever tracks the target the user themselves engaged.
 		if (event.getSource() != client.getLocalPlayer())
@@ -742,6 +755,21 @@ public class CombatVitalsPlugin extends Plugin
 		else
 		{
 			interactionEnded();
+		}
+	}
+
+	/**
+	 * A random event NPC turning to the local player, and not one the player
+	 * is already talking to: the base Random Events plugin's own condition.
+	 * Another player's random event never targets you, so never counts.
+	 */
+	private void randomEventTurnedTo(Actor source, Actor target)
+	{
+		final Player self = client.getLocalPlayer();
+		if (self != null && target == self && source instanceof NPC && self.getInteracting() != source
+			&& SkillingEvents.isRandomEventNpc(((NPC) source).getId()))
+		{
+			skillingEvents.randomEvent(source.getName(), client.getTickCount());
 		}
 	}
 
@@ -846,6 +874,7 @@ public class CombatVitalsPlugin extends Plugin
 		final int boosted = event.getBoostedLevel();
 
 		activityAlerts.xp(skill, event.getXp());
+		skillingEvents.stat(skill, event.getXp(), real, tick);
 		session.xp(skill, event.getXp(), System.currentTimeMillis());
 		xpSkilling.xp(skill, event.getXp());
 
@@ -1080,6 +1109,12 @@ public class CombatVitalsPlugin extends Plugin
 	@Subscribe
 	public void onChatMessage(ChatMessage event)
 	{
+		if (event.getType() == ChatMessageType.MESBOX)
+		{
+			// The base Woodcutting plugin reads the nest line from MESBOX too.
+			skillingEvents.chat(Text.removeTags(event.getMessage()));
+			return;
+		}
 		if (event.getType() != ChatMessageType.GAMEMESSAGE && event.getType() != ChatMessageType.SPAM)
 		{
 			return;
@@ -1094,6 +1129,7 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			activityAlerts.necklaceBroke();
 		}
+		skillingEvents.chat(message);
 
 		containerContents.message(message, client.getTickCount());
 		agilityLaps.message(message, System.currentTimeMillis());
@@ -1168,7 +1204,65 @@ public class CombatVitalsPlugin extends Plugin
 		if (gained != -1)
 		{
 			lastGainedItem = client.getItemDefinition(gained).getName();
+			// A clue geode can land on the same tick as the ore: every item gained is checked.
+			final boolean skillingNow = (activityAlerts.active() != null || skilling.skill() != null) && !bankOpen();
+			for (int id : gainedItems.gained())
+			{
+				skillingEvents.inventoryGained(client.getItemDefinition(id).getName(), skillingNow);
+			}
 		}
+	}
+
+	/** A clue nest on the ground, for the bird nest line that follows it. */
+	@Subscribe
+	public void onItemSpawned(ItemSpawned event)
+	{
+		skillingEvents.groundItem(client.getItemDefinition(event.getItem().getId()).getName(), client.getTickCount());
+	}
+
+	/** Rising Roots and Struggling Sapling are objects; the other Forestry events are NPCs. */
+	@Subscribe
+	public void onGameObjectSpawned(GameObjectSpawned event)
+	{
+		final SkillingEvents.Forestry kind = SkillingEvents.forestryObject(event.getGameObject().getId());
+		if (kind != null)
+		{
+			skillingEvents.forestrySpawned(kind, event.getGameObject(), near(event.getGameObject().getWorldLocation()),
+				client.getTickCount());
+		}
+	}
+
+	@Subscribe
+	public void onGameObjectDespawned(GameObjectDespawned event)
+	{
+		final SkillingEvents.Forestry kind = SkillingEvents.forestryObject(event.getGameObject().getId());
+		if (kind != null)
+		{
+			skillingEvents.forestryDespawned(kind, event.getGameObject(), client.getTickCount());
+		}
+	}
+
+	@Subscribe
+	public void onNpcSpawned(NpcSpawned event)
+	{
+		final SkillingEvents.Forestry kind = SkillingEvents.forestryNpc(event.getNpc().getId());
+		if (kind != null)
+		{
+			skillingEvents.forestrySpawned(kind, event.getNpc(), near(event.getNpc().getWorldLocation()),
+				client.getTickCount());
+		}
+	}
+
+	/** Within {@link SkillingEvents#FORESTRY_RANGE} tiles of the local player. */
+	private boolean near(WorldPoint point)
+	{
+		final Player self = client.getLocalPlayer();
+		if (self == null || point == null)
+		{
+			return false;
+		}
+		final int distance = self.getWorldLocation().distanceTo(point);
+		return distance <= SkillingEvents.FORESTRY_RANGE;
 	}
 
 	/** The inventory as item id to total quantity, empty slots left out. */
@@ -1230,6 +1324,12 @@ public class CombatVitalsPlugin extends Plugin
 		if (spotPathing != null && client.getGameState() == GameState.LOGGED_IN)
 		{
 			spotPathing.despawned(event.getNpc());
+		}
+
+		final SkillingEvents.Forestry kind = SkillingEvents.forestryNpc(event.getNpc().getId());
+		if (kind != null)
+		{
+			skillingEvents.forestryDespawned(kind, event.getNpc(), client.getTickCount());
 		}
 
 		// A kill: the NPC is leaving the scene, and frames drawn before the
@@ -2195,8 +2295,27 @@ public class CombatVitalsPlugin extends Plugin
 		lastPosition = position;
 
 		final int pouchCap = config.alertCoinPouchCap();
-		sendAlerts(activityAlerts.tick(now, ActivityAlerts.ticks(config.alertStopSeconds()), pouchCap,
-			config.alertRunEnergyThreshold()), pouchCap);
+		final List<ActivityAlerts.Alert> fired = new ArrayList<>(activityAlerts.tick(now,
+			ActivityAlerts.ticks(config.alertStopSeconds()), pouchCap, config.alertRunEnergyThreshold()));
+		addSkillingEvents(fired, now.tick);
+		sendAlerts(fired, pouchCap);
+	}
+
+	/**
+	 * This tick's skilling events, a clue nest routed to the bird nest alert
+	 * when Clue drop is off, and level-ups the filter does not want left out.
+	 */
+	private void addSkillingEvents(List<ActivityAlerts.Alert> fired, int tick)
+	{
+		final boolean clueOn = AlertSettings.of(config, ActivityAlerts.Type.CLUE_DROP).enabled();
+		for (ActivityAlerts.Alert alert : skillingEvents.tick(tick))
+		{
+			if (alert.type != ActivityAlerts.Type.LEVEL_UP
+				|| SkillingEvents.levelWanted(alert.skill, config.alertLevelUpSkills()))
+			{
+				fired.add(SkillingEvents.route(alert, clueOn));
+			}
+		}
 	}
 
 	/** This tick's alerts, then any repeat that is due. */
