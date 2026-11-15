@@ -1822,4 +1822,16 @@ public interface CombatVitalsConfig extends Config
 	}
 
 	String LAST_SEEN_VERSION = "lastSeenVersion";
+
+	/** The sidebar's Live section is open ({@link LiveSection}); written by its header, never listed. */
+	@ConfigItem(
+		keyName = LiveSection.OPEN_KEY,
+		name = "",
+		description = "",
+		hidden = true
+	)
+	default boolean sidebarLiveOpen()
+	{
+		return true;
+	}
 }

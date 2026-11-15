@@ -138,3 +138,5 @@ skillingMagic boolean
 skillingAgility boolean
 skillingConstruction boolean
 skillingSailing boolean
+# 2026-11-14: the sidebar's Live section, folded or open (task-df2618a5).
+sidebarLiveOpen boolean
