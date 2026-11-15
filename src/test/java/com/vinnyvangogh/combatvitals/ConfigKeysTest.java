@@ -134,12 +134,14 @@ public class ConfigKeysTest
 	 * A setting is read by a call, config.key(), or by a method reference,
 	 * config::key, handed on to be called later (SpotPathing's
 	 * fishingSpotShortestPath). The reference must end at the key's last
-	 * letter, so config::keyLonger does not count as reading key.
+	 * letter, so config::keyLonger does not count as reading key. An unbound
+	 * reference, CombatVitalsConfig::key, counts too (SkillSwitches' table).
 	 */
 	static boolean isRead(String code, String key)
 	{
 		return code.contains("config." + key + "()")
-			|| Pattern.compile("config::" + Pattern.quote(key) + "(?![\\p{javaJavaIdentifierPart}])").matcher(code).find();
+			|| Pattern.compile("(?:config|CombatVitalsConfig)::" + Pattern.quote(key)
+				+ "(?![\\p{javaJavaIdentifierPart}])").matcher(code).find();
 	}
 
 	@Test
