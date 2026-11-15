@@ -102,7 +102,11 @@ final class PanelLayout
 			null),
 		row(ActivityAlerts.Type.PRODUCTION_FINISHED, "Make-X finished", "MakeFinished", "alertMakeFinished", null),
 		row(ActivityAlerts.Type.LOW_RUN_ENERGY, "Low run energy", "LowRunEnergy", "alertLowRunEnergy",
-			"alertRunEnergyThreshold")));
+			"alertRunEnergyThreshold"),
+		row(ActivityAlerts.Type.METHOD_STOPPED, "Stopped pumping", "MethodStopped", "alertMethodStopped", null),
+		row(ActivityAlerts.Type.RECLICK_SOON, "Re-click soon", "ReclickSoon", "alertReclickSoon", null),
+		row(ActivityAlerts.Type.AUTO_STOP_SOON, "Auto-stop soon", "AutoStopSoon", "alertAutoStopSoon",
+			"alertMethodWarnSeconds")));
 
 	/** In the settings list only: the panel says where to find them. */
 	static final List<String> ADVANCED = Collections.unmodifiableList(Arrays.asList(

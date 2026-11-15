@@ -140,3 +140,17 @@ skillingConstruction boolean
 skillingSailing boolean
 # 2026-11-14: the sidebar's Live section, folded or open (task-df2618a5).
 sidebarLiveOpen boolean
+# 2026-11-14: the Blast Furnace pump's alerts (task-20b05b6b).
+alertMethodStopped Notification
+alertReclickSoon Notification
+alertAutoStopSoon Notification
+alertMethodWarnSeconds int
+soundMethodStopped AlertSound
+volumeMethodStopped int
+repeatMethodStopped boolean
+soundReclickSoon AlertSound
+volumeReclickSoon int
+repeatReclickSoon boolean
+soundAutoStopSoon AlertSound
+volumeAutoStopSoon int
+repeatAutoStopSoon boolean

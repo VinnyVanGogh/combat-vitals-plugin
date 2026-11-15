@@ -24,6 +24,10 @@ import net.runelite.api.coords.WorldPoint;
 final class SkillingReadout
 {
 	private final Skill skill;
+
+	/** The training method the badge is for, the Blast Furnace pump, or null for plain skilling. */
+	private final TrainingMethod method;
+
 	private final int real;
 	private final int boosted;
 

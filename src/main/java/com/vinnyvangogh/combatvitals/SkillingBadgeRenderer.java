@@ -396,12 +396,12 @@ class SkillingBadgeRenderer
 	{
 		if (readout.isIdle())
 		{
-			return SkillingText.idleHeader(readout.getSkill());
+			return SkillingText.idleHeader(readout.getSkill(), readout.getMethod());
 		}
 
 		final int seconds = SkillingText.seconds(readout.getTicksUntilDrop(),
 			System.currentTimeMillis() - readout.getTickMillis());
-		return SkillingText.text(readout.getSkill().getName(), readout.getReal(), readout.getBoosted(), seconds,
+		return SkillingText.text(SkillingText.headerName(readout.getSkill(), readout.getMethod()), readout.getReal(), readout.getBoosted(), seconds,
 			!readout.isTimerConfirmed(), readout.getSpecPercent(), readout.getSource(), readout.getWarning());
 	}
 

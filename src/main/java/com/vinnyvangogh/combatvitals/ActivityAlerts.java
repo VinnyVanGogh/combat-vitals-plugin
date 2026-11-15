@@ -56,19 +56,33 @@ final class ActivityAlerts
 		STUNNED,
 		COIN_POUCH_CAP,
 		NECKLACE_BROKE,
-		LOW_RUN_ENERGY
+		LOW_RUN_ENERGY,
+		/** A {@link TrainingMethod} has stopped: "You've stopped pumping" ({@link TrainingSession}). */
+		METHOD_STOPPED,
+		/** The idle logout is near: touch the client or click again. */
+		RECLICK_SOON,
+		/** The game is about to stop the method by itself: the pump's 100 minutes. */
+		AUTO_STOP_SOON
 	}
 
-	/** One alert to send, with the skill it is about when there is one. */
+	/** One alert to send, with the skill it is about when there is one, and the training method. */
 	static final class Alert
 	{
 		final Type type;
 		final Skill skill;
+		/** The training method the alert is about, or null for gathering and the rest. */
+		final TrainingMethod method;
 
 		Alert(Type type, Skill skill)
 		{
+			this(type, skill, null);
+		}
+
+		Alert(Type type, Skill skill, TrainingMethod method)
+		{
 			this.type = type;
 			this.skill = skill;
+			this.method = method;
 		}
 
 		@Override
@@ -365,8 +379,25 @@ final class ActivityAlerts
 			case NECKLACE_BROKE:
 				return "Your dodgy necklace has crumbled";
 			case LOW_RUN_ENERGY:
-			default:
 				return "You have low run energy";
+			default:
+				return methodMessage(alert);
+		}
+	}
+
+	/** A training method alert's text: "You have stopped pumping". */
+	private static String methodMessage(Alert alert)
+	{
+		final String verb = alert.method == null ? "training" : alert.method.verb();
+		switch (alert.type)
+		{
+			case RECLICK_SOON:
+				return "Click soon or you will be logged out for being idle";
+			case AUTO_STOP_SOON:
+				return "You will stop " + verb + " soon: click again to keep going";
+			case METHOD_STOPPED:
+			default:
+				return "You have stopped " + verb;
 		}
 	}
 

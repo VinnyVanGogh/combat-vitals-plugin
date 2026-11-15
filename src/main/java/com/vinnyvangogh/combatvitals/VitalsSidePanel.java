@@ -96,7 +96,12 @@ final class VitalsSidePanel extends PluginPanel
 		cardPanel.setOpaque(false);
 		for (PanelLayout.Tab tab : PanelLayout.Tab.values())
 		{
-			cardPanel.add(tab(tab), tab.name());
+			// A card is as tall as the tallest tab; pinned to the top, a shorter tab keeps its rows' own
+			// heights instead of BoxLayout stretching every dropdown and spinner row to fill it.
+			final JPanel card = new JPanel(new BorderLayout());
+			card.setOpaque(false);
+			card.add(tab(tab), BorderLayout.NORTH);
+			cardPanel.add(card, tab.name());
 		}
 		root.add(cardPanel);
 		add(root, BorderLayout.NORTH);
