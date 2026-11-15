@@ -22,10 +22,11 @@ final class AlertSettings
 
 	static AlertSettings of(CombatVitalsConfig config, ActivityAlerts.Type type)
 	{
-		if (SkillingEvents.isEvent(type))
-		{
-			return ofEvent(config, type);
-		}
+		return SkillingEvents.isEvent(type) ? ofEvent(config, type) : ofActivity(config, type);
+	}
+
+	private static AlertSettings ofActivity(CombatVitalsConfig config, ActivityAlerts.Type type)
+	{
 		switch (type)
 		{
 			case INVENTORY_FULL:

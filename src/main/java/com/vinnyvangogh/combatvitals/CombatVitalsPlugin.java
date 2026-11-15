@@ -1200,16 +1200,23 @@ public class CombatVitalsPlugin extends Plugin
 			skilling.caught(caught);
 		}
 
+		noteGainedItems(ids, quantities);
+	}
+
+	/** The item that last landed, for voice lines, and any clue among everything that did. */
+	private void noteGainedItems(int[] ids, int[] quantities)
+	{
 		final int gained = gainedItems.observe(ids, quantities);
-		if (gained != -1)
+		if (gained == -1)
 		{
-			lastGainedItem = client.getItemDefinition(gained).getName();
-			// A clue geode can land on the same tick as the ore: every item gained is checked.
-			final boolean skillingNow = (activityAlerts.active() != null || skilling.skill() != null) && !bankOpen();
-			for (int id : gainedItems.gained())
-			{
-				skillingEvents.inventoryGained(client.getItemDefinition(id).getName(), skillingNow);
-			}
+			return;
+		}
+		lastGainedItem = client.getItemDefinition(gained).getName();
+		// A clue geode can land on the same tick as the ore: every item gained is checked.
+		final boolean skillingNow = (activityAlerts.active() != null || skilling.skill() != null) && !bankOpen();
+		for (int id : gainedItems.gained())
+		{
+			skillingEvents.inventoryGained(client.getItemDefinition(id).getName(), skillingNow);
 		}
 	}
 

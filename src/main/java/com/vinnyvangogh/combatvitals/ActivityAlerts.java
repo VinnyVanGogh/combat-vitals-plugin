@@ -364,10 +364,11 @@ final class ActivityAlerts
 	static String message(Alert alert, int pouchCap)
 	{
 		final String event = SkillingEvents.message(alert);
-		if (event != null)
-		{
-			return event;
-		}
+		return event != null ? event : activityMessage(alert, pouchCap);
+	}
+
+	private static String activityMessage(Alert alert, int pouchCap)
+	{
 		switch (alert.type)
 		{
 			case INVENTORY_FULL:

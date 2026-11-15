@@ -173,14 +173,20 @@ final class VoiceLines
 			ids.add(verb);
 			return ids;
 		}
-		final String detailKey = SkillingEvents.voiceKey(alert);
-		final String detail = detailKey == null ? null : details.get(key(detailKey));
-		final String whole = detail != null ? detail : alerts.get(key(alert.type.name()));
+		final String whole = wholeLine(alert);
 		if (whole != null)
 		{
 			ids.add(whole);
 		}
 		return ids;
+	}
+
+	/** The alert's own line, or the more particular one for what exactly happened. */
+	private String wholeLine(ActivityAlerts.Alert alert)
+	{
+		final String detailKey = SkillingEvents.voiceKey(alert);
+		final String detail = detailKey == null ? null : details.get(key(detailKey));
+		return detail != null ? detail : alerts.get(key(alert.type.name()));
 	}
 
 	/** The resource clip for an item gathered with a skill, or null. */
