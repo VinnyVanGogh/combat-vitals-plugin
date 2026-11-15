@@ -168,7 +168,10 @@ final class VoiceLines
 			ids.add(verb);
 			return ids;
 		}
-		final String whole = alerts.get(key(alert.type.name()));
+		// A training method's own line first ("You've stopped pumping."), then the type's.
+		final String own = alert.method == null ? null
+			: alerts.get(key(alert.type.name() + "|" + alert.method.name()));
+		final String whole = own != null ? own : alerts.get(key(alert.type.name()));
 		if (whole != null)
 		{
 			ids.add(whole);

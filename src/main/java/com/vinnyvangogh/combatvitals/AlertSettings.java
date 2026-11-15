@@ -48,6 +48,15 @@ final class AlertSettings
 			case NECKLACE_BROKE:
 				return new AlertSettings(config.alertNecklaceBroke(), config.soundNecklaceBroke(),
 					config.volumeNecklaceBroke(), config.repeatNecklaceBroke());
+			case METHOD_STOPPED:
+				return new AlertSettings(config.alertMethodStopped(), config.soundMethodStopped(),
+					config.volumeMethodStopped(), config.repeatMethodStopped());
+			case RECLICK_SOON:
+				return new AlertSettings(config.alertReclickSoon(), config.soundReclickSoon(),
+					config.volumeReclickSoon(), config.repeatReclickSoon());
+			case AUTO_STOP_SOON:
+				return new AlertSettings(config.alertAutoStopSoon(), config.soundAutoStopSoon(),
+					config.volumeAutoStopSoon(), config.repeatAutoStopSoon());
 			case LOW_RUN_ENERGY:
 			default:
 				return new AlertSettings(config.alertLowRunEnergy(), config.soundLowRunEnergy(),

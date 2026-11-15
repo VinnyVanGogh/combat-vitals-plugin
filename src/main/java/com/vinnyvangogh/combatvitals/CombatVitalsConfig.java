@@ -1347,6 +1347,59 @@ public interface CombatVitalsConfig extends Config
 		return 10;
 	}
 
+	@ConfigItem(
+		keyName = "alertMethodStopped",
+		name = "Stopped pumping",
+		description = "Notify when operating the Blast Furnace pump has had no animation or Strength experience for "
+			+ "the stopped delay above. Not sent when you walk away or a fight starts.",
+		section = alertsSection,
+		position = 12
+	)
+	default Notification alertMethodStopped()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "alertReclickSoon",
+		name = "Idle logout soon",
+		description = "While pumping: notify a little before the game logs you out for not touching the mouse or "
+			+ "keyboard (5 minutes by default, up to 25 in the game's settings). The badge counts it down as "
+			+ "'Re-click in'.",
+		section = alertsSection,
+		position = 13
+	)
+	default Notification alertReclickSoon()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "alertAutoStopSoon",
+		name = "Pump stops soon",
+		description = "Notify a little before the Blast Furnace pump stops by itself, 100 minutes after you clicked "
+			+ "it. The badge counts it down as 'Stops in'.",
+		section = alertsSection,
+		position = 14
+	)
+	default Notification alertAutoStopSoon()
+	{
+		return Notification.ON;
+	}
+
+	@Range(min = 5, max = 300)
+	@ConfigItem(
+		keyName = "alertMethodWarnSeconds",
+		name = "Warn before (s)",
+		description = "How long before the idle logout or the pump's own stop the two alerts above fire.",
+		section = alertsSection,
+		position = 15
+	)
+	default int alertMethodWarnSeconds()
+	{
+		return 60;
+	}
+
 	String SOUND_HELP = " RuneLite: your RuneLite notification sound, as before. Soft chime, Music box, Retro blip: "
 		+ "bundled sounds. Voice line: says what happened. My sounds: your own WAV in "
 		+ ".runelite/combat-vitals/sounds/";
@@ -1709,6 +1762,117 @@ public interface CombatVitalsConfig extends Config
 		position = 28
 	)
 	default boolean repeatLowRunEnergy()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundMethodStopped",
+		name = "Pumping sound",
+		description = "What the stopped pumping alert sounds like." + SOUND_HELP + "method-stopped.wav",
+		section = alertSoundsSection,
+		position = 29
+	)
+	default AlertSound soundMethodStopped()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeMethodStopped",
+		name = "Pumping volume",
+		description = VOLUME_HELP,
+		section = alertSoundsSection,
+		position = 30
+	)
+	default int volumeMethodStopped()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatMethodStopped",
+		name = "Repeat pumping",
+		description = "Sound the stopped pumping alert" + REPEAT_HELP,
+		section = alertSoundsSection,
+		position = 31
+	)
+	default boolean repeatMethodStopped()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundReclickSoon",
+		name = "Idle logout sound",
+		description = "What the idle logout soon alert sounds like." + SOUND_HELP + "reclick-soon.wav",
+		section = alertSoundsSection,
+		position = 32
+	)
+	default AlertSound soundReclickSoon()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeReclickSoon",
+		name = "Idle logout volume",
+		description = VOLUME_HELP,
+		section = alertSoundsSection,
+		position = 33
+	)
+	default int volumeReclickSoon()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatReclickSoon",
+		name = "Repeat idle logout",
+		description = "Sound the idle logout soon alert" + REPEAT_HELP,
+		section = alertSoundsSection,
+		position = 34
+	)
+	default boolean repeatReclickSoon()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundAutoStopSoon",
+		name = "Pump stops sound",
+		description = "What the pump stops soon alert sounds like." + SOUND_HELP + "auto-stop-soon.wav",
+		section = alertSoundsSection,
+		position = 35
+	)
+	default AlertSound soundAutoStopSoon()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeAutoStopSoon",
+		name = "Pump stops volume",
+		description = VOLUME_HELP,
+		section = alertSoundsSection,
+		position = 36
+	)
+	default int volumeAutoStopSoon()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatAutoStopSoon",
+		name = "Repeat pump stops",
+		description = "Sound the pump stops soon alert" + REPEAT_HELP,
+		section = alertSoundsSection,
+		position = 37
+	)
+	default boolean repeatAutoStopSoon()
 	{
 		return false;
 	}
