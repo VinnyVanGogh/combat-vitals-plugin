@@ -23,8 +23,8 @@ import net.runelite.client.ui.PluginPanel;
  */
 final class WrapLabel extends JLabel
 {
-	/** Inside PluginPanel's 10 px borders and a guide's 6 px indent, with room to spare. */
-	static final int FIRST_WIDTH = PluginPanel.PANEL_WIDTH - 2 * 10 - 12;
+	/** Inside PluginPanel's 10 px borders and a card's padding and accent bar, with room to spare. */
+	static final int FIRST_WIDTH = PluginPanel.PANEL_WIDTH - 2 * 10 - 2 * PanelStyle.M - Card.ACCENT_WIDTH - 12;
 
 	private String plain;
 

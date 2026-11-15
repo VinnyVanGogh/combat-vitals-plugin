@@ -4,17 +4,19 @@ import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Font;
+import java.awt.Dimension;
+import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import javax.swing.AbstractButton;
-import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
@@ -25,23 +27,26 @@ import javax.swing.JToggleButton;
 import javax.swing.border.EmptyBorder;
 import net.runelite.client.config.ConfigItemDescriptor;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.colorpicker.ColorPickerManager;
 
 /**
- * The plugin's sidebar panel: the live vitals at the top ({@link LiveSection}),
- * then presets, then five tabs (Combat, Targets, Skilling, Alerts, Look), each
- * opening with its own short guide.
+ * The plugin's sidebar panel: a title with Hide guides, the live vitals as
+ * cards ({@link LiveSection}), then presets, then five tabs (Combat, Targets,
+ * Skilling, Alerts, Look) under a segmented control, each opening with its
+ * guide as a boxed card ({@link GuideCard}) and its settings in cards that
+ * fold, the seldom-changed ones behind "More settings".
  * Every input is a setting from RuneLite's list, same key and same value
- * ({@link SettingControls}); where each sits is {@link PanelLayout}'s.
+ * ({@link SettingControls}); where each sits is {@link PanelLayout}'s. How it
+ * looks is {@link PanelStyle}'s.
  *
  * <p>Patterns from GIM Utilities' panel (VinnyVanGogh/group-ironman-plugin):
  * tabs swapped with a {@link CardLayout} under a row of toggle buttons
- * ({@code GroupIronmanPanel}), headings and wrapping text in RuneScape fonts
- * ({@code GroupIronmanPanel.heading/text}), a left-aligning {@link Column}
- * ({@code GroupIronmanPanel.Column}), and sections that fold from their
- * header ({@code GroupSettingsTab.collapsible}).
+ * ({@code GroupIronmanPanel.tabBar}), cards on DARKER_GRAY with 6 px padding
+ * ({@code GroupIronmanPanel.section}), sections that fold from their header
+ * ({@code GroupSettingsTab.collapsible}), a left-aligning {@link Column}
+ * ({@code GroupIronmanPanel.Column}) and small toggle chips
+ * ({@code GroupIronmanPanel.chip}).
  *
  * <p>Swing thread only. Config writes leave it through the {@link ConfigStore};
  * {@link #refresh} redraws from the stored values after any change, made
@@ -59,7 +64,18 @@ final class VitalsSidePanel extends PluginPanel
 	static final String TITLE = "Combat & Skilling Vitals";
 	static final String ADVANCED_NOTE = "Timeouts and update notes are in RuneLite's settings list for this "
 		+ "plugin, under Advanced.";
-	private static final Color MUTED = ColorScheme.LIGHT_GRAY_COLOR.darker();
+	/** Hidden setting: the guides folded by the user, "PRESETS,COMBAT"; every other guide is open. */
+	static final String GUIDES_CLOSED_KEY = "sidebarGuidesClosed";
+	/** Hidden setting: every guide hidden from the header's Hide guides. */
+	static final String GUIDES_HIDDEN_KEY = "sidebarGuidesHidden";
+	static final String HIDE_GUIDES = "Hide guides";
+	static final String SHOW_GUIDES = "Show guides";
+	static final String MORE = "More settings";
+	static final String PRESETS_GUIDE = "PRESETS";
+	/** How many of a tab's setting cards start open; the rest start folded. */
+	static final int OPEN_GROUPS = 3;
+	/** Every setting row is at least this tall, so rows line up from card to card. */
+	static final int ROW_HEIGHT = 24;
 
 	private final ConfigStore store;
 	private final SettingControls controls;
@@ -70,6 +86,9 @@ final class VitalsSidePanel extends PluginPanel
 	/** Shown or hidden from the settings on every refresh, e.g. per-alert sounds while one is shared. */
 	private final List<Runnable> visibility = new ArrayList<>();
 	private final Column presetBody = new Column();
+	private final List<GuideCard> guides = new ArrayList<>();
+	private final Set<String> closedGuides = new LinkedHashSet<>();
+	private final JButton hideGuides = linkButton(HIDE_GUIDES, "Hide or show the guide at the top of each tab.");
 	private final LiveSection live;
 	/** The sidebar has this panel open; set on the Swing thread, read on the client thread. */
 	private volatile boolean shown;
@@ -87,8 +106,7 @@ final class VitalsSidePanel extends PluginPanel
 		setBackground(ColorScheme.DARK_GRAY_COLOR);
 
 		final Column root = new Column();
-		root.setOpaque(false);
-		root.add(title());
+		root.add(header());
 		live = new LiveSection(store);
 		root.add(live);
 		root.add(presets());
@@ -118,6 +136,7 @@ final class VitalsSidePanel extends PluginPanel
 		{
 			r.run();
 		}
+		drawGuides();
 		drawPresets();
 		revalidate();
 		repaint();
@@ -158,23 +177,103 @@ final class VitalsSidePanel extends PluginPanel
 		repaint();
 	}
 
-	// ---- Title and presets ----
+	// ---- Header and guides ----
 
-	private static JComponent title()
+	private JComponent header()
 	{
+		final Column c = new Column();
+		c.setBorder(new EmptyBorder(0, 0, PanelStyle.M, 0));
 		final JLabel title = new JLabel(TITLE);
-		title.setFont(FontManager.getRunescapeBoldFont());
-		title.setForeground(Color.WHITE);
-		title.setBorder(new EmptyBorder(0, 0, 4, 0));
-		return title;
+		title.setFont(PanelStyle.title());
+		title.setForeground(PanelStyle.TEXT);
+		c.add(title);
+		final JPanel row = new JPanel(new BorderLayout());
+		row.setOpaque(false);
+		hideGuides.setName("hide-guides");
+		hideGuides.addActionListener(e ->
+		{
+			// From what is showing, not the store: the write lands later, off the Swing thread.
+			final boolean hide = HIDE_GUIDES.equals(hideGuides.getText());
+			store.set(GUIDES_HIDDEN_KEY, hide);
+			showGuides(hide);
+		});
+		row.add(hideGuides, BorderLayout.EAST);
+		c.add(row);
+		return c;
 	}
+
+	private GuideCard guide(String id, String title, PanelGuide.Page page)
+	{
+		final GuideCard g = new GuideCard(id, title, page);
+		g.onToggle(open ->
+		{
+			if (open)
+			{
+				closedGuides.remove(id);
+			}
+			else
+			{
+				closedGuides.add(id);
+			}
+			store.set(GUIDES_CLOSED_KEY, String.join(",", closedGuides));
+		});
+		guides.add(g);
+		return g;
+	}
+
+	private boolean guidesHidden()
+	{
+		return Boolean.TRUE.equals(store.get(GUIDES_HIDDEN_KEY, Boolean.class));
+	}
+
+	private void drawGuides()
+	{
+		guides(guidesHidden(), store.get(GUIDES_CLOSED_KEY, String.class));
+	}
+
+	/**
+	 * Each guide open unless the user folded it, all hidden while Hide guides
+	 * is on. The plugin calls this alone after a guide setting changes.
+	 *
+	 * @param closed the folded guides' ids, "PRESETS,COMBAT"; null or empty for none
+	 */
+	void guides(boolean hidden, String closed)
+	{
+		closedGuides.clear();
+		if (closed != null)
+		{
+			for (String id : closed.split(","))
+			{
+				if (!id.isEmpty())
+				{
+					closedGuides.add(id);
+				}
+			}
+		}
+		showGuides(hidden);
+	}
+
+	private void showGuides(boolean hidden)
+	{
+		hideGuides.setText(hidden ? SHOW_GUIDES : HIDE_GUIDES);
+		for (GuideCard g : guides)
+		{
+			g.setVisible(!hidden);
+			g.setOpen(!closedGuides.contains(g.id));
+		}
+		revalidate();
+		repaint();
+	}
+
+	// ---- Presets ----
 
 	private JComponent presets()
 	{
 		final Column c = new Column();
-		c.add(heading("Presets"));
-		guide(c, "Guide: presets", PanelGuide.PRESETS);
-		final JPanel buttons = new JPanel(new GridLayout(0, 2, 2, 2));
+		c.add(guide(PRESETS_GUIDE, "Guide: presets", PanelGuide.PRESETS));
+		final Card card = Card.of(null);
+		card.add(heading("Presets"));
+		final JPanel buttons = new JPanel(new GridLayout(0, 2, PanelStyle.S, PanelStyle.S));
 		buttons.setOpaque(false);
 		for (Presets.Preset p : Presets.Preset.values())
 		{
@@ -185,8 +284,9 @@ final class VitalsSidePanel extends PluginPanel
 				drawPresets();
 			}));
 		}
-		c.add(buttons);
-		c.add(presetBody);
+		card.add(buttons);
+		card.add(presetBody);
+		c.add(card);
 		return c;
 	}
 
@@ -200,7 +300,7 @@ final class VitalsSidePanel extends PluginPanel
 		}
 		if (note != null)
 		{
-			presetBody.add(text(note, ColorScheme.BRAND_ORANGE));
+			presetBody.add(text(note, PanelStyle.ACCENT));
 		}
 		if (undo != null)
 		{
@@ -215,18 +315,19 @@ final class VitalsSidePanel extends PluginPanel
 	{
 		final Map<String, String[]> changes = Presets.changes(p, store);
 		presetBody.add(heading(p.label + ": what changes"));
-		presetBody.add(text(p.summary, MUTED));
+		presetBody.add(text(p.summary, PanelStyle.MUTED));
 		if (changes.isEmpty())
 		{
-			presetBody.add(text("Already set: nothing would change.", Color.WHITE));
+			presetBody.add(text("Already set: nothing would change.", PanelStyle.TEXT));
 		}
 		for (Map.Entry<String, String[]> e : changes.entrySet())
 		{
 			presetBody.add(text(controls.name(e.getKey()) + ": " + shownValue(e.getKey(), e.getValue()[0])
-				+ " -> " + shownValue(e.getKey(), e.getValue()[1]), Color.WHITE));
+				+ " -> " + shownValue(e.getKey(), e.getValue()[1]), PanelStyle.TEXT));
 		}
-		final JPanel row = new JPanel(new GridLayout(1, 2, 2, 0));
+		final JPanel row = new JPanel(new GridLayout(1, 2, PanelStyle.S, 0));
 		row.setOpaque(false);
+		row.setBorder(new EmptyBorder(PanelStyle.S, 0, 0, 0));
 		final JButton apply = button("Apply", "Change the settings listed above.", () -> apply(p));
 		apply.setEnabled(!changes.isEmpty());
 		row.add(apply);
@@ -285,82 +386,140 @@ final class VitalsSidePanel extends PluginPanel
 
 	// ---- Tabs ----
 
+	/** The tabs as one segmented control: a rounded strip, the active tab raised and underlined in orange. */
 	private JComponent tabBar()
 	{
-		final JPanel bar = new JPanel(new GridLayout(0, 3, 2, 2));
+		final JPanel bar = new JPanel(new GridLayout(1, 0, 0, 0))
+		{
+			@Override
+			protected void paintComponent(Graphics g)
+			{
+				final Graphics2D g2 = PanelStyle.smooth(g);
+				try
+				{
+					g2.setColor(PanelStyle.CARD);
+					g2.fillRoundRect(0, 0, getWidth(), getHeight(), PanelStyle.ARC, PanelStyle.ARC);
+				}
+				finally
+				{
+					g2.dispose();
+				}
+			}
+		};
 		bar.setOpaque(false);
-		bar.setBorder(new EmptyBorder(8, 0, 4, 0));
+		bar.setBorder(new EmptyBorder(PanelStyle.XS, PanelStyle.XS, PanelStyle.XS, PanelStyle.XS));
 		final ButtonGroup group = new ButtonGroup();
 		for (PanelLayout.Tab tab : PanelLayout.Tab.values())
 		{
-			final JToggleButton b = new JToggleButton(tab.label);
-			b.setFont(FontManager.getRunescapeSmallFont());
-			b.setFocusable(false);
+			final Segment b = new Segment(tab.label);
 			b.addActionListener(e -> show(tab));
 			group.add(b);
 			tabButtons.put(tab, b);
 			bar.add(b);
 		}
-		return bar;
+		final Column c = new Column();
+		c.setBorder(new EmptyBorder(PanelStyle.L, 0, PanelStyle.M, 0));
+		c.add(bar);
+		return c;
 	}
 
 	private JComponent tab(PanelLayout.Tab tab)
 	{
 		final Column c = new Column();
 		c.setName(tab.name());
-		guide(c, "Guide: " + tab.label, PanelGuide.of(tab));
+		c.add(guide(tab.name(), "Guide: " + tab.label, PanelGuide.of(tab)));
 		if (tab.master != null)
 		{
-			addControl(c, tab.master);
+			final Card master = Card.of(PanelStyle.ACCENT);
+			addControl(master, tab.master);
+			c.add(master);
 		}
 		if (tab == PanelLayout.Tab.LOOK)
 		{
 			final LookPreview preview = new LookPreview(store);
 			controls.track(preview);
-			c.add(preview);
+			final Card box = Card.of(null);
+			box.add(preview);
+			c.add(box);
 		}
 		if (tab == PanelLayout.Tab.ALERTS)
 		{
 			alerts(c);
 		}
-		for (PanelLayout.Group g : PanelLayout.groups(tab))
-		{
-			c.add(heading(g.title));
-			for (String key : g.keys)
-			{
-				addControl(c, key);
-			}
-		}
+		groups(c, tab);
 		if (tab == PanelLayout.Tab.COMBAT)
 		{
-			c.add(text(ADVANCED_NOTE, MUTED));
+			c.add(text(ADVANCED_NOTE, PanelStyle.MUTED));
 		}
 		return c;
 	}
 
-	/** The shared sound, the repeat timing, then a row per alert; per-alert sounds only while not shared. */
+	/** A card per heading, the first {@link #OPEN_GROUPS} open; seldom-changed ones under "More settings". */
+	private void groups(Column c, PanelLayout.Tab tab)
+	{
+		final Column more = new Column();
+		int open = 0;
+		for (PanelLayout.Group g : PanelLayout.groups(tab))
+		{
+			final FoldCard card = new FoldCard(g.title, null, null, !g.more && open++ < OPEN_GROUPS);
+			for (String key : g.keys)
+			{
+				addControl(card.body, key);
+			}
+			(g.more ? more : c).add(card);
+		}
+		if (more.getComponentCount() > 0)
+		{
+			c.add(moreSettings(more));
+		}
+	}
+
+	/** "More settings", folded: the tab's seldom-changed cards under it. */
+	private static JComponent moreSettings(Column more)
+	{
+		final Column c = new Column();
+		final FoldCard.Header header = new FoldCard.Header(MORE, null);
+		header.setForeground(PanelStyle.SOFT);
+		header.setBorder(new EmptyBorder(PanelStyle.S, 0, PanelStyle.S, 0));
+		more.setVisible(false);
+		header.addActionListener(e ->
+		{
+			more.setVisible(!more.isVisible());
+			header.showOpen(more.isVisible());
+			c.revalidate();
+			c.repaint();
+		});
+		c.add(header);
+		c.add(more);
+		return c;
+	}
+
+	/** The shared sound, the repeat timing, then a box per alert; per-alert sounds only while not shared. */
 	private void alerts(Column c)
 	{
-		c.add(heading(PanelLayout.SHARED_SOUND.title));
+		final FoldCard sound = new FoldCard(PanelLayout.SHARED_SOUND.title, null, null, true);
 		final List<String> sharedKeys = PanelLayout.SHARED_SOUND.keys;
-		addControl(c, sharedKeys.get(0));
+		addControl(sound.body, sharedKeys.get(0));
 		final Column shared = new Column();
 		for (String key : sharedKeys.subList(1, sharedKeys.size()))
 		{
 			addControl(shared, key);
 		}
-		c.add(shared);
-		c.add(heading(PanelLayout.REPEATS.title));
+		sound.body.add(shared);
+		c.add(sound);
+		final FoldCard repeats = new FoldCard(PanelLayout.REPEATS.title, null, null, false);
 		for (String key : PanelLayout.REPEATS.keys)
 		{
-			addControl(c, key);
+			addControl(repeats.body, key);
 		}
-		c.add(heading("Each alert"));
+		c.add(repeats);
+		final FoldCard each = new FoldCard("Each alert", null, null, true);
 		final List<JComponent> own = new ArrayList<>();
 		for (PanelLayout.AlertRow r : PanelLayout.ALERTS)
 		{
-			c.add(alertRow(r, own));
+			each.body.add(alertRow(r, own));
 		}
+		c.add(each);
 		visibility.add(() ->
 		{
 			final boolean one = Boolean.TRUE.equals(store.get(PanelLayout.SOUND_SHARED, boolean.class));
@@ -374,11 +533,8 @@ final class VitalsSidePanel extends PluginPanel
 
 	private JComponent alertRow(PanelLayout.AlertRow r, List<JComponent> own)
 	{
-		final Column box = new Column();
-		box.setBorder(BorderFactory.createCompoundBorder(
-			BorderFactory.createMatteBorder(1, 0, 0, 0, ColorScheme.MEDIUM_GRAY_COLOR),
-			new EmptyBorder(3, 0, 3, 0)));
-		final JPanel top = new JPanel(new BorderLayout(4, 0));
+		final Card box = new Card(PanelStyle.INSET, null, PanelStyle.S, PanelStyle.S);
+		final JPanel top = new JPanel(new BorderLayout(PanelStyle.S, 0));
 		top.setOpaque(false);
 		final JComponent toggle = controls.control(r.toggle);
 		if (toggle != null)
@@ -389,7 +545,7 @@ final class VitalsSidePanel extends PluginPanel
 			() -> actions.testAlert(r.type));
 		test.setName("test-" + r.type.name());
 		top.add(test, BorderLayout.EAST);
-		box.add(top);
+		box.add(settingRow(top));
 		if (r.extra != null)
 		{
 			addControl(box, r.extra);
@@ -409,54 +565,93 @@ final class VitalsSidePanel extends PluginPanel
 		final JComponent control = controls.control(key);
 		if (control != null)
 		{
-			parent.add(control);
+			parent.add(settingRow(control));
 		}
 	}
 
-	/** A guide page that folds open from its header, closed until asked for. */
-	private static void guide(Column parent, String title, PanelGuide.Page page)
+	/** One setting's row: at least {@link #ROW_HEIGHT} tall and never stretched taller. */
+	static JComponent settingRow(JComponent control)
 	{
-		final Column body = new Column();
-		body.setBorder(new EmptyBorder(0, 6, 4, 0));
-		body.add(text("What it does: " + page.what, Color.WHITE));
-		body.add(text("How to use it: " + page.how, Color.WHITE));
-		for (int i = 0; i < page.walkthrough.size(); i++)
+		final JPanel row = new JPanel(new BorderLayout())
 		{
-			body.add(text((i + 1) + ". " + page.walkthrough.get(i), MUTED));
-		}
-		body.setVisible(false);
-		final JButton header = foldHeader("+ " + title, FontManager.getRunescapeSmallFont());
-		header.addActionListener(e ->
-		{
-			body.setVisible(!body.isVisible());
-			header.setText((body.isVisible() ? "- " : "+ ") + title);
-			parent.revalidate();
-			parent.repaint();
-		});
-		parent.add(header);
-		parent.add(body);
+			@Override
+			public Dimension getPreferredSize()
+			{
+				final Dimension d = super.getPreferredSize();
+				return new Dimension(d.width, Math.max(ROW_HEIGHT, d.height));
+			}
+
+			@Override
+			public Dimension getMaximumSize()
+			{
+				return PanelStyle.fullWidth(this);
+			}
+		};
+		row.setOpaque(false);
+		row.add(control, BorderLayout.CENTER);
+		return row;
 	}
 
-	// ---- Building blocks (after GroupIronmanPanel's) ----
+	// ---- Building blocks ----
 
-	/** A flat orange header that folds what is under it: the guides' and the Live section's. */
-	static JButton foldHeader(String text, Font font)
+	/** A tab of the segmented control: soft text, orange and raised while active. */
+	static final class Segment extends JToggleButton
 	{
-		final JButton header = new JButton(text);
-		header.setFont(font);
-		header.setForeground(ColorScheme.BRAND_ORANGE);
-		header.setFocusable(false);
-		header.setContentAreaFilled(false);
-		header.setBorderPainted(false);
-		header.setHorizontalAlignment(AbstractButton.LEFT);
-		header.setBorder(new EmptyBorder(2, 0, 2, 0));
-		return header;
+		Segment(String label)
+		{
+			super(label);
+			setFont(PanelStyle.body());
+			setForeground(PanelStyle.SOFT);
+			setFocusable(false);
+			setContentAreaFilled(false);
+			setBorderPainted(false);
+			setOpaque(false);
+			setBorder(new EmptyBorder(PanelStyle.S, 0, PanelStyle.S, 0));
+			addItemListener(e -> setForeground(isSelected() ? PanelStyle.ACCENT : PanelStyle.SOFT));
+		}
+
+		@Override
+		protected void paintComponent(Graphics g)
+		{
+			if (isSelected())
+			{
+				final Graphics2D g2 = PanelStyle.smooth(g);
+				try
+				{
+					g2.setColor(PanelStyle.INSET);
+					g2.fillRoundRect(0, 0, getWidth(), getHeight(), PanelStyle.ARC, PanelStyle.ARC);
+					g2.setColor(PanelStyle.ACCENT);
+					g2.fillRect(PanelStyle.M, getHeight() - 2, getWidth() - 2 * PanelStyle.M, 2);
+				}
+				finally
+				{
+					g2.dispose();
+				}
+			}
+			super.paintComponent(g);
+		}
+	}
+
+	/** A flat text button, as a link: Hide guides, Show all. */
+	static JButton linkButton(String text, String tooltip)
+	{
+		final JButton b = new JButton(text);
+		b.setFont(PanelStyle.body());
+		b.setForeground(PanelStyle.SOFT);
+		b.setFocusable(false);
+		b.setContentAreaFilled(false);
+		b.setBorderPainted(false);
+		b.setOpaque(false);
+		b.setHorizontalAlignment(AbstractButton.LEFT);
+		b.setBorder(new EmptyBorder(PanelStyle.XS, 0, PanelStyle.XS, 0));
+		b.setToolTipText(tooltip);
+		return b;
 	}
 
 	private static JButton button(String label, String tooltip, Runnable action)
 	{
 		final JButton b = new JButton(label);
-		b.setFont(FontManager.getRunescapeSmallFont());
+		b.setFont(PanelStyle.body());
 		b.setFocusable(false);
 		b.setToolTipText(tooltip);
 		b.addActionListener(e -> action.run());
@@ -466,9 +661,9 @@ final class VitalsSidePanel extends PluginPanel
 	static JLabel heading(String text)
 	{
 		final JLabel label = new JLabel(text);
-		label.setFont(FontManager.getRunescapeBoldFont());
-		label.setForeground(ColorScheme.BRAND_ORANGE);
-		label.setBorder(new EmptyBorder(6, 0, 2, 0));
+		label.setFont(PanelStyle.title());
+		label.setForeground(PanelStyle.TEXT);
+		label.setBorder(new EmptyBorder(0, 0, PanelStyle.S, 0));
 		return label;
 	}
 

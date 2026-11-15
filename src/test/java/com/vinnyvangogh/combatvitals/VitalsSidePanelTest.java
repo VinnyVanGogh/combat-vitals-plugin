@@ -189,15 +189,78 @@ public class VitalsSidePanelTest
 	}
 
 	@Test
-	public void eachTabsGuideOpensFromItsHeader()
+	public void everyGuideStartsOpenWithItsNumberedSteps()
 	{
+		ui.assertShows(PanelGuide.PRESETS.how);
 		for (PanelLayout.Tab tab : PanelLayout.Tab.values())
 		{
 			onEdt(() -> panel.show(tab));
-			ui.assertHides(PanelGuide.of(tab).how);
-			onEdt(() -> ui.click("+ Guide: " + tab.label));
-			ui.assertShows("How to use it: " + PanelGuide.of(tab).how);
+			final PanelGuide.Page page = PanelGuide.of(tab);
+			ui.assertShows(page.what);
+			ui.assertShows(page.how);
+			for (String step : page.walkthrough)
+			{
+				ui.assertShows(step);
+			}
 		}
+		assertTrue("opening writes nothing: " + store.writes, store.writes.isEmpty());
+	}
+
+	@Test
+	public void aFoldedGuideStaysFoldedForThatTabOnly()
+	{
+		onEdt(() -> ui.click("Guide: Combat"));
+		ui.assertHides(PanelGuide.of(PanelLayout.Tab.COMBAT).how);
+		assertEquals("COMBAT", store.values.get(VitalsSidePanel.GUIDES_CLOSED_KEY));
+		onEdt(() -> panel.show(PanelLayout.Tab.TARGETS));
+		ui.assertShows(PanelGuide.of(PanelLayout.Tab.TARGETS).how);
+
+		// A restart, or the refresh after any change: Combat's guide comes back folded, the rest open.
+		onEdt(panel::refresh);
+		onEdt(() -> panel.show(PanelLayout.Tab.COMBAT));
+		ui.assertHides(PanelGuide.of(PanelLayout.Tab.COMBAT).how);
+		final VitalsSidePanel again = SwingDriver.onEdt(() -> new VitalsSidePanel(store, PanelFixture.descriptors(),
+			null, t ->
+			{
+			}));
+		final SwingDriver ui2 = new SwingDriver(again);
+		SwingDriver.onEdt(() -> ui2.layout(VitalsSidePanelShots.WIDTH));
+		ui2.assertHides(PanelGuide.of(PanelLayout.Tab.COMBAT).how);
+		ui2.assertShows(PanelGuide.PRESETS.how);
+
+		onEdt(() -> ui.click("Guide: Combat"));
+		ui.assertShows(PanelGuide.of(PanelLayout.Tab.COMBAT).how);
+		assertEquals("", store.values.get(VitalsSidePanel.GUIDES_CLOSED_KEY));
+	}
+
+	@Test
+	public void hideGuidesHidesEveryGuideAndRemembers()
+	{
+		onEdt(() -> ui.click(VitalsSidePanel.HIDE_GUIDES));
+		assertEquals(Boolean.TRUE, store.values.get(VitalsSidePanel.GUIDES_HIDDEN_KEY));
+		ui.assertHides(PanelGuide.PRESETS.how);
+		ui.assertHides("Guide: Combat");
+		onEdt(panel::refresh);
+		ui.assertHides("Guide: Combat");
+		ui.assertShows(VitalsSidePanel.SHOW_GUIDES);
+
+		onEdt(() -> ui.click(VitalsSidePanel.SHOW_GUIDES));
+		assertEquals(Boolean.FALSE, store.values.get(VitalsSidePanel.GUIDES_HIDDEN_KEY));
+		ui.assertShows(PanelGuide.of(PanelLayout.Tab.COMBAT).how);
+	}
+
+	@Test
+	public void seldomUsedSettingsWaitBehindMore()
+	{
+		final Map<String, ConfigItemDescriptor> items = PanelFixture.descriptors();
+		final String spotPath = items.get("fishingSpotPath").name();
+		onEdt(() -> panel.show(PanelLayout.Tab.SKILLING));
+		ui.assertShows(items.get("skillingEnabled").name());
+		ui.assertHides(spotPath);
+		ui.assertHides("Next fishing spot");
+		onEdt(() -> ui.click(VitalsSidePanel.MORE));
+		onEdt(() -> ui.click("Next fishing spot"));
+		ui.assertShows(spotPath);
 	}
 
 	@Test

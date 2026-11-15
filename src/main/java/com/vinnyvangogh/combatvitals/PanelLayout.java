@@ -7,7 +7,8 @@ import java.util.List;
 
 /**
  * Where every setting lives: which tab of the sidebar panel, under which
- * heading, in what order. RuneLite's settings list follows the same table:
+ * heading, in what order (the panel moves a {@link Group#more} group to the
+ * bottom of its tab, behind "More settings"). RuneLite's settings list follows the same table:
  * each tab is one config section with the same settings in the same order
  * (PanelLayoutTest), so the panel and the list never disagree about where
  * something is. Only keyNames appear here; names, descriptions, types and
@@ -47,11 +48,25 @@ final class PanelLayout
 	{
 		final String title;
 		final List<String> keys;
+		/** Seldom changed: the panel keeps it behind its tab's "More settings". */
+		final boolean more;
 
 		Group(String title, String... keys)
 		{
+			this(false, title, keys);
+		}
+
+		private Group(boolean more, String title, String... keys)
+		{
 			this.title = title;
 			this.keys = Collections.unmodifiableList(Arrays.asList(keys));
+			this.more = more;
+		}
+
+		/** A group the panel shows only after "More settings"; RuneLite's list still lists it in place. */
+		static Group more(String title, String... keys)
+		{
+			return new Group(true, title, keys);
 		}
 	}
 
@@ -160,11 +175,11 @@ final class PanelLayout
 			new Group("Inventory", "skillingInventoryBar", "skillingInventoryCount", "skillingContainers",
 				"skillingContainersAsInventory"),
 			new Group("Session", "skillingSessionCount", "skillingRates", "skillingSessionReset"),
-			new Group("Boosts", "skillingBoostTimer", "skillingBoostSource", "skillingSpecEnergy",
+			Group.more("Boosts", "skillingBoostTimer", "skillingBoostSource", "skillingSpecEnergy",
 				"skillingBoostNotify"),
 			new Group("Once you stop", "skillingIdleMode", "skillingIdleSeconds"),
-			new Group("Next fishing spot", "fishingSpotPath", "fishingSpotShortestPath"),
-			new Group("More skills", "skillingHerblore", "skillingCooking", "skillingFletching", "skillingCrafting",
+			Group.more("Next fishing spot", "fishingSpotPath", "fishingSpotShortestPath"),
+			Group.more("More skills", "skillingHerblore", "skillingCooking", "skillingFletching", "skillingCrafting",
 				"skillingSmithing", "skillingFiremaking", "skillingPrayer", "skillingMagic", "skillingAgility",
 				"skillingConstruction", "skillingSailing"));
 	}
@@ -176,7 +191,7 @@ final class PanelLayout
 			new Group("Health colours", "colourGradient", "healthFullColour", "healthMidColour", "healthLowColour"),
 			new Group("Badge", "skillingBadgeLayout", "skillingPosition", "skillingOffset", "skillingScale",
 				"skillingIdleColour"),
-			new Group("Skill colours", "skillingFishingColour", "skillingWoodcuttingColour", "skillingMiningColour",
+			Group.more("Skill colours", "skillingFishingColour", "skillingWoodcuttingColour", "skillingMiningColour",
 				"skillingThievingColour", "skillingRunecraftColour", "skillingHunterColour"),
 			new Group("Side pillars", "pillarMode", "pillarCombatSide", "pillarXpSide", "pillarLabels",
 				"pillarStyle", "pillarContainers", "pillarContainerColour"));

@@ -2339,4 +2339,28 @@ public interface CombatVitalsConfig extends Config
 	{
 		return true;
 	}
+
+	/** The sidebar guides the user folded, "PRESETS,COMBAT" ({@link VitalsSidePanel}); written there, never listed. */
+	@ConfigItem(
+		keyName = VitalsSidePanel.GUIDES_CLOSED_KEY,
+		name = "",
+		description = "",
+		hidden = true
+	)
+	default String sidebarGuidesClosed()
+	{
+		return "";
+	}
+
+	/** Every sidebar guide hidden from the panel's Hide guides; written there, never listed. */
+	@ConfigItem(
+		keyName = VitalsSidePanel.GUIDES_HIDDEN_KEY,
+		name = "",
+		description = "",
+		hidden = true
+	)
+	default boolean sidebarGuidesHidden()
+	{
+		return false;
+	}
 }

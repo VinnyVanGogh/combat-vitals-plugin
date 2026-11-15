@@ -1,24 +1,41 @@
 package com.vinnyvangogh.combatvitals;
 
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridLayout;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import javax.swing.AbstractButton;
+import javax.swing.Box;
 import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
-import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
 
 /**
- * The sidebar's Live section, above the presets: your vitals and target, the
- * skill being trained, and this session's gains, redrawn from each tick's
- * {@link LiveVitals}. It folds from its header, and stays folded or open
- * across restarts ({@link #OPEN_KEY}).
+ * The sidebar's Live section, above the presets, as cards (Board, 2026-11-14):
+ * a Combat card (thick Hitpoints and Prayer bars, Run and Spec chips, the
+ * target in its own box), a Skilling card (the skill's icon and level, its XP
+ * bar, a 2x2 grid of the session's stats, a training method's timers as
+ * chips) and This session (the three skills with the most XP gained, the rest
+ * behind Show all). Redrawn from each tick's {@link LiveVitals}. The section
+ * folds from its title and stays folded or open across restarts
+ * ({@link #OPEN_KEY}); each card folds on its own.
  *
  * <p>Every component is built once. An update only changes text, bars and
- * visibility, and only where they differ from what is showing; a session or
- * skilling line beyond any shown before is the one thing ever added. Swing
- * thread only.
+ * visibility, and only where they differ from what is showing; a session line,
+ * chip or skilling line beyond any shown before is the one thing ever added.
+ * Swing thread only.
  */
 final class LiveSection extends VitalsSidePanel.Column
 {
@@ -31,36 +48,60 @@ final class LiveSection extends VitalsSidePanel.Column
 	static final String NOT_IN_COMBAT = "Not in combat";
 	static final String NOT_SKILLING = "Not skilling";
 	static final String NOTHING_YET = "No XP gained yet this session.";
+	/** How many of the session's skills show before Show all. */
+	static final int TOP = 3;
+	static final String SHOW_TOP = "Show top " + TOP;
 
-	private static final Color MUTED = ColorScheme.LIGHT_GRAY_COLOR.darker();
+	/** The 2x2 grid's tiles, in reading order, and their captions. */
+	private static final SessionRow.Kind[] STATS = {SessionRow.Kind.XP_RATE, SessionRow.Kind.ACTION_RATE,
+		SessionRow.Kind.TIME_TO_LEVEL, SessionRow.Kind.COUNT};
+	private static final String[] CAPTIONS = {"XP / hour", "Actions / hour", "To level", "Done"};
 
 	private final ConfigStore store;
-	private final JButton header = VitalsSidePanel.foldHeader("", FontManager.getRunescapeBoldFont());
+	private final FoldCard.Header header = new FoldCard.Header(TITLE, null);
 	private final VitalsSidePanel.Column body = new VitalsSidePanel.Column();
 
-	private final WrapLabel loggedOut = new WrapLabel(LOGGED_OUT, MUTED);
+	private final Card loggedOutCard = Card.of(null);
 	private final VitalsSidePanel.Column live = new VitalsSidePanel.Column();
 
-	private final WrapLabel combatOff = new WrapLabel(COMBAT_OFF, MUTED);
+	// Combat
+	private final FoldCard combatCard = new FoldCard("Combat", null, LiveVitals.HITPOINTS, true);
+	private final WrapLabel combatOff = new WrapLabel(COMBAT_OFF, PanelStyle.MUTED);
 	private final VitalsSidePanel.Column combat = new VitalsSidePanel.Column();
 	private final MeterBar hitpoints = new MeterBar();
 	private final MeterBar prayer = new MeterBar();
-	private final WrapLabel energy = new WrapLabel("", Color.WHITE);
-	private final WrapLabel targetName = new WrapLabel("", ColorScheme.BRAND_ORANGE);
+	private final JPanel energyRow = new JPanel(new GridLayout(1, 2, PanelStyle.S, 0));
+	private final Chip run = new Chip();
+	private final Chip spec = new Chip();
+	private final Card targetBox = Card.inset();
+	private final WrapLabel targetName = new WrapLabel("", PanelStyle.ACCENT);
 	private final MeterBar target = new MeterBar();
+	private final WrapLabel notInCombat = new WrapLabel(NOT_IN_COMBAT, PanelStyle.MUTED);
 	private final MeterBar training = new MeterBar();
-	private final WrapLabel trainingRate = new WrapLabel("", MUTED);
+	private final WrapLabel trainingRate = new WrapLabel("", PanelStyle.MUTED);
 
-	private final WrapLabel skillingOff = new WrapLabel(SKILLING_OFF, MUTED);
+	// Skilling
+	private final FoldCard skillingCard = new FoldCard("Skilling", null, SkillColours.DEFAULT, true);
+	private final WrapLabel skillingOff = new WrapLabel(SKILLING_OFF, PanelStyle.MUTED);
 	private final VitalsSidePanel.Column skilling = new VitalsSidePanel.Column();
-	private final WrapLabel skillHeader = new WrapLabel("", Color.WHITE);
+	private final SkillIcon skillIcon = new SkillIcon();
+	private final WrapLabel skillHeader = new WrapLabel("", PanelStyle.TEXT);
 	private final MeterBar skillXp = new MeterBar();
+	private final JPanel statGrid = new JPanel(new GridLayout(2, 2, PanelStyle.S, PanelStyle.S));
+	private final Map<SessionRow.Kind, Card> statTiles = new EnumMap<>(SessionRow.Kind.class);
+	private final Map<SessionRow.Kind, WrapLabel> statValues = new EnumMap<>(SessionRow.Kind.class);
+	private final VitalsSidePanel.Column skillChips = new VitalsSidePanel.Column();
+	private final List<Chip> chipPool = new ArrayList<>();
 	private final VitalsSidePanel.Column skillLines = new VitalsSidePanel.Column();
 	private final List<WrapLabel> skillPool = new ArrayList<>();
 
-	private final WrapLabel sessionEmpty = new WrapLabel(NOTHING_YET, MUTED);
+	// This session
+	private final FoldCard sessionCard = new FoldCard("This session", null, null, true);
+	private final WrapLabel sessionEmpty = new WrapLabel(NOTHING_YET, PanelStyle.MUTED);
 	private final VitalsSidePanel.Column sessionLines = new VitalsSidePanel.Column();
-	private final List<WrapLabel> sessionPool = new ArrayList<>();
+	private final List<GainRow> sessionPool = new ArrayList<>();
+	private final JButton showAll = VitalsSidePanel.linkButton("", null);
+	private boolean allGains;
 
 	private LiveVitals last = LiveVitals.LOGGED_OUT;
 	private volatile boolean open = true;
@@ -72,35 +113,92 @@ final class LiveSection extends VitalsSidePanel.Column
 		this.store = store;
 		header.setName("live-toggle");
 		header.setToolTipText("Fold or open the live readout.");
+		header.setBorder(new EmptyBorder(0, 0, PanelStyle.S, 0));
 		header.addActionListener(e -> setOpen(!open, true));
 		add(header);
 
-		body.setBorder(new EmptyBorder(0, 0, 4, 0));
-		body.add(loggedOut);
+		loggedOutCard.add(new WrapLabel(LOGGED_OUT, PanelStyle.MUTED));
+		body.add(loggedOutCard);
 		body.add(live);
 		add(body);
 
-		live.add(VitalsSidePanel.heading("Combat"));
-		live.add(combatOff);
-		live.add(combat);
-		for (Component c : new Component[]{hitpoints, prayer, energy, targetName, target, training, trainingRate})
-		{
-			combat.add(c);
-		}
-
-		live.add(VitalsSidePanel.heading("Skilling"));
-		live.add(skillingOff);
-		live.add(skilling);
-		skilling.add(skillHeader);
-		skilling.add(skillXp);
-		skilling.add(skillLines);
-
-		live.add(VitalsSidePanel.heading("This session"));
-		live.add(sessionEmpty);
-		live.add(sessionLines);
+		buildCombat();
+		buildSkilling();
+		buildSession();
+		live.add(combatCard);
+		live.add(skillingCard);
+		live.add(sessionCard);
 
 		refresh();
 		show(LiveVitals.LOGGED_OUT);
+	}
+
+	private void buildCombat()
+	{
+		energyRow.setOpaque(false);
+		energyRow.add(run);
+		energyRow.add(spec);
+		targetName.setFont(PanelStyle.title());
+		targetBox.add(targetName);
+		targetBox.add(notInCombat);
+		targetBox.add(target);
+		for (Component c : new Component[]{hitpoints, gap(), prayer, gap(), energyRow, targetBox, gap(), training,
+			trainingRate})
+		{
+			combat.add(c);
+		}
+		combatCard.body.add(combatOff);
+		combatCard.body.add(combat);
+	}
+
+	private void buildSkilling()
+	{
+		final JPanel title = new JPanel(new BorderLayout(PanelStyle.S, 0));
+		title.setOpaque(false);
+		title.add(skillIcon, BorderLayout.WEST);
+		final VitalsSidePanel.Column name = new VitalsSidePanel.Column();
+		skillHeader.setFont(PanelStyle.title());
+		name.add(skillHeader);
+		title.add(name, BorderLayout.CENTER);
+
+		statGrid.setOpaque(false);
+		for (int i = 0; i < STATS.length; i++)
+		{
+			final Card tile = Card.inset();
+			final JLabel caption = new JLabel(CAPTIONS[i]);
+			caption.setFont(PanelStyle.body());
+			caption.setForeground(PanelStyle.MUTED);
+			final WrapLabel value = new WrapLabel("", PanelStyle.TEXT);
+			tile.add(caption);
+			tile.add(value);
+			statTiles.put(STATS[i], tile);
+			statValues.put(STATS[i], value);
+			statGrid.add(tile);
+		}
+		for (Component c : new Component[]{title, gap(), skillXp, gap(), statGrid, gap(), skillChips, skillLines})
+		{
+			skilling.add(c);
+		}
+		skillingCard.body.add(skillingOff);
+		skillingCard.body.add(skilling);
+	}
+
+	private void buildSession()
+	{
+		showAll.setName("session-show-all");
+		showAll.addActionListener(e ->
+		{
+			allGains = !allGains;
+			show(last);
+		});
+		sessionCard.body.add(sessionEmpty);
+		sessionCard.body.add(sessionLines);
+		sessionCard.body.add(showAll);
+	}
+
+	private static Component gap()
+	{
+		return Box.createVerticalStrut(PanelStyle.S);
 	}
 
 	/** Open, as last set on the Swing thread; read from the client thread. */
@@ -118,7 +216,7 @@ final class LiveSection extends VitalsSidePanel.Column
 	private void setOpen(boolean open, boolean remember)
 	{
 		this.open = open;
-		header.setText((open ? "- " : "+ ") + TITLE);
+		header.showOpen(open);
 		if (body.isVisible() != open)
 		{
 			body.setVisible(open);
@@ -148,14 +246,13 @@ final class LiveSection extends VitalsSidePanel.Column
 	private void show(LiveVitals v)
 	{
 		final int before = changes;
-		visible(loggedOut, !v.loggedIn);
+		visible(loggedOutCard, !v.loggedIn);
 		visible(live, v.loggedIn);
 		if (v.loggedIn)
 		{
 			showCombat(v.combat);
 			showSkilling(v.skilling);
-			visible(sessionEmpty, v.session.isEmpty());
-			lines(sessionLines, sessionPool, v.session, Color.WHITE);
+			showSession(v.session);
 		}
 		if (changes != before)
 		{
@@ -174,9 +271,14 @@ final class LiveSection extends VitalsSidePanel.Column
 		}
 		bar(hitpoints, c.hitpoints);
 		bar(prayer, c.prayer);
-		text(energy, c.energy);
-		text(targetName, c.targetName == null ? NOT_IN_COMBAT : c.targetName);
-		bar(target, c.targetName == null ? null : c.target);
+		final String[] energy = c.energy == null ? new String[0] : c.energy.split(" \\| ");
+		chip(run, energy.length > 0 ? energy[0] : null);
+		chip(spec, energy.length > 1 ? energy[1] : null);
+		visible(energyRow, energy.length > 0);
+		final boolean fighting = c.targetName != null;
+		text(targetName, c.targetName);
+		bar(target, fighting ? c.target : null);
+		visible(notInCombat, !fighting);
 		bar(training, c.training);
 		text(trainingRate, c.trainingRate);
 	}
@@ -189,17 +291,80 @@ final class LiveSection extends VitalsSidePanel.Column
 		{
 			return;
 		}
+		if (skillingCard.accent(s.colour))
+		{
+			changes++;
+		}
+		if (skillIcon.set(s.header == null ? null : s.icon, s.colour))
+		{
+			changes++;
+		}
+		visible(skillIcon, s.header != null);
 		text(skillHeader, s.header == null ? NOT_SKILLING : s.header);
 		bar(skillXp, s.xp);
-		lines(skillLines, skillPool, s.lines, MUTED);
+		for (SessionRow.Kind kind : STATS)
+		{
+			final String value = s.stats.get(kind);
+			text(statValues.get(kind), value);
+			visible(statTiles.get(kind), value != null);
+		}
+		visible(statGrid, !s.stats.isEmpty());
+		chips(s.chips);
+		lines(skillLines, skillPool, s.lines);
+	}
+
+	/** The three skills with the most XP gained; the rest only after Show all. */
+	private void showSession(List<LiveVitals.Gain> gains)
+	{
+		visible(sessionEmpty, gains.isEmpty());
+		while (sessionPool.size() < gains.size())
+		{
+			final GainRow row = new GainRow();
+			row.setVisible(false);
+			sessionPool.add(row);
+			sessionLines.add(row);
+			changes++;
+		}
+		final int top = gains.isEmpty() ? 1 : Math.max(1, gains.get(0).xp);
+		final int shown = allGains ? gains.size() : Math.min(TOP, gains.size());
+		for (int i = 0; i < sessionPool.size(); i++)
+		{
+			gain(sessionPool.get(i), i < shown ? gains.get(i) : null, top);
+		}
+		text(showAll, gains.size() <= TOP ? null : allGains ? SHOW_TOP : "Show all " + gains.size());
+	}
+
+	/** One session row: the gain's line and its bar against the top skill's XP, or hidden for null. */
+	private void gain(GainRow row, LiveVitals.Gain g, int top)
+	{
+		text(row.text, g == null ? null : g.text);
+		bar(row.bar, g == null ? null : new LiveVitals.Bar((double) g.xp / top, "", g.colour));
+		visible(row, g != null);
+	}
+
+	/** The first {@code texts.size()} chips of the pool show the timers; the rest hide. */
+	private void chips(List<String> texts)
+	{
+		while (chipPool.size() < texts.size())
+		{
+			final Chip chip = new Chip();
+			chip.setVisible(false);
+			chipPool.add(chip);
+			skillChips.add(chip);
+			changes++;
+		}
+		for (int i = 0; i < chipPool.size(); i++)
+		{
+			chip(chipPool.get(i), i < texts.size() ? texts.get(i) : null);
+		}
 	}
 
 	/** The first {@code texts.size()} labels of the pool show the lines; the rest hide. */
-	private void lines(VitalsSidePanel.Column parent, List<WrapLabel> pool, List<String> texts, Color colour)
+	private void lines(VitalsSidePanel.Column parent, List<WrapLabel> pool, List<String> texts)
 	{
 		while (pool.size() < texts.size())
 		{
-			final WrapLabel l = new WrapLabel("", colour);
+			final WrapLabel l = new WrapLabel("", PanelStyle.SOFT);
 			l.setVisible(false);
 			pool.add(l);
 			parent.add(l);
@@ -221,6 +386,25 @@ final class LiveSection extends VitalsSidePanel.Column
 		visible(label, text != null);
 	}
 
+	private void text(AbstractButton button, String text)
+	{
+		if (text != null && !text.equals(button.getText()))
+		{
+			button.setText(text);
+			changes++;
+		}
+		visible(button, text != null);
+	}
+
+	private void chip(Chip chip, String text)
+	{
+		if (text != null && chip.show(text))
+		{
+			changes++;
+		}
+		visible(chip, text != null);
+	}
+
 	private void bar(MeterBar meter, LiveVitals.Bar bar)
 	{
 		if (meter.set(bar))
@@ -237,5 +421,80 @@ final class LiveSection extends VitalsSidePanel.Column
 			c.setVisible(visible);
 			changes++;
 		}
+	}
+
+	/** One of This session's skills: its line, and a thin bar of its XP against the top skill's. */
+	private static final class GainRow extends VitalsSidePanel.Column
+	{
+		final WrapLabel text = new WrapLabel("", PanelStyle.TEXT);
+		final MeterBar bar = new MeterBar(MeterBar.THIN);
+
+		GainRow()
+		{
+			setBorder(new EmptyBorder(0, 0, PanelStyle.S, 0));
+			add(text);
+			add(bar);
+		}
+	}
+
+	/** The skill's small icon, or a dot in its colour when there is none. */
+	static final class SkillIcon extends JComponent
+	{
+		private static final int SIZE = 18;
+		private BufferedImage image;
+		private Color colour;
+
+		/** False when already showing these, so nothing is redrawn. */
+		boolean set(BufferedImage image, Color colour)
+		{
+			if (image == this.image && Objects.equals(colour, this.colour))
+			{
+				return false;
+			}
+			this.image = image;
+			this.colour = colour;
+			repaint();
+			return true;
+		}
+
+		@Override
+		public Dimension getPreferredSize()
+		{
+			return new Dimension(SIZE, SIZE);
+		}
+
+		@Override
+		protected void paintComponent(Graphics g)
+		{
+			if (image != null)
+			{
+				g.drawImage(image, (SIZE - image.getWidth()) / 2, (SIZE - image.getHeight()) / 2, null);
+				return;
+			}
+			final Graphics2D g2 = PanelStyle.smooth(g);
+			try
+			{
+				g2.setColor(colour == null ? SkillColours.DEFAULT : colour);
+				g2.fillOval(3, 3, SIZE - 6, SIZE - 6);
+			}
+			finally
+			{
+				g2.dispose();
+			}
+		}
+	}
+
+	/** For tests: the session lines showing, top first. */
+	List<String> sessionShown()
+	{
+		final List<String> out = new ArrayList<>();
+		for (GainRow r : sessionPool)
+		{
+			if (r.isVisible())
+			{
+				out.add(r.text.plain());
+			}
+		}
+		return Collections.unmodifiableList(out);
 	}
 }
