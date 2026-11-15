@@ -69,6 +69,11 @@ public class PillarRenderTest
 			.build();
 	}
 
+	private static Pillar percent(String number)
+	{
+		return xp(0.63, false).toBuilder().number(number).build();
+	}
+
 	private static BufferedImage render(Pillar pillar, PillarStyle style, PillarLabels labels)
 	{
 		final BufferedImage image = new BufferedImage(BOX.width + 8, BOX.height + 8, BufferedImage.TYPE_INT_ARGB);
@@ -90,6 +95,11 @@ public class PillarRenderTest
 		assertTrue(OUT.isDirectory() || OUT.mkdirs());
 		final Object[][] states = {
 			{"xp-82", xp(0.82, false), PillarStyle.STATUS_BARS, PillarLabels.ICON_AND_NUMBER},
+			{"xp-63", percent("63%"), PillarStyle.STATUS_BARS, PillarLabels.ICON_AND_NUMBER},
+			{"xp-3", percent("3%"), PillarStyle.STATUS_BARS, PillarLabels.ICON_AND_NUMBER},
+			{"xp-100", percent("100%"), PillarStyle.STATUS_BARS, PillarLabels.ICON_AND_NUMBER},
+			{"target-41-percent", target(12, 50).toBuilder().number("41%").build(), PillarStyle.STATUS_BARS,
+				PillarLabels.ICON_AND_NUMBER},
 			{"xp-idle", xp(0.82, true), PillarStyle.STATUS_BARS, PillarLabels.ICON_AND_NUMBER},
 			{"xp-icon-only", xp(0.40, false), PillarStyle.STATUS_BARS, PillarLabels.ICON_ONLY},
 			{"xp-no-labels", xp(0.40, false), PillarStyle.STATUS_BARS, PillarLabels.NONE},
@@ -130,25 +140,159 @@ public class PillarRenderTest
 	public void numbersStayInsideThePillar()
 	{
 		final Pillar[] widest = {
-			xp(0.82, false),
-			xp(0.82, false).toBuilder().number("100%").build(),
 			xp(0.82, false).toBuilder().number("Max").build(),
 			xp(0.82, false).toBuilder().number("999k").build(),
 			target(12, 50).toBuilder().number("255").build(),
 		};
 		for (Pillar pillar : widest)
 		{
-			final BufferedImage image = render(pillar, PillarStyle.STATUS_BARS, PillarLabels.ICON_AND_NUMBER);
-			for (int y = 0; y < image.getHeight(); y++)
+			assertPaintsWithin(pillar, BOX);
+		}
+	}
+
+	/** A percent may reach into the gap each side, never past it onto the next bar. */
+	@Test
+	public void percentsStayInsideTheBarAndItsGap()
+	{
+		assertEquals(SidePillars.GAP, PillarPainter.OVERHANG);
+		final Rectangle bounds = PillarPainter.labelBounds(BOX);
+		for (String number : new String[] {"3%", "63%", "82%", "99%", "100%"})
+		{
+			assertPaintsWithin(percent(number), bounds);
+			assertPaintsWithin(target(12, 50).toBuilder().number(number).build(), bounds);
+		}
+	}
+
+	/** One and two digit percents keep full-size digits; condensing is for "100%" only. */
+	@Test
+	public void percentDigitsAreNeverCondensed()
+	{
+		final Graphics2D g = smallFont();
+		try
+		{
+			final int room = PillarPainter.percentRoom(SidePillars.WIDTH);
+			for (int n = 0; n <= 99; n++)
 			{
-				for (int x = 0; x < image.getWidth(); x++)
+				final String number = n + "%";
+				final int width = PillarPainter.percentWidth(g, number, room);
+				assertEquals(number + " is " + width + " px for " + room, 1.0,
+					PillarPainter.labelScale(width, room), 0);
+			}
+			final int hundred = PillarPainter.percentWidth(g, "100%", room);
+			assertTrue("100% condensed no more than needed",
+				hundred * PillarPainter.labelScale(hundred, room) <= room);
+		}
+		finally
+		{
+			g.dispose();
+		}
+	}
+
+	/** The small sign is what saves the room: the old full-size "63%" did not fit 18 px. */
+	@Test
+	public void theSignIsSmallerThanTheDigits()
+	{
+		final Graphics2D g = smallFont();
+		try
+		{
+			final int full = g.getFontMetrics().stringWidth("63%");
+			final int split = PillarPainter.percentWidth(g, "63%", PillarPainter.percentRoom(SidePillars.WIDTH));
+			assertTrue(split + " < " + full, split < full);
+			assertTrue("old 63% was condensed", full > SidePillars.WIDTH - 2);
+			assertTrue(PillarPainter.isPercent("63%"));
+			assertFalse(PillarPainter.isPercent("%"));
+			assertFalse(PillarPainter.isPercent("1.2k"));
+		}
+		finally
+		{
+			g.dispose();
+		}
+	}
+
+	/**
+	 * The digits of "63%" are pixel for pixel a bare, never condensed "63":
+	 * the old painter narrowed all three glyphs and this compared unequal.
+	 */
+	@Test
+	public void sixtyThreeHasFullWidthDigits()
+	{
+		final boolean[][] withSign = face(render(percent("63%"), PillarStyle.STATUS_BARS,
+			PillarLabels.ICON_AND_NUMBER));
+		final boolean[][] bare = face(render(percent("63"), PillarStyle.STATUS_BARS,
+			PillarLabels.ICON_AND_NUMBER));
+		final int digitsWidth = width(bare);
+		assertTrue(digitsWidth > 0);
+		for (int y = 0; y < bare.length; y++)
+		{
+			for (int x = 0; x < digitsWidth; x++)
+			{
+				assertEquals("63 at " + x + "," + y, bare[y][x], withSign[y][x]);
+			}
+		}
+	}
+
+	private static void assertPaintsWithin(Pillar pillar, Rectangle bounds)
+	{
+		final BufferedImage image = render(pillar, PillarStyle.STATUS_BARS, PillarLabels.ICON_AND_NUMBER);
+		for (int y = 0; y < image.getHeight(); y++)
+		{
+			for (int x = 0; x < image.getWidth(); x++)
+			{
+				final boolean outside = x < bounds.x || x >= bounds.x + bounds.width;
+				assertFalse(pillar.getNumber() + " spills out at " + x + "," + y,
+					outside && new Color(image.getRGB(x, y), true).getAlpha() > 0);
+			}
+		}
+	}
+
+	private static Graphics2D smallFont()
+	{
+		final Graphics2D g = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics();
+		g.setFont(net.runelite.client.ui.FontManager.getRunescapeSmallFont());
+		return g;
+	}
+
+	/** The number's pure white face pixels under the icon, shifted so its leftmost column is 0. */
+	private static boolean[][] face(BufferedImage image)
+	{
+		final int top = BOX.y + 24;
+		final int bottom = BOX.y + 38;
+		int left = image.getWidth();
+		for (int y = top; y < bottom; y++)
+		{
+			for (int x = 0; x < image.getWidth(); x++)
+			{
+				if (image.getRGB(x, y) == 0xFFFFFFFF)
 				{
-					final boolean outside = x < BOX.x || x >= BOX.x + BOX.width;
-					assertFalse(pillar.getNumber() + " spills out at " + x + "," + y,
-						outside && new Color(image.getRGB(x, y), true).getAlpha() > 0);
+					left = Math.min(left, x);
 				}
 			}
 		}
+		final boolean[][] face = new boolean[bottom - top][image.getWidth()];
+		for (int y = top; y < bottom; y++)
+		{
+			for (int x = left; x < image.getWidth(); x++)
+			{
+				face[y - top][x - left] = image.getRGB(x, y) == 0xFFFFFFFF;
+			}
+		}
+		return face;
+	}
+
+	private static int width(boolean[][] face)
+	{
+		int width = 0;
+		for (boolean[] row : face)
+		{
+			for (int x = 0; x < row.length; x++)
+			{
+				if (row[x])
+				{
+					width = Math.max(width, x + 1);
+				}
+			}
+		}
+		return width;
 	}
 
 	/** Dropping the sign of a percent too wide for the bar made "82%" paint exactly as "82". */
