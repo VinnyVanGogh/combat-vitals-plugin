@@ -372,6 +372,65 @@ Bundle size: no Plugin Hub size limit was found in this pass (unverified,
 the plugin-hub README was not re-read). The clips are 16 kHz mono 16-bit
 WAV to keep the jar small; the PR states the jar size before and after.
 
+### Skilling notifications: nests, Forestry, clues, pets, level-ups, randoms (added 2026-11-14, task-be51ad0f)
+
+Board, 2026-11-14, woodcutting AFK: alert on the things worth coming back
+for. Each is its own alert with on/off, sound, volume and Repeat, through the
+same `Notifier` + `AlertSounds` + `AlertRepeat` path as the 2026-11-14 alert
+sounds. Board's pre-run answers: nests, clues, pets and Forestry default on;
+level-ups and random events default off. A clue nest goes to the Clue drop
+alert with its tier, or to Bird nest when Clue drop is off. Level-up has a
+filter: all skills, or the non-combat ones only.
+
+Sources, read 2026-11-14 by disassembling the RuneLite client jar the build
+compiles against (`net.runelite:client:1.13.6`, `javap -c -constants`):
+
+- `plugins/woodcutting/WoodcuttingPlugin.onChatMessage` (GAMEMESSAGE, SPAM or
+  MESBOX): `contains("A bird's nest falls out of the tree")` notifies "A bird
+  nest has spawned!"; `onItemSpawned` records the clue nest tier
+  (`ClueNestTier.getTierFromItem`) *before* the chat line, which the chat
+  handler then reads. So the ground item comes first.
+- `WoodcuttingPlugin.onGameObjectSpawned`: Rising Roots objects 47482, 47483;
+  Struggling Sapling 47484, 47485, 47487, 47488, 47490, 47491.
+  `onNpcSpawned`: Flowering Bush 12120, 12134, 12141, 12143, 12145, 12147,
+  12149, 12151 (`isFloweringBush`); Leprechaun 12163; Poachers 12559, 12560;
+  Pheasant Control (Freaky Forester) 12536; Bee Hive 12518; Enchantment
+  Ritual 12519; Friendly Ent (entling) 12543. Each has its own
+  `forestry*Notification` in `WoodcuttingConfig`. There is no chat line for a
+  Forestry event starting; the spawn is the signal.
+- `plugins/screenshot/ScreenshotPlugin`: pet lines "You have a funny feeling
+  like you're being followed", "You feel something weird sneaking into your
+  backpack", "You have a funny feeling like you would have been followed".
+- `plugins/randomevents/RandomEventPlugin.onInteractingChanged`: notifies only
+  when the source is an NPC in `EVENT_NPCS` (33 ids: 307, 314, 322, 326, 327,
+  375, 376, 380, 390, 5426, 5429, 5436 to 5441, 5510, 6738, 6743, 6744, 6746
+  to 6755, 12551, 12552), the target is the local player, and the local
+  player is not already interacting with it; at most once per 150 ticks.
+- Clue geodes, clue bottles and scroll boxes: no chat line in the client jar
+  (searched the jar's strings for "clue geode", "clue bottle", "scroll box"),
+  and the OSRS wiki pages "Clue geode", "Clue bottle", "Scroll box" (read
+  2026-11-14) quote none. Item names per tier from those pages: "Clue geode
+  (beginner|easy|medium|hard|elite)", "Clue bottle (...)", "Scroll box
+  (beginner ... master)". So these are read from the player's own inventory
+  gaining one while skilling.
+- "Tree Spirit" from the brief is not a Forestry event in the base plugin's
+  list (nine events above); the Enchantment Ritual is the one the brief did
+  not name, and is covered.
+
+| Element | Nearest rule | Precedent | Verdict |
+|---|---|---|---|
+| Bird nest fell: the game's own chat line, kind read from the clue nest ground item that spawned with it | None: a notification of a chat line the game already shows | Base Woodcutting plugin "Bird nest notification" and "Clue nest notification" (above) | Allowed |
+| Forestry event started near you, by object or NPC spawn id, within 15 tiles while you have had Woodcutting experience in the last minute; once per event | None: the events are visible on screen, and the plugin only notifies | Base Woodcutting plugin's per-event Forestry notifications and overlays, same ids | Allowed |
+| Clue drop while skilling: a clue geode, bottle, nest or scroll box landing in your own inventory while a gathering/thieving activity is armed, bank closed | None: own inventory | Base Woodcutting clue nest notification; Loot Tracker reads the same inventory changes | Allowed |
+| Pet: the game's chat line | None | Base Screenshot plugin's pet screenshot on the same three lines | Allowed |
+| Level-up, from `StatChanged` real level rising from a baseline | None: the game shows a level-up dialogue | Base Screenshot plugin (level-up screenshots); Idle Notifier-style notification only | Allowed |
+| Random event targeting you: only when the event NPC interacts with the local player, never another player's | Rejected-features list bans helpers that *solve* random events; this only notifies that one is talking to you, and does not touch menus | Base Random Events plugin, same condition and cooldown | Allowed, notify-only |
+
+Not done, deliberately: no menu changes for random events (the base plugin
+already offers "Remove others' menu options"); no hint arrows or highlights
+for Forestry objects (the base Woodcutting plugin draws its own); nothing
+here sends input, and Repeat still stops on a click or key press.
+
 ### Training methods: the Blast Furnace pump, compliance (added 2026-11-14, task-20b05b6b)
 
 Board, 2026-11-14, training Strength at the Blast Furnace pump: the same

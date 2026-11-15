@@ -38,6 +38,8 @@ final class VoiceLines
 	private final Map<String, String> alerts = new HashMap<>();
 	private final Map<String, String> verbs = new HashMap<>();
 	private final Map<String, String> resources = new HashMap<>();
+	/** Whole lines more particular than the alert's own, by {@link SkillingEvents#voiceKey}. */
+	private final Map<String, String> details = new HashMap<>();
 	/** Every clip id to the words it says, for the generator's check. */
 	private final Map<String, String> spoken = new HashMap<>();
 
@@ -103,6 +105,8 @@ final class VoiceLines
 				return verbs;
 			case "resource":
 				return resources;
+			case "detail":
+				return details;
 			default:
 				return null;
 		}
@@ -134,9 +138,10 @@ final class VoiceLines
 		{
 			return paths(ids);
 		}
-		if (isStop(alert.type) && allExist(Collections.singletonList(phrase(STOPPED_GATHERING)), exists))
+		final String fallback = isStop(alert.type) ? phrase(STOPPED_GATHERING) : alerts.get(key(alert.type.name()));
+		if (fallback != null && allExist(Collections.singletonList(fallback), exists))
 		{
-			return paths(Collections.singletonList(phrase(STOPPED_GATHERING)));
+			return paths(Collections.singletonList(fallback));
 		}
 		return Collections.emptyList();
 	}
@@ -176,9 +181,19 @@ final class VoiceLines
 		return ids;
 	}
 
-	/** A training method's own line first ("You've stopped pumping."), then the type's, or null. */
+	/**
+	 * The most particular line first: a skilling event's detail ("You got a
+	 * hard clue!"), then a training method's own ("You've stopped pumping."),
+	 * then the type's, or null.
+	 */
 	private String wholeLine(ActivityAlerts.Alert alert)
 	{
+		final String detailKey = SkillingEvents.voiceKey(alert);
+		final String detail = detailKey == null ? null : details.get(key(detailKey));
+		if (detail != null)
+		{
+			return detail;
+		}
 		final String own = alert.method == null ? null
 			: alerts.get(key(alert.type.name() + "|" + alert.method.name()));
 		return own != null ? own : alerts.get(key(alert.type.name()));

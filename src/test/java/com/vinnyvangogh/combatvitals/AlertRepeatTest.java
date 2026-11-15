@@ -60,6 +60,21 @@ public class AlertRepeatTest
 	}
 
 	@Test
+	public void aSkillingEventRepeatsWhileYouChopButStopsOnInput()
+	{
+		// A nest falls while you are still chopping: experience keeps coming,
+		// and that must not silence it. A click or key press does.
+		final AlertRepeat repeat = new AlertRepeat();
+		final ActivityAlerts.Alert nest = new ActivityAlerts.Alert(ActivityAlerts.Type.BIRD_NEST, Skill.WOODCUTTING);
+		repeat.fired(nest, true, T0, EVERY, MAX_MIN);
+		repeat.activityResumed();
+		assertSame(nest, repeat.due(T0 + EVERY * 1000L));
+		repeat.playerBack();
+		assertFalse(repeat.active());
+		assertNull(repeat.due(T0 + 2 * EVERY * 1000L));
+	}
+
+	@Test
 	public void stopsAfterTheMaximumTime()
 	{
 		final AlertRepeat repeat = started();

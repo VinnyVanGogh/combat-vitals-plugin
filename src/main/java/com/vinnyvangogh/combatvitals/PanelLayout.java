@@ -106,7 +106,13 @@ final class PanelLayout
 		row(ActivityAlerts.Type.METHOD_STOPPED, "Stopped pumping", "MethodStopped", "alertMethodStopped", null),
 		row(ActivityAlerts.Type.RECLICK_SOON, "Re-click soon", "ReclickSoon", "alertReclickSoon", null),
 		row(ActivityAlerts.Type.AUTO_STOP_SOON, "Auto-stop soon", "AutoStopSoon", "alertAutoStopSoon",
-			"alertMethodWarnSeconds")));
+			"alertMethodWarnSeconds"),
+		row(ActivityAlerts.Type.BIRD_NEST, "Bird nest", "BirdNest", "alertBirdNest", null),
+		row(ActivityAlerts.Type.CLUE_DROP, "Clue drop", "ClueDrop", "alertClueDrop", null),
+		row(ActivityAlerts.Type.FORESTRY_EVENT, "Forestry event", "ForestryEvent", "alertForestryEvent", null),
+		row(ActivityAlerts.Type.PET, "Pet", "Pet", "alertPet", null),
+		row(ActivityAlerts.Type.LEVEL_UP, "Level up", "LevelUp", "alertLevelUp", "alertLevelUpSkills"),
+		row(ActivityAlerts.Type.RANDOM_EVENT, "Random event", "RandomEvent", "alertRandomEvent", null)));
 
 	/** In the settings list only: the panel says where to find them. */
 	static final List<String> ADVANCED = Collections.unmodifiableList(Arrays.asList(

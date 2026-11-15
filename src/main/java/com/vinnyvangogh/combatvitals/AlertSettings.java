@@ -26,7 +26,7 @@ final class AlertSettings
 	 */
 	static AlertSettings of(CombatVitalsConfig config, ActivityAlerts.Type type)
 	{
-		final AlertSettings own = own(config, type);
+		final AlertSettings own = SkillingEvents.isEvent(type) ? ofEvent(config, type) : ofActivity(config, type);
 		if (!config.alertSoundShared())
 		{
 			return own;
@@ -35,7 +35,7 @@ final class AlertSettings
 			config.alertRepeatAll());
 	}
 
-	private static AlertSettings own(CombatVitalsConfig config, ActivityAlerts.Type type)
+	private static AlertSettings ofActivity(CombatVitalsConfig config, ActivityAlerts.Type type)
 	{
 		switch (type)
 		{
@@ -86,6 +86,33 @@ final class AlertSettings
 			default:
 				return new AlertSettings(config.alertMethodStopped(), config.soundMethodStopped(),
 					config.volumeMethodStopped(), config.repeatMethodStopped());
+		}
+	}
+
+	/** The skilling events' settings ({@link SkillingEvents#TYPES}). */
+	private static AlertSettings ofEvent(CombatVitalsConfig config, ActivityAlerts.Type type)
+	{
+		switch (type)
+		{
+			case BIRD_NEST:
+				return new AlertSettings(config.alertBirdNest(), config.soundBirdNest(),
+					config.volumeBirdNest(), config.repeatBirdNest());
+			case CLUE_DROP:
+				return new AlertSettings(config.alertClueDrop(), config.soundClueDrop(),
+					config.volumeClueDrop(), config.repeatClueDrop());
+			case FORESTRY_EVENT:
+				return new AlertSettings(config.alertForestryEvent(), config.soundForestryEvent(),
+					config.volumeForestryEvent(), config.repeatForestryEvent());
+			case PET:
+				return new AlertSettings(config.alertPet(), config.soundPet(),
+					config.volumePet(), config.repeatPet());
+			case LEVEL_UP:
+				return new AlertSettings(config.alertLevelUp(), config.soundLevelUp(),
+					config.volumeLevelUp(), config.repeatLevelUp());
+			case RANDOM_EVENT:
+			default:
+				return new AlertSettings(config.alertRandomEvent(), config.soundRandomEvent(),
+					config.volumeRandomEvent(), config.repeatRandomEvent());
 		}
 	}
 

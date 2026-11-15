@@ -1422,6 +1422,97 @@ public interface CombatVitalsConfig extends Config
 		return 60;
 	}
 
+	@ConfigItem(
+		keyName = "alertBirdNest",
+		name = "Bird nest",
+		description = "Notify when a bird's nest falls out of the tree you are chopping. A clue nest goes to the "
+			+ "Clue drop alert instead, or comes here when that one is off.",
+		section = alertsSection,
+		position = 16
+	)
+	default Notification alertBirdNest()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "alertClueDrop",
+		name = "Clue drop",
+		description = "Notify, with the tier, when skilling gives you a clue: a clue nest, a clue geode while "
+			+ "mining, a clue bottle while fishing, or a scroll box.",
+		section = alertsSection,
+		position = 17
+	)
+	default Notification alertClueDrop()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "alertForestryEvent",
+		name = "Forestry event",
+		description = "Notify when a Forestry event (Rising Roots, Struggling Sapling, Flowering Bush, Leprechaun, "
+			+ "Poachers, Pheasant Control, Bee Hive, Enchantment Ritual, Friendly Ent) starts near you while you "
+			+ "are chopping. RuneLite's Woodcutting plugin has its own per-event alerts; turn one off if you get two.",
+		section = alertsSection,
+		position = 18
+	)
+	default Notification alertForestryEvent()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "alertPet",
+		name = "Pet",
+		description = "Notify when you get a pet, or would have got one you already have.",
+		section = alertsSection,
+		position = 19
+	)
+	default Notification alertPet()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "alertLevelUp",
+		name = "Level up",
+		description = "Notify when you gain a level, in the skills chosen below.",
+		section = alertsSection,
+		position = 20
+	)
+	default Notification alertLevelUp()
+	{
+		// Off: the game already shows a level-up dialogue.
+		return Notification.OFF;
+	}
+
+	@ConfigItem(
+		keyName = "alertLevelUpSkills",
+		name = "Level up skills",
+		description = "All skills, or only the non-combat ones (everything but Attack, Strength, Defence, "
+			+ "Hitpoints, Ranged, Prayer and Magic).",
+		section = alertsSection,
+		position = 21
+	)
+	default LevelUpSkills alertLevelUpSkills()
+	{
+		return LevelUpSkills.ALL;
+	}
+
+	@ConfigItem(
+		keyName = "alertRandomEvent",
+		name = "Random event",
+		description = "Notify when a random event is here for you: only when it is talking to you, never "
+			+ "someone else's. RuneLite's Random Events plugin can send the same alert.",
+		section = alertsSection,
+		position = 22
+	)
+	default Notification alertRandomEvent()
+	{
+		return Notification.OFF;
+	}
+
 	String SOUND_HELP = " RuneLite: your RuneLite notification sound, as before. Soft chime, Music box, Retro blip: "
 		+ "bundled sounds. Voice line: says what happened. My sounds: your own WAV in "
 		+ ".runelite/combat-vitals/sounds/";
@@ -1437,7 +1528,7 @@ public interface CombatVitalsConfig extends Config
 		description = "One sound, volume and repeat for every alert, set just below. Off: each alert has its own, "
 			+ "further down. Turning an alert on or off still happens per alert.",
 		section = alertsSection,
-		position = 16
+		position = 23
 	)
 	default boolean alertSoundShared()
 	{
@@ -1449,7 +1540,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Sound for all",
 		description = "What every alert sounds like." + SOUND_HELP + "<alert>.wav." + SHARED_HELP,
 		section = alertsSection,
-		position = 17
+		position = 24
 	)
 	default AlertSound alertSoundAll()
 	{
@@ -1462,7 +1553,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Volume for all",
 		description = VOLUME_HELP + SHARED_HELP,
 		section = alertsSection,
-		position = 18
+		position = 25
 	)
 	default int alertVolumeAll()
 	{
@@ -1474,7 +1565,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Repeat every alert",
 		description = "Sound every alert" + REPEAT_HELP + SHARED_HELP,
 		section = alertsSection,
-		position = 19
+		position = 26
 	)
 	default boolean alertRepeatAll()
 	{
@@ -1487,7 +1578,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Repeat every (s)",
 		description = "For alerts with Repeat on: seconds between repeats.",
 		section = alertsSection,
-		position = 20
+		position = 27
 	)
 	default int repeatEverySeconds()
 	{
@@ -1500,7 +1591,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Repeat for (min)",
 		description = "For alerts with Repeat on: stop repeating after this many minutes even if you are not back.",
 		section = alertsSection,
-		position = 21
+		position = 28
 	)
 	default int repeatMaxMinutes()
 	{
@@ -1512,7 +1603,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Full inv sound",
 		description = "What the inventory full alert sounds like." + SOUND_HELP + "inventory-full.wav",
 		section = alertsSection,
-		position = 22
+		position = 29
 	)
 	default AlertSound soundInventoryFull()
 	{
@@ -1525,7 +1616,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Full inv volume",
 		description = VOLUME_HELP,
 		section = alertsSection,
-		position = 23
+		position = 30
 	)
 	default int volumeInventoryFull()
 	{
@@ -1537,7 +1628,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Repeat full inv",
 		description = "Sound the inventory full alert" + REPEAT_HELP,
 		section = alertsSection,
-		position = 24
+		position = 31
 	)
 	default boolean repeatInventoryFull()
 	{
@@ -1549,7 +1640,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Gathering sound",
 		description = "What the stopped gathering alert sounds like." + SOUND_HELP + "gathering-stopped.wav",
 		section = alertsSection,
-		position = 25
+		position = 32
 	)
 	default AlertSound soundGatheringStopped()
 	{
@@ -1562,7 +1653,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Gathering volume",
 		description = VOLUME_HELP,
 		section = alertsSection,
-		position = 26
+		position = 33
 	)
 	default int volumeGatheringStopped()
 	{
@@ -1574,7 +1665,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Repeat gathering",
 		description = "Sound the stopped gathering alert" + REPEAT_HELP,
 		section = alertsSection,
-		position = 27
+		position = 34
 	)
 	default boolean repeatGatheringStopped()
 	{
@@ -1586,7 +1677,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Spot moved sound",
 		description = "What the fishing spot moved alert sounds like." + SOUND_HELP + "spot-moved.wav",
 		section = alertsSection,
-		position = 28
+		position = 35
 	)
 	default AlertSound soundSpotMoved()
 	{
@@ -1599,7 +1690,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Spot moved volume",
 		description = VOLUME_HELP,
 		section = alertsSection,
-		position = 29
+		position = 36
 	)
 	default int volumeSpotMoved()
 	{
@@ -1611,7 +1702,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Repeat spot moved",
 		description = "Sound the fishing spot moved alert" + REPEAT_HELP,
 		section = alertsSection,
-		position = 30
+		position = 37
 	)
 	default boolean repeatSpotMoved()
 	{
@@ -1623,7 +1714,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Thieving sound",
 		description = "What the stopped thieving alert sounds like." + SOUND_HELP + "thieving-stopped.wav",
 		section = alertsSection,
-		position = 31
+		position = 38
 	)
 	default AlertSound soundThievingStopped()
 	{
@@ -1636,7 +1727,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Thieving volume",
 		description = VOLUME_HELP,
 		section = alertsSection,
-		position = 32
+		position = 39
 	)
 	default int volumeThievingStopped()
 	{
@@ -1648,7 +1739,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Repeat thieving",
 		description = "Sound the stopped thieving alert" + REPEAT_HELP,
 		section = alertsSection,
-		position = 33
+		position = 40
 	)
 	default boolean repeatThievingStopped()
 	{
@@ -1660,7 +1751,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Stunned sound",
 		description = "What the stunned alert sounds like." + SOUND_HELP + "stunned.wav",
 		section = alertsSection,
-		position = 34
+		position = 41
 	)
 	default AlertSound soundStunned()
 	{
@@ -1673,7 +1764,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Stunned volume",
 		description = VOLUME_HELP,
 		section = alertsSection,
-		position = 35
+		position = 42
 	)
 	default int volumeStunned()
 	{
@@ -1685,7 +1776,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Repeat stunned",
 		description = "Sound the stunned alert" + REPEAT_HELP,
 		section = alertsSection,
-		position = 36
+		position = 43
 	)
 	default boolean repeatStunned()
 	{
@@ -1697,7 +1788,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Coin pouch sound",
 		description = "What the coin pouch alert sounds like." + SOUND_HELP + "coin-pouch-cap.wav",
 		section = alertsSection,
-		position = 37
+		position = 44
 	)
 	default AlertSound soundCoinPouch()
 	{
@@ -1710,7 +1801,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Coin pouch volume",
 		description = VOLUME_HELP,
 		section = alertsSection,
-		position = 38
+		position = 45
 	)
 	default int volumeCoinPouch()
 	{
@@ -1722,7 +1813,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Repeat coin pouch",
 		description = "Sound the coin pouch alert" + REPEAT_HELP,
 		section = alertsSection,
-		position = 39
+		position = 46
 	)
 	default boolean repeatCoinPouch()
 	{
@@ -1734,7 +1825,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Necklace sound",
 		description = "What the dodgy necklace alert sounds like." + SOUND_HELP + "necklace-broke.wav",
 		section = alertsSection,
-		position = 40
+		position = 47
 	)
 	default AlertSound soundNecklaceBroke()
 	{
@@ -1747,7 +1838,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Necklace volume",
 		description = VOLUME_HELP,
 		section = alertsSection,
-		position = 41
+		position = 48
 	)
 	default int volumeNecklaceBroke()
 	{
@@ -1759,7 +1850,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Repeat necklace",
 		description = "Sound the dodgy necklace alert" + REPEAT_HELP,
 		section = alertsSection,
-		position = 42
+		position = 49
 	)
 	default boolean repeatNecklaceBroke()
 	{
@@ -1771,7 +1862,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Make-X sound",
 		description = "What the make-X finished alert sounds like." + SOUND_HELP + "production-finished.wav",
 		section = alertsSection,
-		position = 43
+		position = 50
 	)
 	default AlertSound soundMakeFinished()
 	{
@@ -1784,7 +1875,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Make-X volume",
 		description = VOLUME_HELP,
 		section = alertsSection,
-		position = 44
+		position = 51
 	)
 	default int volumeMakeFinished()
 	{
@@ -1796,7 +1887,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Repeat make-X",
 		description = "Sound the make-X finished alert" + REPEAT_HELP,
 		section = alertsSection,
-		position = 45
+		position = 52
 	)
 	default boolean repeatMakeFinished()
 	{
@@ -1808,7 +1899,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Low energy sound",
 		description = "What the low run energy alert sounds like." + SOUND_HELP + "low-run-energy.wav",
 		section = alertsSection,
-		position = 46
+		position = 53
 	)
 	default AlertSound soundLowRunEnergy()
 	{
@@ -1821,7 +1912,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Low energy volume",
 		description = VOLUME_HELP,
 		section = alertsSection,
-		position = 47
+		position = 54
 	)
 	default int volumeLowRunEnergy()
 	{
@@ -1833,7 +1924,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Repeat low energy",
 		description = "Sound the low run energy alert" + REPEAT_HELP,
 		section = alertsSection,
-		position = 48
+		position = 55
 	)
 	default boolean repeatLowRunEnergy()
 	{
@@ -1845,7 +1936,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Pumping sound",
 		description = "What the stopped pumping alert sounds like." + SOUND_HELP + "method-stopped.wav",
 		section = alertsSection,
-		position = 49
+		position = 56
 	)
 	default AlertSound soundMethodStopped()
 	{
@@ -1858,7 +1949,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Pumping volume",
 		description = VOLUME_HELP,
 		section = alertsSection,
-		position = 50
+		position = 57
 	)
 	default int volumeMethodStopped()
 	{
@@ -1870,7 +1961,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Repeat pumping",
 		description = "Sound the stopped pumping alert" + REPEAT_HELP,
 		section = alertsSection,
-		position = 51
+		position = 58
 	)
 	default boolean repeatMethodStopped()
 	{
@@ -1882,7 +1973,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Idle logout sound",
 		description = "What the idle logout soon alert sounds like." + SOUND_HELP + "reclick-soon.wav",
 		section = alertsSection,
-		position = 52
+		position = 59
 	)
 	default AlertSound soundReclickSoon()
 	{
@@ -1895,7 +1986,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Idle logout volume",
 		description = VOLUME_HELP,
 		section = alertsSection,
-		position = 53
+		position = 60
 	)
 	default int volumeReclickSoon()
 	{
@@ -1907,7 +1998,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Repeat idle logout",
 		description = "Sound the idle logout soon alert" + REPEAT_HELP,
 		section = alertsSection,
-		position = 54
+		position = 61
 	)
 	default boolean repeatReclickSoon()
 	{
@@ -1919,7 +2010,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Pump stops sound",
 		description = "What the pump stops soon alert sounds like." + SOUND_HELP + "auto-stop-soon.wav",
 		section = alertsSection,
-		position = 55
+		position = 62
 	)
 	default AlertSound soundAutoStopSoon()
 	{
@@ -1932,7 +2023,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Pump stops volume",
 		description = VOLUME_HELP,
 		section = alertsSection,
-		position = 56
+		position = 63
 	)
 	default int volumeAutoStopSoon()
 	{
@@ -1944,9 +2035,231 @@ public interface CombatVitalsConfig extends Config
 		name = "Repeat pump stops",
 		description = "Sound the pump stops soon alert" + REPEAT_HELP,
 		section = alertsSection,
-		position = 57
+		position = 64
 	)
 	default boolean repeatAutoStopSoon()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundBirdNest",
+		name = "Bird nest sound",
+		description = "What the bird nest alert sounds like." + SOUND_HELP + "bird-nest.wav",
+		section = alertsSection,
+		position = 65
+	)
+	default AlertSound soundBirdNest()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeBirdNest",
+		name = "Bird nest volume",
+		description = VOLUME_HELP,
+		section = alertsSection,
+		position = 66
+	)
+	default int volumeBirdNest()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatBirdNest",
+		name = "Repeat bird nest",
+		description = "Sound the bird nest alert" + REPEAT_HELP,
+		section = alertsSection,
+		position = 67
+	)
+	default boolean repeatBirdNest()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundClueDrop",
+		name = "Clue drop sound",
+		description = "What the clue drop alert sounds like." + SOUND_HELP + "clue-drop.wav",
+		section = alertsSection,
+		position = 68
+	)
+	default AlertSound soundClueDrop()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeClueDrop",
+		name = "Clue drop volume",
+		description = VOLUME_HELP,
+		section = alertsSection,
+		position = 69
+	)
+	default int volumeClueDrop()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatClueDrop",
+		name = "Repeat clue drop",
+		description = "Sound the clue drop alert" + REPEAT_HELP,
+		section = alertsSection,
+		position = 70
+	)
+	default boolean repeatClueDrop()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundForestryEvent",
+		name = "Forestry sound",
+		description = "What the Forestry event alert sounds like." + SOUND_HELP + "forestry-event.wav",
+		section = alertsSection,
+		position = 71
+	)
+	default AlertSound soundForestryEvent()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeForestryEvent",
+		name = "Forestry volume",
+		description = VOLUME_HELP,
+		section = alertsSection,
+		position = 72
+	)
+	default int volumeForestryEvent()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatForestryEvent",
+		name = "Repeat Forestry",
+		description = "Sound the Forestry event alert" + REPEAT_HELP,
+		section = alertsSection,
+		position = 73
+	)
+	default boolean repeatForestryEvent()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundPet",
+		name = "Pet sound",
+		description = "What the pet alert sounds like." + SOUND_HELP + "pet.wav",
+		section = alertsSection,
+		position = 74
+	)
+	default AlertSound soundPet()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumePet",
+		name = "Pet volume",
+		description = VOLUME_HELP,
+		section = alertsSection,
+		position = 75
+	)
+	default int volumePet()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatPet",
+		name = "Repeat pet",
+		description = "Sound the pet alert" + REPEAT_HELP,
+		section = alertsSection,
+		position = 76
+	)
+	default boolean repeatPet()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundLevelUp",
+		name = "Level up sound",
+		description = "What the level up alert sounds like." + SOUND_HELP + "level-up.wav",
+		section = alertsSection,
+		position = 77
+	)
+	default AlertSound soundLevelUp()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeLevelUp",
+		name = "Level up volume",
+		description = VOLUME_HELP,
+		section = alertsSection,
+		position = 78
+	)
+	default int volumeLevelUp()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatLevelUp",
+		name = "Repeat level up",
+		description = "Sound the level up alert" + REPEAT_HELP,
+		section = alertsSection,
+		position = 79
+	)
+	default boolean repeatLevelUp()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundRandomEvent",
+		name = "Random sound",
+		description = "What the random event alert sounds like." + SOUND_HELP + "random-event.wav",
+		section = alertsSection,
+		position = 80
+	)
+	default AlertSound soundRandomEvent()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeRandomEvent",
+		name = "Random volume",
+		description = VOLUME_HELP,
+		section = alertsSection,
+		position = 81
+	)
+	default int volumeRandomEvent()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatRandomEvent",
+		name = "Repeat random",
+		description = "Sound the random event alert" + REPEAT_HELP,
+		section = alertsSection,
+		position = 82
+	)
+	default boolean repeatRandomEvent()
 	{
 		return false;
 	}
