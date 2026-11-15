@@ -1159,7 +1159,7 @@ public interface CombatVitalsConfig extends Config
 			+ "the inventory on top, and the number is the free space of the two together. Off, or with the "
 			+ "container closed or not yet checked, the pillar shows the inventory alone.",
 		section = pillarsSection,
-		position = 5
+		position = 24
 	)
 	default boolean pillarContainers()
 	{
@@ -1172,7 +1172,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Container colour",
 		description = "The open log basket's or fish barrel's part of the inventory pillar.",
 		section = pillarsSection,
-		position = 6
+		position = 25
 	)
 	default Color pillarContainerColour()
 	{
