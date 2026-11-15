@@ -274,11 +274,14 @@ public class TrainingSessionTest
 		assertEquals("Strength", SkillingText.headerName(Skill.STRENGTH, null));
 		assertEquals("Not pumping", SkillingText.idleHeader(Skill.STRENGTH, PUMP));
 		assertEquals("Not fishing", SkillingText.idleHeader(Skill.FISHING, null));
-		assertEquals("Re-click in 4:12 | Stops in 97:30",
-			SkillingText.methodTimers(252_000, 9750));
-		assertEquals("Stops in 100:00", SkillingText.methodTimers(-1, 10_000));
-		assertEquals("Re-click in 0:01", SkillingText.methodTimers(1, -1));
-		assertNull(SkillingText.methodTimers(-1, -1));
+		assertEquals("AFK logout in 4:12 | Pump stops in 97:30",
+			SkillingText.methodTimers(252_000, false, PUMP.stopNoun(), 9750));
+		assertEquals("Active | Pump stops in 97:30",
+			SkillingText.methodTimers(1_795_000, true, PUMP.stopNoun(), 9750));
+		assertEquals("Pump stops in 100:00", SkillingText.methodTimers(-1, false, "Pump", 10_000));
+		assertEquals("Stops in 100:00", SkillingText.methodTimers(-1, false, null, 10_000));
+		assertEquals("AFK logout in 0:01", SkillingText.methodTimers(1, false, null, -1));
+		assertNull(SkillingText.methodTimers(-1, true, null, -1));
 		assertEquals("0:00", SkillingText.clock(0));
 	}
 

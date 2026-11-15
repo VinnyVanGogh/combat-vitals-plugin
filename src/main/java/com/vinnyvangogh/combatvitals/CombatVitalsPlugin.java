@@ -2111,7 +2111,8 @@ public class CombatVitalsPlugin extends Plugin
 		return builder
 			.method(method)
 			.inventoryFill(stopTicks < 0 || autoStop <= 0 ? 0 : 1 - (double) stopTicks / autoStop)
-			.inventoryLabel(SkillingText.methodTimers(trainingSession.reclickMillis(), stopTicks));
+			.inventoryLabel(SkillingText.methodTimers(trainingSession.reclickMillis(), trainingSession.active(),
+				method.stopNoun(), stopTicks));
 	}
 
 	/**

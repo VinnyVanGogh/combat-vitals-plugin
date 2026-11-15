@@ -86,4 +86,10 @@ enum TrainingMethod
 	{
 		return autoStopMinutes <= 0 ? -1 : autoStopMinutes * 100;
 	}
+
+	/** What the game stops, for "Pump stops in 97:30"; null for a plain "Stops in". */
+	String stopNoun()
+	{
+		return this == BLAST_FURNACE_PUMP ? "Pump" : null;
+	}
 }

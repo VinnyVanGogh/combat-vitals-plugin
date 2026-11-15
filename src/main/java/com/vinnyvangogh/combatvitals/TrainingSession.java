@@ -49,7 +49,12 @@ final class TrainingSession
 	private boolean reclickWarned;
 	private boolean stopWarned;
 	private long reclickMillis = -1;
+	/** Mouse or keyboard idle time as of the last tick, -1 when unknown. */
+	private long idleMillis = -1;
 	private int stopTicksLeft = -1;
+
+	/** Input this recent reads as "Active" instead of a logout countdown (Board, 2026-11-14). */
+	static final long ACTIVE_MS = 5_000;
 
 	TrainingSession()
 	{
@@ -142,6 +147,7 @@ final class TrainingSession
 		}
 
 		List<ActivityAlerts.Alert> out = null;
+		this.idleMillis = idleMillis;
 		reclickMillis = idleMillis < 0 || logoutMillis <= 0 ? -1 : Math.max(0, logoutMillis - idleMillis);
 		if (reclickMillis >= 0 && reclickMillis <= warnMillis)
 		{
@@ -188,6 +194,12 @@ final class TrainingSession
 	long reclickMillis()
 	{
 		return reclickMillis;
+	}
+
+	/** The mouse or keyboard was used within {@link #ACTIVE_MS} as of the last tick. */
+	boolean active()
+	{
+		return idleMillis >= 0 && idleMillis < ACTIVE_MS;
 	}
 
 	/** Ticks until the game stops the method as of the last tick, or -1 when not running or it never does. */
