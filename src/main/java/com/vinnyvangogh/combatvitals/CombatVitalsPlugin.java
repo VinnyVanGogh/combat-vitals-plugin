@@ -722,6 +722,8 @@ public class CombatVitalsPlugin extends Plugin
 			case LOGIN_SCREEN:
 				// Logging out ends the session's counts; a hop does not.
 				session.clear();
+				// No more ticks come to redraw the Live section, so it says so now.
+				publishLive();
 				// Another account may log in next: its own counts are restored from its profile.
 				containerContents.clear();
 				containersSaved = null;
@@ -1624,6 +1626,54 @@ public class CombatVitalsPlugin extends Plugin
 		readout = VitalsHalves.combat(config) ? buildReadout() : null;
 		selfReadout = VitalsHalves.combat(config) ? buildSelfReadout() : null;
 		skillingReadout = VitalsHalves.skilling(config) ? buildSkillingReadout() : null;
+		publishLive();
+	}
+
+	/**
+	 * The sidebar's Live section, from the readouts just built: only while the
+	 * panel is open in the sidebar and the section unfolded, so a closed panel
+	 * costs nothing. Built here on the client thread, drawn on the Swing thread.
+	 */
+	private void publishLive()
+	{
+		final VitalsSidePanel panel = sidePanel;
+		if (panel == null || !config.sidebarLiveOpen() || !panel.wantsLive())
+		{
+			return;
+		}
+		final LiveVitals vitals = buildLive();
+		SwingUtilities.invokeLater(() -> panel.live(vitals));
+	}
+
+	private LiveVitals buildLive()
+	{
+		if (client.getGameState() != GameState.LOGGED_IN || client.getLocalPlayer() == null)
+		{
+			return LiveVitals.LOGGED_OUT;
+		}
+		final long now = System.currentTimeMillis();
+		return new LiveVitals(true,
+			VitalsHalves.combat(config) ? liveCombat(now) : null,
+			VitalsHalves.skilling(config) ? LiveVitals.skilling(skillingReadout) : null,
+			LiveVitals.session(session, now));
+	}
+
+	/** Your vitals, the target as the overhead readout has it, and the combat skill gained in last. */
+	private LiveVitals.Combat liveCombat(long now)
+	{
+		final Readout target = readout;
+		final Skill skill = session.latest(LiveVitals.COMBAT_SKILLS);
+		final XpProgress xp = skill == null ? null : XpProgress.of(client.getSkillExperience(skill));
+		return new LiveVitals.Combat(
+			LiveVitals.level("Hitpoints", client.getBoostedSkillLevel(Skill.HITPOINTS),
+				client.getRealSkillLevel(Skill.HITPOINTS), LiveVitals.HITPOINTS),
+			LiveVitals.level("Prayer", client.getBoostedSkillLevel(Skill.PRAYER),
+				client.getRealSkillLevel(Skill.PRAYER), LiveVitals.PRAYER),
+			LiveVitals.energy(client.getEnergy(), client.getVarpValue(VarPlayerID.SA_ENERGY)),
+			target == null ? null : target.getName(),
+			LiveVitals.target(target, config.percentageDecimals()),
+			skill == null ? null : LiveVitals.training(skill, xp, skillColour(skill)),
+			skill == null ? null : LiveVitals.trainingRate(xp, session.xpPerHour(skill, now)));
 	}
 
 	/**

@@ -29,7 +29,7 @@ import org.junit.Test;
 public class PanelLayoutTest
 {
 	private static final Set<String> OUTSIDE_SECTIONS = new HashSet<>(Arrays.asList(
-		"combatVitals", "skillingVitals", CombatVitalsConfig.LAST_SEEN_VERSION));
+		"combatVitals", "skillingVitals", CombatVitalsConfig.LAST_SEEN_VERSION, LiveSection.OPEN_KEY));
 
 	@Test
 	public void everySettingIsInExactlyOnePlace()

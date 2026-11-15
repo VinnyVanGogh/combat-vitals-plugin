@@ -4,6 +4,7 @@ import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
 import java.awt.RenderingHints;
@@ -29,8 +30,9 @@ import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.colorpicker.ColorPickerManager;
 
 /**
- * The plugin's sidebar panel: presets at the top, then five tabs (Combat,
- * Targets, Skilling, Alerts, Look), each opening with its own short guide.
+ * The plugin's sidebar panel: the live vitals at the top ({@link LiveSection}),
+ * then presets, then five tabs (Combat, Targets, Skilling, Alerts, Look), each
+ * opening with its own short guide.
  * Every input is a setting from RuneLite's list, same key and same value
  * ({@link SettingControls}); where each sits is {@link PanelLayout}'s.
  *
@@ -68,6 +70,9 @@ final class VitalsSidePanel extends PluginPanel
 	/** Shown or hidden from the settings on every refresh, e.g. per-alert sounds while one is shared. */
 	private final List<Runnable> visibility = new ArrayList<>();
 	private final Column presetBody = new Column();
+	private final LiveSection live;
+	/** The sidebar has this panel open; set on the Swing thread, read on the client thread. */
+	private volatile boolean shown;
 	private Presets.Preset previewing;
 	private Presets.Undo undo;
 	private String note;
@@ -84,6 +89,8 @@ final class VitalsSidePanel extends PluginPanel
 		final Column root = new Column();
 		root.setOpaque(false);
 		root.add(title());
+		live = new LiveSection(store);
+		root.add(live);
 		root.add(presets());
 		root.add(tabBar());
 		cardPanel.setOpaque(false);
@@ -105,6 +112,7 @@ final class VitalsSidePanel extends PluginPanel
 	/** Redraws every input and what depends on them from the stored settings. */
 	void refresh()
 	{
+		live.refresh();
 		controls.loadAll();
 		for (Runnable r : visibility)
 		{
@@ -113,6 +121,33 @@ final class VitalsSidePanel extends PluginPanel
 		drawPresets();
 		revalidate();
 		repaint();
+	}
+
+	/** Shows a tick's vitals in the Live section. Swing thread. */
+	void live(LiveVitals vitals)
+	{
+		live.update(vitals);
+	}
+
+	/**
+	 * Whether a tick's vitals would be seen: the panel is open in the sidebar
+	 * and its Live section unfolded. The plugin builds none otherwise. Any thread.
+	 */
+	boolean wantsLive()
+	{
+		return shown && live.isOpen();
+	}
+
+	@Override
+	public void onActivate()
+	{
+		shown = true;
+	}
+
+	@Override
+	public void onDeactivate()
+	{
+		shown = false;
 	}
 
 	void show(PanelLayout.Tab tab)
@@ -390,14 +425,7 @@ final class VitalsSidePanel extends PluginPanel
 			body.add(text((i + 1) + ". " + page.walkthrough.get(i), MUTED));
 		}
 		body.setVisible(false);
-		final JButton header = new JButton("+ " + title);
-		header.setFont(FontManager.getRunescapeSmallFont());
-		header.setForeground(ColorScheme.BRAND_ORANGE);
-		header.setFocusable(false);
-		header.setContentAreaFilled(false);
-		header.setBorderPainted(false);
-		header.setHorizontalAlignment(AbstractButton.LEFT);
-		header.setBorder(new EmptyBorder(2, 0, 2, 0));
+		final JButton header = foldHeader("+ " + title, FontManager.getRunescapeSmallFont());
 		header.addActionListener(e ->
 		{
 			body.setVisible(!body.isVisible());
@@ -410,6 +438,20 @@ final class VitalsSidePanel extends PluginPanel
 	}
 
 	// ---- Building blocks (after GroupIronmanPanel's) ----
+
+	/** A flat orange header that folds what is under it: the guides' and the Live section's. */
+	static JButton foldHeader(String text, Font font)
+	{
+		final JButton header = new JButton(text);
+		header.setFont(font);
+		header.setForeground(ColorScheme.BRAND_ORANGE);
+		header.setFocusable(false);
+		header.setContentAreaFilled(false);
+		header.setBorderPainted(false);
+		header.setHorizontalAlignment(AbstractButton.LEFT);
+		header.setBorder(new EmptyBorder(2, 0, 2, 0));
+		return header;
+	}
 
 	private static JButton button(String label, String tooltip, Runnable action)
 	{
@@ -430,14 +472,10 @@ final class VitalsSidePanel extends PluginPanel
 		return label;
 	}
 
-	/** Wraps at the panel's width; the text is the plugin's own, escaped all the same. */
+	/** Wraps at the panel's width ({@link WrapLabel}); the text is the plugin's own, escaped all the same. */
 	static JLabel text(String text, Color color)
 	{
-		final JLabel label = new JLabel("<html><body style='width:170px'>" + escape(text) + "</body></html>");
-		label.setFont(FontManager.getRunescapeSmallFont());
-		label.setForeground(color);
-		label.setBorder(new EmptyBorder(1, 0, 1, 0));
-		return label;
+		return new WrapLabel(text, color);
 	}
 
 	static String escape(String s)
@@ -475,7 +513,7 @@ final class VitalsSidePanel extends PluginPanel
 	 * (GIM Utilities' {@code GroupIronmanPanel.Column}): BoxLayout lines
 	 * children up on their alignmentX, JLabel's is left and JPanel's centre.
 	 */
-	static final class Column extends JPanel
+	static class Column extends JPanel
 	{
 		Column()
 		{
