@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Fixed
+- No stopped alert on login (Board, 2026-11-14: "You've stopped pumping" right after logging in at the Blast Furnace). A stopped alert now fires only after that activity was seen in this login session. A dropped connection that reconnects (`CONNECTION_LOST`, no logout or hop, so nothing was cleared) is now a new login: a pump session or armed stop detector from before it ends quietly unless the player is seen at it again, and a repeating alert stops (`TrainingSession.reconnected`, `ActivityAlerts.reconnected`). Experience reported during the login, hop or reconnect sync (until the second game tick, as RuneLite's XP Tracker waits) is a baseline for every tracker, never a drop or a level-up (`LoginSync`).
 - Sidebar text, the guides most of all, no longer runs past the panel's right edge: it wraps at the width it is given (`WrapLabel`) instead of a fixed CSS `width:170px`, which did not match the panel's real width.
 
 ### Added

@@ -21,7 +21,8 @@ import net.runelite.api.Skill;
  * without firing: walking (to the next spot, or the bank), the bank opening,
  * items leaving the inventory (deposited or dropped), the inventory filling
  * (that has its own alert), the spot moving (likewise), and logging out or
- * hopping ({@link #clear}).
+ * hopping ({@link #clear}) or reconnecting ({@link #reconnected}). Only
+ * experience after the login sync arms it, so it never fires on login.
  *
  * <h3>Inventory full</h3>
  * Fires on the tick the last free slot is taken while a gathering or
@@ -361,13 +362,24 @@ final class ActivityAlerts
 		return out == null ? Collections.emptyList() : out;
 	}
 
+	/**
+	 * The connection came back without a logout: to the player, logging in
+	 * again (Board, 2026-11-14). What was armed before it does not count; the
+	 * next real experience drop arms the detector again. Baselines and the
+	 * inventory are kept: nothing changed while away.
+	 */
+	void reconnected()
+	{
+		active = null;
+		lastActiveTick = -1;
+		xpThisTick = null;
+	}
+
 	/** Logged out or hopped: everything is a baseline again. */
 	void clear()
 	{
 		java.util.Arrays.fill(xpBySkill, -1);
-		active = null;
-		lastActiveTick = -1;
-		xpThisTick = null;
+		reconnected();
 		experienced = false;
 		banked = false;
 		stunned = false;
