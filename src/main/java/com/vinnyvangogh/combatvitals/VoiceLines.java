@@ -168,15 +168,20 @@ final class VoiceLines
 			ids.add(verb);
 			return ids;
 		}
-		// A training method's own line first ("You've stopped pumping."), then the type's.
-		final String own = alert.method == null ? null
-			: alerts.get(key(alert.type.name() + "|" + alert.method.name()));
-		final String whole = own != null ? own : alerts.get(key(alert.type.name()));
+		final String whole = wholeLine(alert);
 		if (whole != null)
 		{
 			ids.add(whole);
 		}
 		return ids;
+	}
+
+	/** A training method's own line first ("You've stopped pumping."), then the type's, or null. */
+	private String wholeLine(ActivityAlerts.Alert alert)
+	{
+		final String own = alert.method == null ? null
+			: alerts.get(key(alert.type.name() + "|" + alert.method.name()));
+		return own != null ? own : alerts.get(key(alert.type.name()));
 	}
 
 	/** The resource clip for an item gathered with a skill, or null. */

@@ -1018,32 +1018,22 @@ public class CombatVitalsPlugin extends Plugin
 	private void clickedObject(MenuOptionClicked event, String option)
 	{
 		final WorldView view = client.getTopLevelWorldView();
-		ObjectComposition composition = client.getObjectDefinition(event.getId());
-		if (composition != null && composition.getImpostorIds() != null)
+		final ObjectComposition composition = objectDefinition(event.getId());
+		if (view == null || composition == null)
 		{
-			final ObjectComposition impostor = composition.getImpostor();
-			if (impostor != null)
-			{
-				composition = impostor;
-			}
+			endObjectBadge();
+			return;
 		}
 
 		// A training method (the Blast Furnace pump) by the clicked id; else a skilling option by name.
-		final TrainingMethod method = view == null || composition == null ? null
-			: TrainingMethod.forObject(event.getId(), option);
-		final Skill skill = method != null ? method.skill() : objectSkill(composition, view, option);
+		final TrainingMethod method = TrainingMethod.forObject(event.getId(), option);
+		final Skill skill = method != null ? method.skill() : SkillingActions.forOption(option, composition.getName());
 		if (skill == null)
 		{
 			endObjectBadge();
 			return;
 		}
-		// The pump clicked again keeps its session: the game's stop restarts from this click.
-		if (method == null || trainingSession.method() != method)
-		{
-			trainingSession.end();
-		}
-		objectMethod = method;
-		objectClickTick = client.getTickCount();
+		clickedMethod(method);
 
 		// On to the next rock: the badge lingers through the walk, and the
 		// new swing cancels the linger.
@@ -1061,10 +1051,31 @@ public class CombatVitalsPlugin extends Plugin
 		objectSkilling.clicked(skill, at.getX(), at.getY(), at.getPlane(), size, size, client.getTickCount());
 	}
 
-	/** The skill a skilling option on a tree, rock or stall trains, or null. */
-	private static Skill objectSkill(ObjectComposition composition, WorldView view, String option)
+	/** An object's definition, its impostor when it has one in force, or null. */
+	private ObjectComposition objectDefinition(int id)
 	{
-		return composition == null || view == null ? null : SkillingActions.forOption(option, composition.getName());
+		final ObjectComposition composition = client.getObjectDefinition(id);
+		if (composition == null || composition.getImpostorIds() == null)
+		{
+			return composition;
+		}
+		final ObjectComposition impostor = composition.getImpostor();
+		return impostor != null ? impostor : composition;
+	}
+
+	/**
+	 * A skilling object clicked: remembered for the training session. The
+	 * pump clicked again keeps its session, and the game's stop restarts
+	 * from this click; anything else ends it.
+	 */
+	private void clickedMethod(TrainingMethod method)
+	{
+		if (method == null || trainingSession.method() != method)
+		{
+			trainingSession.end();
+		}
+		objectMethod = method;
+		objectClickTick = client.getTickCount();
 	}
 
 	private static boolean isObjectOption(MenuAction action)

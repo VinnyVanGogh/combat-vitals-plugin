@@ -378,22 +378,27 @@ final class ActivityAlerts
 				return "You have " + pouchCap + " coin pouches: open them";
 			case NECKLACE_BROKE:
 				return "Your dodgy necklace has crumbled";
-			case METHOD_STOPPED:
-				return "You have stopped " + methodVerb(alert);
-			case RECLICK_SOON:
-				return "Click soon or you will be logged out for being idle";
-			case AUTO_STOP_SOON:
-				return "You will stop " + methodVerb(alert) + " soon: click again to keep going";
 			case LOW_RUN_ENERGY:
-			default:
 				return "You have low run energy";
+			default:
+				return methodMessage(alert);
 		}
 	}
 
-	/** "pumping": the training method's verb, or "training" without one. */
-	private static String methodVerb(Alert alert)
+	/** A training method alert's text: "You have stopped pumping". */
+	private static String methodMessage(Alert alert)
 	{
-		return alert.method == null ? "training" : alert.method.verb();
+		final String verb = alert.method == null ? "training" : alert.method.verb();
+		switch (alert.type)
+		{
+			case RECLICK_SOON:
+				return "Click soon or you will be logged out for being idle";
+			case AUTO_STOP_SOON:
+				return "You will stop " + verb + " soon: click again to keep going";
+			case METHOD_STOPPED:
+			default:
+				return "You have stopped " + verb;
+		}
 	}
 
 	/** "fishing", "hunting", "smithing": the activity as a verb. */
