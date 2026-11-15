@@ -15,6 +15,15 @@ final class Pillar
 
 	private final Color colour;
 
+	/**
+	 * How much of {@link #fraction} at the bottom is a second thing, 0 to 1:
+	 * an open log basket or fish barrel under the inventory. 0 draws none.
+	 */
+	private final double baseFraction;
+
+	/** The bottom part's colour; null with no bottom part. */
+	private final Color baseColour;
+
 	/** What the pillar is: the skill, a backpack, a heart. Null draws none. */
 	private final BufferedImage icon;
 

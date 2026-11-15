@@ -2207,7 +2207,8 @@ public class CombatVitalsPlugin extends Plugin
 		}
 		final int pouches = pouchHeld;
 		return ContainerRow.rows(skill, capacities, kind ->
-			kind == SkillingContainer.ESSENCE_POUCHES ? pouches : containerContents.contents(kind));
+			kind == SkillingContainer.ESSENCE_POUCHES ? pouches : containerContents.contents(kind),
+			containerContents::isOpen);
 	}
 
 	private int pouchDegradation(EssencePouch pouch)

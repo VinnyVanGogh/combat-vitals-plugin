@@ -106,7 +106,8 @@ final class PillarPainter
 		{
 			if (style == PillarStyle.FLAT)
 			{
-				Bars.up(graphics, box, pillar.getFraction(), pillar.getColour(), flatBackground);
+				Bars.up(graphics, box, pillar.getFraction(), pillar.getColour(), baseFraction(pillar),
+					pillar.getBaseColour(), flatBackground);
 			}
 			else
 			{
@@ -140,11 +141,30 @@ final class PillarPainter
 		{
 			fill(graphics, inner, filled, pillar.getColour());
 		}
+		final int base = (int) Math.round(inner.height * baseFraction(pillar));
+		if (base > 0)
+		{
+			// Over the bottom of the fill, with its own bright top edge marking where the two meet.
+			fill(graphics, inner, base, pillar.getBaseColour());
+		}
 
 		ticks(graphics, inner, pillar.getDivisions());
 
 		graphics.setColor(FRAME);
 		graphics.drawRect(box.x, box.y, box.width - 1, box.height - 1);
+	}
+
+	/**
+	 * The bottom part, 0 to the whole fill: never above the fill while it
+	 * glides, and none without a colour to draw it in.
+	 */
+	static double baseFraction(Pillar pillar)
+	{
+		if (pillar.getBaseColour() == null)
+		{
+			return 0;
+		}
+		return Math.max(0, Math.min(pillar.getBaseFraction(), Math.min(1, pillar.getFraction())));
 	}
 
 	/** Lit from the left, darker to the right, a soft shine down the left and a bright top edge. */

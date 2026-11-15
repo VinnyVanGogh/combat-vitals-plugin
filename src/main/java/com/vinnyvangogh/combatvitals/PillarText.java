@@ -84,15 +84,36 @@ final class PillarText
 	 */
 	static String inventoryTooltip(int empty, InventoryCount count, java.util.List<ContainerRow> containers)
 	{
+		return inventoryTooltip(empty, count, containers, null);
+	}
+
+	/**
+	 * As above, with the container the pillar shows under the inventory
+	 * listed first, as it sits first in the bar (Board, 2026-11-14):
+	 * "Log basket 28/28 free</br>Inventory: 27 of 28 free".
+	 *
+	 * @param first one of {@code containers}, or null for today's order
+	 */
+	static String inventoryTooltip(int empty, InventoryCount count, java.util.List<ContainerRow> containers,
+		ContainerRow first)
+	{
 		final String inventory = inventoryTooltip(empty, count);
 		if (inventory == null || containers.isEmpty())
 		{
 			return inventory;
 		}
-		final StringBuilder text = new StringBuilder(inventory);
+		final StringBuilder text = new StringBuilder();
+		if (first != null)
+		{
+			text.append(first.label(count)).append("</br>");
+		}
+		text.append(inventory);
 		for (ContainerRow row : containers)
 		{
-			text.append("</br>").append(row.label(count));
+			if (row != first)
+			{
+				text.append("</br>").append(row.label(count));
+			}
 		}
 		return text.toString();
 	}

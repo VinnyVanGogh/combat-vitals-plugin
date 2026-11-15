@@ -173,7 +173,7 @@ final class PanelLayout
 			new Group("Skill colours", "skillingFishingColour", "skillingWoodcuttingColour", "skillingMiningColour",
 				"skillingThievingColour", "skillingRunecraftColour", "skillingHunterColour"),
 			new Group("Side pillars", "pillarMode", "pillarCombatSide", "pillarXpSide", "pillarLabels",
-				"pillarStyle"));
+				"pillarStyle", "pillarContainers", "pillarContainerColour"));
 	}
 
 	/**
