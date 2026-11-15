@@ -25,9 +25,10 @@ Don't want one half? Turn off **Combat vitals** or **Skilling vitals** at the
 top of the settings and every overlay, side pillar and alert of that half goes
 with it; the other half stays exactly as you set it. Both are on by default.
 
-The plugin is listed as *Combat & Skilling Vitals* on the Plugin Hub and is
-still the same plugin: it keeps its Hub id `combat-vitals`, its name in the
-plugin list, and every setting you have saved.
+Combat & Skilling Vitals used to be called *Combat Vitals*. It is still the
+same plugin: it keeps its Hub id `combat-vitals`, its on/off state and every
+setting you have saved. If you had pinned it in the plugin list, pin it again:
+RuneLite remembers pins by name.
 
 ---
 
@@ -274,7 +275,7 @@ the case that broke every earlier iteration of this overlay.
 
 ## How it compares to Opponent Information
 
-| | Opponent Information | Combat Vitals |
+| | Opponent Information | Combat & Skilling Vitals |
 |---|---|---|
 | Corner panel | Yes | Yes |
 | Drawn at the target | No | Yes |
@@ -383,7 +384,7 @@ sketch, not the game's own drawing.
 ## Settings
 
 <p align="center">
-  <img src="docs/images/settings.png" alt="The Combat Vitals settings panel" width="300">
+  <img src="docs/images/settings.png" alt="The Combat & Skilling Vitals settings panel" width="300">
 </p>
 
 <details>
@@ -494,6 +495,7 @@ A fish above your level is dimmed with `Lv 15` over it in red; hover it for
 | Idle badge for (s) | 60 | How long `Not fishing` stays up |
 | Idle header colour | Red | The header's colour while idle |
 | Fishing, Woodcutting, Mining, Thieving, Runecraft, Hunter | On | Which skills get a badge |
+| Agility, Construction, Cooking, Crafting, Firemaking, Fletching, Herblore, Magic, Prayer, Sailing, Smithing | On | The skills with no spot to click: the badge comes up on the skill's XP drop. The inventory line says what is left to process (`14 left, done in ~25s`); for Agility, laps, last lap time and marks of grace. Magic is skilling spells only; nothing shows during a fight |
 | Header row, XP row | On | Turn rows off; the inventory row and catch list are in Skilling: badge |
 | XP shown as | Both | `64%`, `1,234 xp`, or both |
 | Inventory count | Free slots | `Inv 26/28 free` or `Inv 2/28 used` |
@@ -504,7 +506,7 @@ A fish above your level is dimmed with `Lv 15` over it in red; hover it for
 | Badge offset | 0 | Pixels to raise the badge, ±200 |
 | Badge size (%) | 100 | Scale the whole badge, 50 to 200 |
 | Fish above your level | Dim | Dim them with the level, or hide them |
-| Hide during combat | Off | Hide the badge while you are hit or hitting back; fighting a target always replaces it. A stun or hit from the NPC you are pickpocketing is not combat; while pickpocketing your own health shows above the badge |
+| Hide in combat (over head) | Off | Over your head only: hide the badge while you are hit or hitting back; fighting a target always replaces it there. Fixed or over the spot a fight never hides it: the header adds `in combat` (`Not woodcutting \| in combat`) or `under attack` while still gathering, and the idle badge runs out on its own timer. A stun or hit from the NPC you are pickpocketing is not combat; while pickpocketing your own health shows above the badge |
 | Fishing colour … Hunter colour | The palette | Per-skill colour overrides |
 | Warn if missing gear | On | Click a fishing option without its tool, bait or level and the badge says `Needs: Fishing rod + bait` in red for 8 seconds, before the game's dialog. Worn or carried tools count, as does barehanded harpooning after Barbarian Training. The click itself is never changed |
 | Time to level | On | With XP and actions per hour on, how long the next level takes at this session's rate, `lvl 18 in 6m`. Not shown before a rate is known, or at 99 |

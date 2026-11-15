@@ -1,7 +1,9 @@
 package com.vinnyvangogh.combatvitals;
 
 import java.awt.Color;
+import java.util.EnumMap;
 import java.util.Locale;
+import java.util.Map;
 import net.runelite.api.Constants;
 import net.runelite.api.Skill;
 
@@ -41,18 +43,35 @@ final class SkillingText
 		return "Not " + activity(skill);
 	}
 
+	/**
+	 * "Not woodcutting | in combat": the header with the fight's tag
+	 * ({@link BadgeCombat#tag}), or the header alone without one. The bar is
+	 * the header's own separator, the one Spec and the boost source use.
+	 */
+	static String withCombatTag(String header, String tag)
+	{
+		return tag == null ? header : header + " | " + tag;
+	}
+
 	/** The activity's name in a sentence, "fishing", "hunting". */
 	private static String activity(Skill skill)
 	{
-		switch (skill)
-		{
-			case HUNTER:
-				return "hunting";
-			case RUNECRAFT:
-				return "runecrafting";
-			default:
-				return skill.getName().toLowerCase(Locale.ROOT);
-		}
+		final String named = ACTIVITY.get(skill);
+		return named != null ? named : skill.getName().toLowerCase(Locale.ROOT);
+	}
+
+	/** Skills whose name is not already the activity: "Not prayer" reads wrong. */
+	private static final Map<Skill, String> ACTIVITY = new EnumMap<>(Skill.class);
+
+	static
+	{
+		ACTIVITY.put(Skill.HUNTER, "hunting");
+		ACTIVITY.put(Skill.RUNECRAFT, "runecrafting");
+		ACTIVITY.put(Skill.HERBLORE, "doing herblore");
+		ACTIVITY.put(Skill.PRAYER, "training prayer");
+		ACTIVITY.put(Skill.MAGIC, "casting");
+		ACTIVITY.put(Skill.AGILITY, "training agility");
+		ACTIVITY.put(Skill.CONSTRUCTION, "building");
 	}
 
 	/**

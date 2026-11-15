@@ -686,6 +686,142 @@ public interface CombatVitalsConfig extends Config
 		return true;
 	}
 
+	// The skills raised by their experience drops (XpSkilling). Position 8,
+	// like Hunter: equal positions sort by name, so they sit alphabetically
+	// among the skill switches without renumbering the rows below.
+
+	@ConfigItem(
+		keyName = "skillingHerblore",
+		name = "Herblore",
+		description = "Show the badge while cleaning herbs, making potions or crushing.",
+		section = skillingSection,
+		position = 30
+	)
+	default boolean skillingHerblore()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingCooking",
+		name = "Cooking",
+		description = "Show the badge while cooking, with the raw food left.",
+		section = skillingSection,
+		position = 31
+	)
+	default boolean skillingCooking()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingFletching",
+		name = "Fletching",
+		description = "Show the badge while fletching, with the logs, shafts or bows left.",
+		section = skillingSection,
+		position = 32
+	)
+	default boolean skillingFletching()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingCrafting",
+		name = "Crafting",
+		description = "Show the badge while crafting, with the gems, hides or glass left.",
+		section = skillingSection,
+		position = 33
+	)
+	default boolean skillingCrafting()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingSmithing",
+		name = "Smithing",
+		description = "Show the badge while smithing, with the bars left.",
+		section = skillingSection,
+		position = 34
+	)
+	default boolean skillingSmithing()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingFiremaking",
+		name = "Firemaking",
+		description = "Show the badge while lighting logs, with the logs left.",
+		section = skillingSection,
+		position = 35
+	)
+	default boolean skillingFiremaking()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingPrayer",
+		name = "Prayer",
+		description = "Show the badge while burying or offering bones, with the bones left.",
+		section = skillingSection,
+		position = 36
+	)
+	default boolean skillingPrayer()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingMagic",
+		name = "Magic",
+		description = "Show the badge while casting skilling spells (alchemy, enchant, superheat, plank make), never combat spells.",
+		section = skillingSection,
+		position = 37
+	)
+	default boolean skillingMagic()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingAgility",
+		name = "Agility",
+		description = "Show the badge on agility courses, with laps, lap time and marks of grace.",
+		section = skillingSection,
+		position = 38
+	)
+	default boolean skillingAgility()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingConstruction",
+		name = "Construction",
+		description = "Show the badge while building, with the planks left.",
+		section = skillingSection,
+		position = 39
+	)
+	default boolean skillingConstruction()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingSailing",
+		name = "Sailing",
+		description = "Show the badge while training Sailing.",
+		section = skillingSection,
+		position = 40
+	)
+	default boolean skillingSailing()
+	{
+		return true;
+	}
+
 	@ConfigItem(
 		keyName = "skillingShowHeader",
 		name = "Header row",
@@ -826,8 +962,9 @@ public interface CombatVitalsConfig extends Config
 
 	@ConfigItem(
 		keyName = "skillingHideInCombat",
-		name = "Hide during combat",
-		description = "Hide the badge while you are being hit or hitting back. Fighting a target always replaces it.",
+		name = "Hide in combat (over head)",
+		description = "Over your head only: hide the badge while you are being hit or hitting back. Fighting a target"
+			+ " always replaces it there. Fixed or over the spot, a fight never hides it; it says 'in combat' instead.",
 		section = skillingSection,
 		position = 1
 	)

@@ -153,7 +153,10 @@ final class PanelLayout
 			new Group("Boosts", "skillingBoostTimer", "skillingBoostSource", "skillingSpecEnergy",
 				"skillingBoostNotify"),
 			new Group("Once you stop", "skillingIdleMode", "skillingIdleSeconds"),
-			new Group("Next fishing spot", "fishingSpotPath", "fishingSpotShortestPath"));
+			new Group("Next fishing spot", "fishingSpotPath", "fishingSpotShortestPath"),
+			new Group("More skills", "skillingHerblore", "skillingCooking", "skillingFletching", "skillingCrafting",
+				"skillingSmithing", "skillingFiremaking", "skillingPrayer", "skillingMagic", "skillingAgility",
+				"skillingConstruction", "skillingSailing"));
 	}
 
 	private static List<Group> lookGroups()

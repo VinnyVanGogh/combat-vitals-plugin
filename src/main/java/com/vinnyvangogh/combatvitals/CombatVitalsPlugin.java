@@ -62,6 +62,7 @@ import net.runelite.api.events.StatChanged;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.InventoryID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
@@ -100,7 +101,7 @@ import net.runelite.client.util.ColorUtil;
 import net.runelite.client.util.Text;
 
 /**
- * Combat Vitals — a standalone replacement for the stock Opponent Information
+ * Combat & Skilling Vitals — a standalone replacement for the stock Opponent Information
  * plugin, with overhead rendering.
  *
  * The readout is rebuilt once per game tick and published as an immutable
@@ -110,13 +111,18 @@ import net.runelite.client.util.Text;
  */
 @Slf4j
 @PluginDescriptor(
-	// The name stays "Combat Vitals": the Hub shows displayName from
-	// runelite-plugin.properties ("Combat & Skilling Vitals"); this name is the
-	// one the client already knows the installed plugin by.
-	name = "Combat Vitals",
+	// Equal to displayName in runelite-plugin.properties (PluginNameTest).
+	// RuneLite keys the on/off state by the class name (PluginManager
+	// isPluginEnabled), settings by the config group and the Hub install by
+	// the manifest's internalName, so renaming this keeps all three. The one
+	// thing keyed by this name is the plugin list's pin (PluginListPanel
+	// pinnedPlugins), so anyone who pinned "Combat Vitals" pins it again.
+	name = PluginName.NAME,
 	description = "Combat: health for your target and for you. Skilling: a badge, alerts and side pillars while you skill",
 	tags = {"combat", "vitals", "health", "hitpoints", "hp", "overlay", "overhead", "opponent", "pvp", "pvm",
-		"skilling", "woodcutting", "fishing", "mining", "thieving", "runecraft", "hunter", "inventory", "idle", "xp"}
+		"skilling", "woodcutting", "fishing", "mining", "thieving", "runecraft", "hunter", "inventory", "idle", "xp",
+		"herblore", "cooking", "fletching", "crafting", "smithing", "firemaking", "prayer", "magic", "agility",
+		"construction", "sailing"}
 )
 public class CombatVitalsPlugin extends Plugin
 {
@@ -316,6 +322,21 @@ public class CombatVitalsPlugin extends Plugin
 	 * swing starts, instead of flickering off for the walk.
 	 */
 	private boolean objectBadge;
+
+	/** Herblore, the Make-X skills, Firemaking, Prayer, Magic, Agility, Construction, Sailing: by XP drop. */
+	private final XpSkilling xpSkilling = new XpSkilling();
+
+	/** The badge is up for an {@link XpSkilling} skill, with no NPC or object to hold. */
+	private boolean xpBadge;
+
+	/** What one action uses up, for "14 left, done in ~25s". */
+	private final ProductionInputs productionInputs = new ProductionInputs();
+
+	private final AgilityLaps agilityLaps = new AgilityLaps();
+
+	/** The inventory as item id to quantity: now, and as it stood at the end of the last tick. */
+	private Map<Integer, Integer> inventoryNow = Collections.emptyMap();
+	private Map<Integer, Integer> inventoryLastTick = Collections.emptyMap();
 
 	/**
 	 * The NPC the last menu click was on, and the skill its option trains,
@@ -640,6 +661,7 @@ public class CombatVitalsPlugin extends Plugin
 		if (config.skillingSessionReset())
 		{
 			session.reset();
+			agilityLaps.clear();
 			configManager.setConfiguration(CombatVitalsConfig.GROUP, "skillingSessionReset", false);
 		}
 		final VitalsSidePanel panel = sidePanel;
@@ -728,6 +750,12 @@ public class CombatVitalsPlugin extends Plugin
 		objectSkilling.forget();
 		objectBadge = false;
 		objectSpot = null;
+		xpSkilling.clear();
+		xpBadge = false;
+		productionInputs.forget();
+		agilityLaps.clear();
+		inventoryNow = Collections.emptyMap();
+		inventoryLastTick = Collections.emptyMap();
 		idleBadge.clear();
 		clickedNpc = null;
 		clickedNpcSkill = null;
@@ -783,23 +811,34 @@ public class CombatVitalsPlugin extends Plugin
 			objectBadge = false;
 			// Turning to anything else (a banker, an attacker) is leaving the spot.
 			turnedTo(target);
-			final Skill trained = clicked != null ? clicked : fight ? null : skillingSkill(target);
-			if (trained != null)
-			{
-				skillingTarget = (NPC) target;
-				skilling.engage(trained);
-				skillingStop.reset();
-				startedFishing(trained);
-			}
-			else
-			{
-				skillingTarget = null;
-				skilling.release();
-			}
+			turnedToNpc(target, clicked != null ? clicked : fight ? null : skillingSkill(target), fight);
 		}
 		else
 		{
 			interactionEnded();
+		}
+	}
+
+	/**
+	 * The badge takes an NPC only when its menu names a skill; anything else
+	 * drops it at once, except that talking to the butler or a banker mid-build
+	 * is not stopping: an XP badge runs out on its own gap.
+	 */
+	private void turnedToNpc(Actor target, Skill trained, boolean fight)
+	{
+		if (trained != null)
+		{
+			endXpBadge();
+			skillingTarget = (NPC) target;
+			skilling.engage(trained);
+			skillingStop.reset();
+			startedFishing(trained);
+		}
+		else if (!xpBadge || fight)
+		{
+			endXpBadge();
+			skillingTarget = null;
+			skilling.release();
 		}
 	}
 
@@ -882,6 +921,7 @@ public class CombatVitalsPlugin extends Plugin
 
 		activityAlerts.xp(skill, event.getXp());
 		session.xp(skill, event.getXp(), System.currentTimeMillis());
+		xpSkilling.xp(skill, event.getXp());
 
 		final BoostTracker.Change change = boosts.observe(skill, real, boosted);
 		if ((change == BoostTracker.Change.DROP || change == BoostTracker.Change.EXPIRED)
@@ -919,7 +959,7 @@ public class CombatVitalsPlugin extends Plugin
 			SkillingContainer.fromItemName(Text.removeTags(event.getMenuTarget()));
 		if (clickedContainer != null)
 		{
-			containerContents.clicked(clickedContainer, option, client.getTickCount());
+			containerContents.clicked(clickedContainer, option, client.getTickCount(), bankOpen());
 		}
 
 		if (event.isItemOp())
@@ -1130,6 +1170,7 @@ public class CombatVitalsPlugin extends Plugin
 		}
 
 		containerContents.message(message, client.getTickCount());
+		agilityLaps.message(message, System.currentTimeMillis());
 
 		final FishingCatches.Fish fish = FishingCatches.fromCatchMessage(message);
 		if (fish != null)
@@ -1157,6 +1198,9 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			// The bank's contents arrive when it opens: you stopped on purpose.
 			activityAlerts.banked();
+			productionInputs.rebase();
+			// And change when a basket or barrel is emptied into it, with no chat line needed.
+			containerContents.bankChanged(client.getTickCount());
 			return;
 		}
 
@@ -1185,6 +1229,8 @@ public class CombatVitalsPlugin extends Plugin
 			ids[i] = items[i].getId();
 			quantities[i] = items[i].getQuantity();
 		}
+		inventoryNow = byId(ids, quantities);
+		agilityLaps.marksHeld(inventoryNow.getOrDefault(ItemID.GRACE, 0));
 
 		final int caught = inventoryCatches.observe(ids, quantities);
 		if (caught != -1)
@@ -1197,6 +1243,27 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			lastGainedItem = client.getItemDefinition(gained).getName();
 		}
+	}
+
+	/** The inventory as item id to total quantity, empty slots left out. */
+	static Map<Integer, Integer> byId(int[] ids, int[] quantities)
+	{
+		final Map<Integer, Integer> byId = new HashMap<>();
+		for (int i = 0; i < ids.length; i++)
+		{
+			if (ids[i] >= 0 && quantities[i] > 0)
+			{
+				byId.merge(ids[i], quantities[i], Integer::sum);
+			}
+		}
+		return byId;
+	}
+
+	/** The bank is open: its inventory side panel, where a basket's Empty is clicked, is up. */
+	private boolean bankOpen()
+	{
+		final Widget side = client.getWidget(InterfaceID.Bankside.ITEMS);
+		return side != null && !side.isHidden();
 	}
 
 	/** Special attack energy falling while a skilling spec tool is wielded is that tool's special. */
@@ -1503,6 +1570,7 @@ public class CombatVitalsPlugin extends Plugin
 		expireOpponent();
 		stepSkillingObject();
 		expireSkillingTarget();
+		stepXpSkilling();
 		seedBoosts();
 		tickBoostTimer();
 		tickAlerts();
@@ -1689,6 +1757,7 @@ public class CombatVitalsPlugin extends Plugin
 		switch (objectSkilling.tick(client.getTickCount(), at.getX(), at.getY(), at.getPlane(), animating))
 		{
 			case ENGAGE:
+				endXpBadge();
 				skillingTarget = null;
 				skilling.engage(objectSkilling.skill());
 				objectBadge = true;
@@ -1709,6 +1778,69 @@ public class CombatVitalsPlugin extends Plugin
 			objectBadge = false;
 			objectSkilling.forget();
 		}
+	}
+
+	/**
+	 * The badge for a skill with no NPC or object ({@link XpSkilling}): up on
+	 * an experience drop, held by further drops or any animation, lingering
+	 * like the others once the skill's gap passes. Never over another badge
+	 * or during a fight. Each drop is one action for the inputs-left count.
+	 */
+	private void stepXpSkilling()
+	{
+		final Player self = client.getLocalPlayer();
+		final boolean animating = self != null && self.getAnimation() != -1;
+		final Instant now = Instant.now();
+		final boolean blocked = skillingTarget != null || objectBadge || combat.inCombat(now, timeout());
+		final int tick = client.getTickCount();
+		applyXpStep(xpSkilling.tick(tick, animating, blocked), now);
+
+		if (xpSkilling.acted())
+		{
+			productionInputs.action(xpSkilling.skill(), inventoryLastTick, inventoryNow, tick);
+		}
+		if (xpBadge && skilling.expire(now, timeout(), xpSkilling.working()))
+		{
+			xpBadge = false;
+			xpSkilling.forget();
+		}
+		inventoryLastTick = inventoryNow;
+	}
+
+	private void applyXpStep(XpSkilling.Step step, Instant now)
+	{
+		switch (step)
+		{
+			case ENGAGE:
+				skilling.engage(xpSkilling.skill());
+				xpBadge = true;
+				break;
+			case DISENGAGE:
+				skilling.disengage(now);
+				break;
+			case RELEASE:
+				if (xpBadge)
+				{
+					skilling.release();
+					xpBadge = false;
+				}
+				break;
+			default:
+				break;
+		}
+	}
+
+	/** A skilling NPC, object or XP-drop skill holds the badge up. */
+	private boolean badgeHeld()
+	{
+		return skillingTarget != null || objectBadge || xpBadge;
+	}
+
+	/** An NPC or object badge takes over from the XP badge. */
+	private void endXpBadge()
+	{
+		xpBadge = false;
+		xpSkilling.forget();
 	}
 
 	/**
@@ -1770,6 +1902,7 @@ public class CombatVitalsPlugin extends Plugin
 			// known value is no gain.
 			activityAlerts.xp(skill, client.getSkillExperience(skill));
 			session.xp(skill, client.getSkillExperience(skill), System.currentTimeMillis());
+			xpSkilling.xp(skill, client.getSkillExperience(skill));
 		}
 		lastSpecEnergy = client.getVarpValue(VarPlayerID.SA_ENERGY);
 		boostsSeeded = true;
@@ -1798,32 +1931,35 @@ public class CombatVitalsPlugin extends Plugin
 	 * catch, and is where the badge goes only with "Over the spot".
 	 *
 	 * Once the work stops the badge stays as "Not fishing" ({@link IdleBadge})
-	 * for as long as the idle setting says, until another activity or a fight.
+	 * for as long as the idle setting says, until another activity, or a
+	 * fight over your head. Moved off your head a fight never hides it; the
+	 * header just says "in combat" or "under attack" ({@link BadgeCombat}).
 	 */
 	private SkillingReadout buildSkillingReadout()
 	{
 		final long now = System.currentTimeMillis();
 		final boolean fighting = combat.inCombat(Instant.now(), timeout());
-		final Skill active = skillingTarget != null || objectBadge ? skilling.skill() : null;
-		// A badge moved off your head shares no space with the health bars, so a fight
-		// neither hides it nor ends its "Not woodcutting" (Board, 2026-11-14).
+		final Skill active = badgeHeld() ? skilling.skill() : null;
 		final boolean overHead = config.skillingPosition() == BadgePosition.OVER_HEAD;
-		idleBadge.tick(active, fighting && overHead, now);
+		idleBadge.tick(active, BadgeCombat.endsIdle(fighting, overHead), now);
 
-		if (badgeHidden(fighting, overHead))
+		// With Combat vitals off no target readout takes the badge's place, so a fight keeps the badge.
+		if (!VitalsHalves.skillingBadge(config)
+			|| BadgeCombat.hides(fighting, overHead, config.skillingHideInCombat(),
+				VitalsHalves.combat(config) && combat.showTarget()))
 		{
 			return null;
 		}
 
 		if (active != null)
 		{
-			return skillShown(active) ? activeReadout(active, now) : null;
+			return skillShown(active) ? activeReadout(active, now, BadgeCombat.tag(fighting, false)) : null;
 		}
 
 		final Skill idle = idleBadge.idleSkill(config.skillingIdleMode(), config.skillingIdleSeconds(), now);
 		if (idle != null && skillShown(idle))
 		{
-			return baseReadout(idle, now).idle(true).build();
+			return baseReadout(idle, now).idle(true).combatTag(BadgeCombat.tag(fighting, true)).build();
 		}
 		return gearOnlyReadout(now);
 	}
@@ -1837,18 +1973,8 @@ public class CombatVitalsPlugin extends Plugin
 		return gearWarning(now) != null && skillShown(Skill.FISHING) ? baseReadout(Skill.FISHING, now).build() : null;
 	}
 
-	/**
-	 * Off, a fight with a target while the badge is over your head (its health bar takes over, unless Combat
-	 * vitals is off and there is none), or any combat with Hide during combat.
-	 */
-	private boolean badgeHidden(boolean fighting, boolean overHead)
-	{
-		return !VitalsHalves.skillingBadge(config) || (overHead && VitalsHalves.combat(config) && combat.showTarget())
-			|| (fighting && config.skillingHideInCombat());
-	}
-
 	/** The badge while working: the shared rows plus the boost, spec, warning, catches and spot. */
-	private SkillingReadout activeReadout(Skill skill, long now)
+	private SkillingReadout activeReadout(Skill skill, long now, String combatTag)
 	{
 		final int boosted = client.getBoostedSkillLevel(skill);
 
@@ -1861,6 +1987,7 @@ public class CombatVitalsPlugin extends Plugin
 
 		final NPC target = skillingTarget;
 		return baseReadout(skill, now)
+			.combatTag(combatTag)
 			.ticksUntilDrop(config.skillingBoostTimer() ? ticksUntilDrop : -1)
 			.cycleLength(boostTimer.cycleLength())
 			.timerConfirmed(boostTimer.isConfirmed())
@@ -1894,11 +2021,26 @@ public class CombatVitalsPlugin extends Plugin
 			.sessionCells(sessionCells(skill, xp, now))
 			.tickMillis(now)
 			.inventoryFill(free < 0 ? -1 : InventoryFill.fraction(inventoryFilling, inventoryEmpty))
-			.inventoryLabel(ContainerRow.inventoryLabel(free, config.skillingInventoryCount(), containers,
-				config.skillingContainersAsInventory()))
+			.inventoryLabel(inventoryLabel(skill, free, containers))
 			.inventoryFree(free)
 			.containers(containers)
 			.containerCount(config.skillingInventoryCount());
+	}
+
+	/**
+	 * The inventory line: for Agility its laps and marks, for a skill that
+	 * uses things up what is left ("14 left, done in ~25s"), otherwise the
+	 * free slots. Null with the line off or the inventory unread.
+	 */
+	private String inventoryLabel(Skill skill, int free, List<ContainerRow> containers)
+	{
+		if (free < 0)
+		{
+			return null;
+		}
+		final String own = skill == Skill.AGILITY ? agilityLaps.label() : productionInputs.label(skill, inventoryNow);
+		return own != null ? own : ContainerRow.inventoryLabel(free, config.skillingInventoryCount(), containers,
+			config.skillingContainersAsInventory());
 	}
 
 	/**
@@ -2021,23 +2163,7 @@ public class CombatVitalsPlugin extends Plugin
 	/** The per-skill switches in Skilling badge. A skill without one is always shown. */
 	private boolean skillShown(Skill skill)
 	{
-		switch (skill)
-		{
-			case FISHING:
-				return config.skillingFishing();
-			case WOODCUTTING:
-				return config.skillingWoodcutting();
-			case MINING:
-				return config.skillingMining();
-			case THIEVING:
-				return config.skillingThieving();
-			case RUNECRAFT:
-				return config.skillingRunecraft();
-			case HUNTER:
-				return config.skillingHunter();
-			default:
-				return true;
-		}
+		return SkillSwitches.shown(config, skill);
 	}
 
 	/** The user's colour for the skill, which defaults to {@link SkillColours}. */
@@ -2212,7 +2338,7 @@ public class CombatVitalsPlugin extends Plugin
 		play(plan, settings.volume);
 		if (alertSounds.shouldHint(plan, alert.type))
 		{
-			consoleLine(ChatColorType.HIGHLIGHT, "Combat Vitals: no sound file at " + plan.file.getPath()
+			consoleLine(ChatColorType.HIGHLIGHT, PluginName.NAME + ": no sound file at " + plan.file.getPath()
 				+ ", so RuneLite's sound played instead.");
 		}
 		alertRepeat.fired(alert, settings.repeat, nowMs, config.repeatEverySeconds(), config.repeatMaxMinutes());

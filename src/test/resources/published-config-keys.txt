@@ -126,3 +126,15 @@ alertSoundShared boolean
 alertSoundAll AlertSound
 alertVolumeAll int
 alertRepeatAll boolean
+# 2026-11-14: the badge's XP-drop skills (task-5328e2df).
+skillingHerblore boolean
+skillingCooking boolean
+skillingFletching boolean
+skillingCrafting boolean
+skillingSmithing boolean
+skillingFiremaking boolean
+skillingPrayer boolean
+skillingMagic boolean
+skillingAgility boolean
+skillingConstruction boolean
+skillingSailing boolean
