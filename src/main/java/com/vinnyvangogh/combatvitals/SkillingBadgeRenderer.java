@@ -383,8 +383,16 @@ class SkillingBadgeRenderer
 		return icon == null || icon.getHeight() <= 0 ? 0 : icon.getWidth() * SESSION_ICON / icon.getHeight() + ICON_GAP;
 	}
 
-	/** The header's words: the level and boost while working, "Not fishing" once stopped. */
+	/**
+	 * The header's words: the level and boost while working, "Not fishing" once stopped, each followed by
+	 * "in combat" or "under attack" while a fight is on.
+	 */
 	private static String headerText(SkillingReadout readout)
+	{
+		return SkillingText.withCombatTag(headerWords(readout), readout.getCombatTag());
+	}
+
+	private static String headerWords(SkillingReadout readout)
 	{
 		if (readout.isIdle())
 		{
