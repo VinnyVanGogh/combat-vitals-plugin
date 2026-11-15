@@ -299,6 +299,32 @@ Not done, deliberately:
   coal only, so its space is not free space at any other rock.
 - **Herb sack, seed box, plank sack**: Herblore, Farming and Construction
   have no skilling badge, so there is no line to put them under.
+
+### Skilling badge for the XP-drop skills, compliance (added 2026-11-14, task-5328e2df)
+
+Board, 2026-11-14, from a groupmate: "the skilling one doesn't show when I'm
+doing herblore". The badge now also comes up for Herblore, Cooking,
+Fletching, Crafting, Smithing, Firemaking, Prayer, Magic (skilling spells),
+Agility, Construction and Sailing. Farming stays out: RuneLite's Time
+Tracking covers it and it has no repeated AFK action to time.
+
+| Element | Nearest rule | Precedent | Verdict |
+|---|---|---|---|
+| Badge raised by an experience drop in the skill (`StatChanged`), held by further drops or any local-player animation, stopped after a per-skill gap (`XpSkilling`) | None: own-account stats and own animation | Base client XP Tracker (XP drops, rates, time to level) and Idle Notifier (own animation stopping); the plugin's own Activity alerts use the same XP + animation pair since 2026-11-03 | Allowed |
+| Not raised during a fight or a tick with Hitpoints XP (combat spells, bonecrusher), nor over an NPC or object badge (infernal harpoon / axe / pickaxe) | None | Same | Allowed |
+| "14 left, done in ~25s": what one action used up, from the own inventory's change between drops, divided into what is held; pace from the gap between drops | None: own inventory, nothing automated or suggested beyond a count | Base client XP Tracker's "actions left" and the Inventory fill line already here | Allowed |
+| Agility: laps from the game's "Your <course> lap count is: N." line, last lap time, marks of grace picked up (own inventory `ItemID.GRACE`) | None: reads `ChatMessage` | Base client Chat Commands plugin parses the same lap-count line (`KILLCOUNT_PATTERN`); base Agility plugin counts laps and marks | Allowed |
+| Per-skill switches (default on), new additive keys `skillingHerblore` … `skillingSailing` | Config keys freeze at publish | Appended to `published-config-keys.txt` | Allowed |
+
+Detection research, gameval (`runelite-api` 1.13.6, read with javap
+2026-11-14): `Skill.SAILING` exists, so Sailing is included through its XP
+drops. Animation ids such as `AnimationID.HUMAN_HERBING_VIAL` (363),
+`HUMAN_HERBING_GRIND` (364), `HUMAN_COOKING` (896),
+`HUMAN_CASTHIGHLVLALCHEMY` (713) and `HUMAN_CASTSUPERHEATITEM` (725) exist,
+but the badge does not list them: every one of these actions animates, and a
+per-recipe id list would go stale; "any animation" is what Idle Notifier and
+the plugin's own alerts already use. Not done: per-recipe output names, the
+herb sack and plank sack contents, and anything for Farming.
 ### Alert sounds, repeat until you're back, voice lines (added 2026-11-14, Board)
 
 Board, 2026-11-14, woodcutting AFK: the stopped alert should be able to keep
@@ -345,6 +371,37 @@ Not done, deliberately, and why:
 Bundle size: no Plugin Hub size limit was found in this pass (unverified,
 the plugin-hub README was not re-read). The clips are 16 kHz mono 16-bit
 WAV to keep the jar small; the PR states the jar size before and after.
+
+### Training methods: the Blast Furnace pump, compliance (added 2026-11-14, task-20b05b6b)
+
+Board, 2026-11-14, training Strength at the Blast Furnace pump: the same
+badge as skilling, a countdown to when you must click again and to the
+pump's own stop, and an alert with a voice line a little before each.
+
+Facts, read 2026-11-14: OSRS Wiki, Pump (Blast Furnace): object 9090,
+option Operate, "Operating the pump yields 2 Strength experience every
+tick", "The pump can be operated for up to 100 minutes before automatically
+stopping. However, you are typically logged out after 5 minutes ... this can
+be changed in the Settings menu." Gameval (`runelite-api` 1.13.6, javap):
+`ObjectID.BLAST_FURNACE_PUMP = 9090`, `AnimationID.BLAST_FURNACE_HUMAN_AIR_PUMP
+= 2432`. The game's idle setting goes from 5 to 25 minutes (third-party
+guides, 2026; the Board's "~25-30 min" is this). The Board's "forced stop
+every hour" is the wiki's 100 minutes. RuneLite's `IdleNotifierPlugin`
+(`checkIdleLogout`, master, read 2026-11-14) reads the logout as
+`min(getKeyboardIdleTicks(), getMouseIdleTicks())` against
+`getIdleTimeout()`, all client ticks (`Constants.CLIENT_TICK_LENGTH`, 20 ms).
+
+| Element | Nearest rule | Precedent | Verdict |
+|---|---|---|---|
+| Badge raised by the player's own Operate click on the pump plus animating beside it, held by Strength XP or animation; same rows as skilling (`TrainingMethod`, `ObjectSkilling`) | None: own click, own animation, own stats | The tree/rock object badge here since 2026-11-04; base Blast Furnace plugin highlights the same objects | Allowed |
+| "Re-click in 4:12": time left on the client's idle logout from its own idle counters, and an alert a minute before | Must not keep a player logged in or act on idleness | Base client Idle Notifier's "Idle logout" warning reads exactly these counters and warns 20 s ahead; Logout Timer plugin sets the timeout itself. This only counts down and makes a sound; it never moves, clicks or types | Allowed |
+| "Stops in 97:30": 100 minutes from the click, an alert a minute before | None: a fixed, published game rule and the player's own click time | Base client Timers plugin counts down known game durations (potions, teleblock) | Allowed |
+| "You've stopped pumping": no animation or Strength XP for the stopped delay; not on walking away or a fight | None | Idle Notifier; the plugin's own stopped alerts since 2026-11-03 | Allowed |
+| New additive keys for the three alerts, appended to `published-config-keys.txt` | Config keys freeze at publish | Same as every earlier row | Allowed |
+
+Not done: no input of any kind to stay logged in, and nothing for the
+coal/ore runs, Giants' Foundry or other methods yet (`TrainingMethod` is the
+table they slot into).
 
 ---
 

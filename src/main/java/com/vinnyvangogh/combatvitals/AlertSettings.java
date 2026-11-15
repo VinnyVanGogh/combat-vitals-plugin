@@ -20,7 +20,22 @@ final class AlertSettings
 		this.repeat = repeat;
 	}
 
+	/**
+	 * With "Same for every alert" on, the shared sound, volume and repeat
+	 * replace the alert's own; whether the alert is on at all stays its own.
+	 */
 	static AlertSettings of(CombatVitalsConfig config, ActivityAlerts.Type type)
+	{
+		final AlertSettings own = own(config, type);
+		if (!config.alertSoundShared())
+		{
+			return own;
+		}
+		return new AlertSettings(own.notification, config.alertSoundAll(), config.alertVolumeAll(),
+			config.alertRepeatAll());
+	}
+
+	private static AlertSettings own(CombatVitalsConfig config, ActivityAlerts.Type type)
 	{
 		switch (type)
 		{
@@ -49,9 +64,28 @@ final class AlertSettings
 				return new AlertSettings(config.alertNecklaceBroke(), config.soundNecklaceBroke(),
 					config.volumeNecklaceBroke(), config.repeatNecklaceBroke());
 			case LOW_RUN_ENERGY:
-			default:
 				return new AlertSettings(config.alertLowRunEnergy(), config.soundLowRunEnergy(),
 					config.volumeLowRunEnergy(), config.repeatLowRunEnergy());
+			default:
+				return ofMethod(config, type);
+		}
+	}
+
+	/** The training method alerts: the Blast Furnace pump's stopped, idle logout and auto stop. */
+	private static AlertSettings ofMethod(CombatVitalsConfig config, ActivityAlerts.Type type)
+	{
+		switch (type)
+		{
+			case RECLICK_SOON:
+				return new AlertSettings(config.alertReclickSoon(), config.soundReclickSoon(),
+					config.volumeReclickSoon(), config.repeatReclickSoon());
+			case AUTO_STOP_SOON:
+				return new AlertSettings(config.alertAutoStopSoon(), config.soundAutoStopSoon(),
+					config.volumeAutoStopSoon(), config.repeatAutoStopSoon());
+			case METHOD_STOPPED:
+			default:
+				return new AlertSettings(config.alertMethodStopped(), config.soundMethodStopped(),
+					config.volumeMethodStopped(), config.repeatMethodStopped());
 		}
 	}
 

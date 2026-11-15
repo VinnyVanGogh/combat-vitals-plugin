@@ -35,6 +35,13 @@ public class BadgeRowsTest
 		assertEquals("Not hunting", SkillingText.idleHeader(Skill.HUNTER));
 		assertEquals("Not runecrafting", SkillingText.idleHeader(Skill.RUNECRAFT));
 		assertEquals("Not cooking", SkillingText.idleHeader(Skill.COOKING));
+		assertEquals("Not doing herblore", SkillingText.idleHeader(Skill.HERBLORE));
+		assertEquals("Not training prayer", SkillingText.idleHeader(Skill.PRAYER));
+		assertEquals("Not casting", SkillingText.idleHeader(Skill.MAGIC));
+		assertEquals("Not training agility", SkillingText.idleHeader(Skill.AGILITY));
+		assertEquals("Not building", SkillingText.idleHeader(Skill.CONSTRUCTION));
+		assertEquals("Not sailing", SkillingText.idleHeader(Skill.SAILING));
+		assertEquals("Not firemaking", SkillingText.idleHeader(Skill.FIREMAKING));
 	}
 
 	@Test
