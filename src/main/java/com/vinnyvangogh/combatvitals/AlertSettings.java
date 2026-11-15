@@ -20,7 +20,22 @@ final class AlertSettings
 		this.repeat = repeat;
 	}
 
+	/**
+	 * With "Same for every alert" on, the shared sound, volume and repeat
+	 * replace the alert's own; whether the alert is on at all stays its own.
+	 */
 	static AlertSettings of(CombatVitalsConfig config, ActivityAlerts.Type type)
+	{
+		final AlertSettings own = own(config, type);
+		if (!config.alertSoundShared())
+		{
+			return own;
+		}
+		return new AlertSettings(own.notification, config.alertSoundAll(), config.alertVolumeAll(),
+			config.alertRepeatAll());
+	}
+
+	private static AlertSettings own(CombatVitalsConfig config, ActivityAlerts.Type type)
 	{
 		switch (type)
 		{
