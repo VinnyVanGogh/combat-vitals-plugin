@@ -177,6 +177,14 @@ final class LiveVitals
 		{
 			return new Skilling(null, SkillColours.DEFAULT, null, Collections.emptyList());
 		}
+		final Bar xp = r.getXpText() == null || r.getXp() == null ? null
+			: new Bar(r.getXp().getFraction(), r.getXpText(), r.getColour());
+		return new Skilling(SkillingBadgeRenderer.headerText(r), r.getColour(), xp, lines(r));
+	}
+
+	/** The badge's lines under its XP row: gear warning, session row, inventory, containers. */
+	private static List<String> lines(SkillingReadout r)
+	{
 		final List<String> lines = new ArrayList<>();
 		if (r.getGearText() != null)
 		{
@@ -199,9 +207,7 @@ final class LiveVitals
 		{
 			lines.add(row.label(r.getContainerCount()));
 		}
-		final Bar xp = r.getXpText() == null || r.getXp() == null ? null
-			: new Bar(r.getXp().getFraction(), r.getXpText(), r.getColour());
-		return new Skilling(SkillingBadgeRenderer.headerText(r), r.getColour(), xp, lines);
+		return lines;
 	}
 
 	/** One line per skill gained in this session, in the skill list's order. */

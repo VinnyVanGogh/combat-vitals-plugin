@@ -4,7 +4,6 @@ import java.awt.Color;
 import java.awt.Component;
 import java.util.ArrayList;
 import java.util.List;
-import javax.swing.AbstractButton;
 import javax.swing.JButton;
 import javax.swing.border.EmptyBorder;
 import net.runelite.client.ui.ColorScheme;
@@ -36,7 +35,7 @@ final class LiveSection extends VitalsSidePanel.Column
 	private static final Color MUTED = ColorScheme.LIGHT_GRAY_COLOR.darker();
 
 	private final ConfigStore store;
-	private final JButton header = new JButton();
+	private final JButton header = VitalsSidePanel.foldHeader("", FontManager.getRunescapeBoldFont());
 	private final VitalsSidePanel.Column body = new VitalsSidePanel.Column();
 
 	private final WrapLabel loggedOut = new WrapLabel(LOGGED_OUT, MUTED);
@@ -72,13 +71,6 @@ final class LiveSection extends VitalsSidePanel.Column
 	{
 		this.store = store;
 		header.setName("live-toggle");
-		header.setFont(FontManager.getRunescapeBoldFont());
-		header.setForeground(ColorScheme.BRAND_ORANGE);
-		header.setFocusable(false);
-		header.setContentAreaFilled(false);
-		header.setBorderPainted(false);
-		header.setHorizontalAlignment(AbstractButton.LEFT);
-		header.setBorder(new EmptyBorder(2, 0, 2, 0));
 		header.setToolTipText("Fold or open the live readout.");
 		header.addActionListener(e -> setOpen(!open, true));
 		add(header);

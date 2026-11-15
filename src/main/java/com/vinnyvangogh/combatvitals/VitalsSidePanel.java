@@ -4,6 +4,7 @@ import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
 import java.awt.RenderingHints;
@@ -419,14 +420,7 @@ final class VitalsSidePanel extends PluginPanel
 			body.add(text((i + 1) + ". " + page.walkthrough.get(i), MUTED));
 		}
 		body.setVisible(false);
-		final JButton header = new JButton("+ " + title);
-		header.setFont(FontManager.getRunescapeSmallFont());
-		header.setForeground(ColorScheme.BRAND_ORANGE);
-		header.setFocusable(false);
-		header.setContentAreaFilled(false);
-		header.setBorderPainted(false);
-		header.setHorizontalAlignment(AbstractButton.LEFT);
-		header.setBorder(new EmptyBorder(2, 0, 2, 0));
+		final JButton header = foldHeader("+ " + title, FontManager.getRunescapeSmallFont());
 		header.addActionListener(e ->
 		{
 			body.setVisible(!body.isVisible());
@@ -439,6 +433,20 @@ final class VitalsSidePanel extends PluginPanel
 	}
 
 	// ---- Building blocks (after GroupIronmanPanel's) ----
+
+	/** A flat orange header that folds what is under it: the guides' and the Live section's. */
+	static JButton foldHeader(String text, Font font)
+	{
+		final JButton header = new JButton(text);
+		header.setFont(font);
+		header.setForeground(ColorScheme.BRAND_ORANGE);
+		header.setFocusable(false);
+		header.setContentAreaFilled(false);
+		header.setBorderPainted(false);
+		header.setHorizontalAlignment(AbstractButton.LEFT);
+		header.setBorder(new EmptyBorder(2, 0, 2, 0));
+		return header;
+	}
 
 	private static JButton button(String label, String tooltip, Runnable action)
 	{
