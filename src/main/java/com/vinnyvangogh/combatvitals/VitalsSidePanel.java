@@ -446,6 +446,17 @@ final class VitalsSidePanel extends PluginPanel
 		{
 			alerts(c);
 		}
+		groups(c, tab);
+		if (tab == PanelLayout.Tab.COMBAT)
+		{
+			c.add(text(ADVANCED_NOTE, PanelStyle.MUTED));
+		}
+		return c;
+	}
+
+	/** A card per heading, the first {@link #OPEN_GROUPS} open; seldom-changed ones under "More settings". */
+	private void groups(Column c, PanelLayout.Tab tab)
+	{
 		final Column more = new Column();
 		int open = 0;
 		for (PanelLayout.Group g : PanelLayout.groups(tab))
@@ -461,11 +472,6 @@ final class VitalsSidePanel extends PluginPanel
 		{
 			c.add(moreSettings(more));
 		}
-		if (tab == PanelLayout.Tab.COMBAT)
-		{
-			c.add(text(ADVANCED_NOTE, PanelStyle.MUTED));
-		}
-		return c;
 	}
 
 	/** "More settings", folded: the tab's seldom-changed cards under it. */
@@ -578,7 +584,7 @@ final class VitalsSidePanel extends PluginPanel
 			@Override
 			public Dimension getMaximumSize()
 			{
-				return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
+				return PanelStyle.fullWidth(this);
 			}
 		};
 		row.setOpaque(false);

@@ -329,14 +329,17 @@ final class LiveSection extends VitalsSidePanel.Column
 		final int shown = allGains ? gains.size() : Math.min(TOP, gains.size());
 		for (int i = 0; i < sessionPool.size(); i++)
 		{
-			final GainRow row = sessionPool.get(i);
-			final LiveVitals.Gain g = i < shown ? gains.get(i) : null;
-			text(row.text, g == null ? null : g.text);
-			bar(row.bar, g == null ? null : new LiveVitals.Bar((double) g.xp / top, "", g.colour));
-			visible(row, g != null);
+			gain(sessionPool.get(i), i < shown ? gains.get(i) : null, top);
 		}
-		final boolean more = gains.size() > TOP;
-		text(showAll, more ? (allGains ? SHOW_TOP : "Show all " + gains.size()) : null);
+		text(showAll, gains.size() <= TOP ? null : allGains ? SHOW_TOP : "Show all " + gains.size());
+	}
+
+	/** One session row: the gain's line and its bar against the top skill's XP, or hidden for null. */
+	private void gain(GainRow row, LiveVitals.Gain g, int top)
+	{
+		text(row.text, g == null ? null : g.text);
+		bar(row.bar, g == null ? null : new LiveVitals.Bar((double) g.xp / top, "", g.colour));
+		visible(row, g != null);
 	}
 
 	/** The first {@code texts.size()} chips of the pool show the timers; the rest hide. */

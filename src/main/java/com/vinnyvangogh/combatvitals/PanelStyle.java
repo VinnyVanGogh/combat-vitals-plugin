@@ -1,10 +1,12 @@
 package com.vinnyvangogh.combatvitals;
 
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import javax.swing.JComponent;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 
@@ -51,6 +53,12 @@ final class PanelStyle
 	static Font title()
 	{
 		return FontManager.getRunescapeBoldFont();
+	}
+
+	/** As wide as the column allows, never taller than it wants: a row BoxLayout must not stretch. */
+	static Dimension fullWidth(JComponent c)
+	{
+		return new Dimension(Integer.MAX_VALUE, c.getPreferredSize().height);
 	}
 
 	/** A copy of {@code g} with anti-aliased shapes; dispose it after use. */

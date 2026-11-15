@@ -100,7 +100,7 @@ class FoldCard extends Card
 		@Override
 		public Dimension getMaximumSize()
 		{
-			return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
+			return PanelStyle.fullWidth(this);
 		}
 
 		@Override
