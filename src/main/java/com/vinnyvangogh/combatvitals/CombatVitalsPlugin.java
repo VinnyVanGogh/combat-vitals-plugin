@@ -219,6 +219,9 @@ public class CombatVitalsPlugin extends Plugin
 	/** Which alert, if any, is repeating until the player is back. */
 	private final AlertRepeat alertRepeat = new AlertRepeat();
 
+	/** The experience sync after a login, hop or reconnect: not experience drops. */
+	private final LoginSync loginSync = new LoginSync();
+
 	/** Alert sound choices and the one-time "file missing" hints. */
 	private final AlertSounds alertSounds = new AlertSounds();
 
@@ -739,6 +742,12 @@ public class CombatVitalsPlugin extends Plugin
 				boostTimer.anchorLogin(client.getTickCount());
 				postUpdateNotes();
 				break;
+			case LOGGING_IN:
+				loginSync.loggingIn();
+				break;
+			case CONNECTION_LOST:
+				reconnecting();
+				break;
 			case LOGIN_SCREEN:
 				// Logging out ends the session's counts; a hop does not.
 				session.clear();
@@ -752,6 +761,7 @@ public class CombatVitalsPlugin extends Plugin
 				pouchesCarried.clear();
 				// fall through
 			case HOPPING:
+				loginSync.loggingIn();
 				opponent = null;
 				combat.clear();
 				readout = null;
@@ -775,6 +785,22 @@ public class CombatVitalsPlugin extends Plugin
 			default:
 				break;
 		}
+	}
+
+	/**
+	 * The connection dropped. The client either reconnects, which to the
+	 * player is logging in again, or goes to the login screen, which clears
+	 * everything. Either way nothing started before it may say "stopped"
+	 * after it (Board, 2026-11-14): the badge stays, the alerts need the
+	 * activity seen again, and the experience that comes back is a sync.
+	 */
+	private void reconnecting()
+	{
+		loginSync.loggingIn();
+		boostsSeeded = false;
+		trainingSession.reconnected();
+		activityAlerts.reconnected();
+		alertRepeat.stop();
 	}
 
 	private void clearSkilling()
@@ -978,11 +1004,12 @@ public class CombatVitalsPlugin extends Plugin
 		final int real = event.getLevel();
 		final int boosted = event.getBoostedLevel();
 
-		activityAlerts.xp(skill, event.getXp());
-		skillingEvents.stat(skill, event.getXp(), real, tick);
-		session.xp(skill, event.getXp(), System.currentTimeMillis());
-		xpSkilling.xp(skill, event.getXp());
-		trainingSession.xp(skill, event.getXp());
+		// The login sync is nobody's experience drop: seedBoosts takes the
+		// baselines from the client once it is over.
+		if (!loginSync.syncing())
+		{
+			feedXp(skill, event.getXp(), real, tick);
+		}
 
 		final BoostTracker.Change change = boosts.observe(skill, real, boosted);
 		if ((change == BoostTracker.Change.DROP || change == BoostTracker.Change.EXPIRED)
@@ -999,6 +1026,16 @@ public class CombatVitalsPlugin extends Plugin
 				: skill.getName() + " boost dropped to +" + (boosted - real);
 			notifier.notify(config.skillingBoostNotify(), message);
 		}
+	}
+
+	/** One skill's experience and real level to every tracker that reads them. The first value is a baseline. */
+	private void feedXp(Skill skill, int xp, int level, int tick)
+	{
+		activityAlerts.xp(skill, xp);
+		skillingEvents.stat(skill, xp, level, tick);
+		session.xp(skill, xp, System.currentTimeMillis());
+		xpSkilling.xp(skill, xp);
+		trainingSession.xp(skill, xp);
 	}
 
 	/**
@@ -1732,6 +1769,7 @@ public class CombatVitalsPlugin extends Plugin
 	@Subscribe
 	public void onGameTick(GameTick tick)
 	{
+		loginSync.tick();
 		expireOpponent();
 		stepSkillingObject();
 		expireSkillingTarget();
@@ -2117,27 +2155,28 @@ public class CombatVitalsPlugin extends Plugin
 	}
 
 	/**
-	 * A plugin enabled mid-session has seen no stat updates. Seed from the
-	 * client so the first real change is classified rather than swallowed.
+	 * A plugin enabled mid-session has seen no stat updates, and a login, hop
+	 * or reconnect feeds none until its sync is over ({@link LoginSync}).
+	 * Seed from the client so the first real change is classified rather
+	 * than swallowed.
 	 */
 	private void seedBoosts()
 	{
-		if (boostsSeeded || client.getGameState() != GameState.LOGGED_IN)
+		if (boostsSeeded || loginSync.syncing() || client.getGameState() != GameState.LOGGED_IN)
 		{
 			return;
 		}
 
+		final int tick = client.getTickCount();
 		for (Skill skill : Skill.values())
 		{
 			if (!boosts.isSeeded(skill))
 			{
 				boosts.seed(skill, client.getBoostedSkillLevel(skill));
 			}
-			// The alerts' and session's experience baseline; a repeat of a
-			// known value is no gain.
-			activityAlerts.xp(skill, client.getSkillExperience(skill));
-			session.xp(skill, client.getSkillExperience(skill), System.currentTimeMillis());
-			xpSkilling.xp(skill, client.getSkillExperience(skill));
+			// Every tracker's experience and level baseline once the login
+			// sync is over; a repeat of a known value is no gain.
+			feedXp(skill, client.getSkillExperience(skill), client.getRealSkillLevel(skill), tick);
 		}
 		lastSpecEnergy = client.getVarpValue(VarPlayerID.SA_ENERGY);
 		boostsSeeded = true;
