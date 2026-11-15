@@ -3,6 +3,8 @@ package com.vinnyvangogh.combatvitals;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -14,6 +16,7 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSpinner;
+import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
 import net.runelite.client.config.ConfigItemDescriptor;
@@ -71,7 +74,12 @@ final class SettingControls
 	Class<?> enumType(String key)
 	{
 		final ConfigItemDescriptor d = items.get(key);
-		final Object type = d == null ? null : d.getType();
+		return d == null ? null : asEnum(d.getType());
+	}
+
+	/** The type as an enum class, or null when it is not one. */
+	private static Class<?> asEnum(Object type)
+	{
 		return type instanceof Class && ((Class<?>) type).isEnum() ? (Class<?>) type : null;
 	}
 
@@ -136,9 +144,14 @@ final class SettingControls
 		{
 			return colour(d);
 		}
-		if (type instanceof Class && ((Class<?>) type).isEnum())
+		final Class<?> enumType = asEnum(type);
+		if (enumType != null)
 		{
-			return choice(d, (Class<?>) type);
+			return choice(d, enumType);
+		}
+		if (type == String.class)
+		{
+			return text(d);
 		}
 		final JLabel unsupported = label(d.name());
 		return bound(unsupported, () ->
@@ -205,6 +218,28 @@ final class SettingControls
 			{
 				box.setSelectedItem(v);
 			}
+		});
+	}
+
+	/** A line of text, written on Enter and when the field loses focus. */
+	private Bound text(ConfigItemDescriptor d)
+	{
+		final String key = d.key();
+		final JTextField field = new JTextField(8);
+		field.setToolTipText(d.getItem().description());
+		field.addActionListener(e -> write(key, field.getText()));
+		field.addFocusListener(new FocusAdapter()
+		{
+			@Override
+			public void focusLost(FocusEvent e)
+			{
+				write(key, field.getText());
+			}
+		});
+		return bound(row(d, field), () ->
+		{
+			final String v = store.get(key, String.class);
+			field.setText(v == null ? "" : v);
 		});
 	}
 

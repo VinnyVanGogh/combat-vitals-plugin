@@ -49,6 +49,8 @@ final class TrainingSession
 	private int startTick = -1;
 	private int lastActiveTick = -1;
 	private boolean gained;
+	/** The method's skill gained on the last tick, for {@link PumpChecks}' empty stove. */
+	private boolean gainedLastTick;
 	/** Seen pumping in this login session: without it, stopping is not news. */
 	private boolean worked;
 	/** Started since the last tick: back at it, so a repeating alert can stop. */
@@ -116,6 +118,7 @@ final class TrainingSession
 	{
 		running = false;
 		gained = false;
+		gainedLastTick = false;
 		reclickMillis = -1;
 		stopTicksLeft = -1;
 	}
@@ -150,6 +153,7 @@ final class TrainingSession
 	{
 		resumed = started;
 		started = false;
+		gainedLastTick = gained;
 		final boolean active = gained || animating;
 		gained = false;
 		if (!running)
@@ -205,6 +209,12 @@ final class TrainingSession
 	boolean running()
 	{
 		return running;
+	}
+
+	/** The method's skill gained experience on the last tick while running. */
+	boolean gainedLastTick()
+	{
+		return gainedLastTick;
 	}
 
 	/** The method started again before the last tick: a repeating alert can stop. */

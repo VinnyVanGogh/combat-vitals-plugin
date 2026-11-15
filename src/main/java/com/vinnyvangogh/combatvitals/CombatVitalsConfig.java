@@ -1513,6 +1513,61 @@ public interface CombatVitalsConfig extends Config
 		return Notification.OFF;
 	}
 
+	// The pump checks share position 22 with Random event: RuneLite orders a
+	// tie by name, and these names sort after it and in this order.
+	@ConfigItem(
+		keyName = "alertCokeLow",
+		name = "Stove: coke runs low",
+		description = "While pumping: notify a little before the stove's coke runs out ('Warn before' above). "
+			+ "The badge counts it down as 'Coke runs out in' once it has timed the stove burning down a step, "
+			+ "from how the stove looks.",
+		section = alertsSection,
+		position = 22
+	)
+	default Notification alertCokeLow()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "alertNoStoking",
+		name = "Stove: no one stoking",
+		description = "While pumping: notify when the pump gives no Strength experience for a few seconds, which "
+			+ "means the stove is out of coke and nobody is refuelling it. The badge says 'Stove: no one stoking'.",
+		section = alertsSection,
+		position = 22
+	)
+	default Notification alertNoStoking()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "alertWrongWorld",
+		name = "Wrong world",
+		description = "Notify once when you start pumping on a world that is not in 'Pumping worlds'. The badge "
+			+ "says 'World 420: not a pumping world' while you pump there.",
+		section = alertsSection,
+		position = 22
+	)
+	default Notification alertWrongWorld()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "pumpWorlds",
+		name = "Wrong world: pumping worlds",
+		description = "The worlds where people keep the Blast Furnace stoked for pumping, separated by commas. "
+			+ "World 302 is the usual one, 303 the other (OSRS Wiki). Empty: no world check.",
+		section = alertsSection,
+		position = 22
+	)
+	default String pumpWorlds()
+	{
+		return PumpChecks.DEFAULT_WORLDS;
+	}
+
 	String SOUND_HELP = " RuneLite: your RuneLite notification sound, as before. Soft chime, Music box, Retro blip: "
 		+ "bundled sounds. Voice line: says what happened. My sounds: your own WAV in "
 		+ ".runelite/combat-vitals/sounds/";
@@ -2260,6 +2315,117 @@ public interface CombatVitalsConfig extends Config
 		position = 82
 	)
 	default boolean repeatRandomEvent()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundCokeLow",
+		name = "Coke low sound",
+		description = "What the coke runs low alert sounds like." + SOUND_HELP + "coke-low.wav",
+		section = alertsSection,
+		position = 83
+	)
+	default AlertSound soundCokeLow()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeCokeLow",
+		name = "Coke low volume",
+		description = VOLUME_HELP,
+		section = alertsSection,
+		position = 84
+	)
+	default int volumeCokeLow()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatCokeLow",
+		name = "Repeat coke low",
+		description = "Sound the coke runs low alert" + REPEAT_HELP,
+		section = alertsSection,
+		position = 85
+	)
+	default boolean repeatCokeLow()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundNoStoking",
+		name = "No stoking sound",
+		description = "What the no one stoking alert sounds like." + SOUND_HELP + "no-stoking.wav",
+		section = alertsSection,
+		position = 86
+	)
+	default AlertSound soundNoStoking()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeNoStoking",
+		name = "No stoking volume",
+		description = VOLUME_HELP,
+		section = alertsSection,
+		position = 87
+	)
+	default int volumeNoStoking()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatNoStoking",
+		name = "Repeat no stoking",
+		description = "Sound the no one stoking alert" + REPEAT_HELP,
+		section = alertsSection,
+		position = 88
+	)
+	default boolean repeatNoStoking()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundWrongWorld",
+		name = "Wrong world sound",
+		description = "What the wrong world alert sounds like." + SOUND_HELP + "wrong-world.wav",
+		section = alertsSection,
+		position = 89
+	)
+	default AlertSound soundWrongWorld()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeWrongWorld",
+		name = "Wrong world volume",
+		description = VOLUME_HELP,
+		section = alertsSection,
+		position = 90
+	)
+	default int volumeWrongWorld()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatWrongWorld",
+		name = "Repeat wrong world",
+		description = "Sound the wrong world alert" + REPEAT_HELP,
+		section = alertsSection,
+		position = 91
+	)
+	default boolean repeatWrongWorld()
 	{
 		return false;
 	}

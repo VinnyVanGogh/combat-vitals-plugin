@@ -25,6 +25,9 @@ alert	METHOD_STOPPED|BLAST_FURNACE_PUMP	pump-stopped	You've stopped pumping.
 alert	RECLICK_SOON	reclick-soon	Click soon, or you'll be logged out.
 alert	AUTO_STOP_SOON	method-stopping	Your training stops soon. Click again.
 alert	AUTO_STOP_SOON|BLAST_FURNACE_PUMP	pump-stopping	The pump stops soon. Click it again.
+alert	WRONG_WORLD	pump-wrong-world	This isn't a pumping world.
+alert	NO_STOKING	stove-not-stoked	No one is stoking the stove.
+alert	COKE_LOW	coke-low	The stove's coke runs out soon.
 alert	BIRD_NEST	bird-nest	A bird's nest fell!
 alert	CLUE_DROP	clue-drop	You got a clue!
 alert	FORESTRY_EVENT	forestry-event	A Forestry event started!
