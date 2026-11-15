@@ -17,6 +17,12 @@ import net.runelite.api.Skill;
  * start. Walking off, a fight, another badge or logging out end it without
  * an alert ({@link #end}).
  *
+ * Only pumping in this login session counts (Board, 2026-11-14): the start
+ * itself (the Operate click and the animation at the pump), the animation or
+ * a Strength gain since. A reconnect is a new login without a logout
+ * ({@link #reconnected}), so a session from before it ends quietly unless
+ * the player is seen pumping again.
+ *
  * <h3>Re-click</h3>
  * The client logs you out once neither mouse nor keyboard has been touched
  * for its idle timeout: 5 minutes by default, up to 25 in the game's
@@ -43,6 +49,8 @@ final class TrainingSession
 	private int startTick = -1;
 	private int lastActiveTick = -1;
 	private boolean gained;
+	/** Seen pumping in this login session: without it, stopping is not news. */
+	private boolean worked;
 	/** Started since the last tick: back at it, so a repeating alert can stop. */
 	private boolean started;
 	private boolean resumed;
@@ -87,8 +95,20 @@ final class TrainingSession
 		this.method = method;
 		started = true;
 		running = true;
+		worked = true;
 		startTick = clickTick;
 		lastActiveTick = tick;
+	}
+
+	/**
+	 * The connection came back without a logout: to the player, logging in
+	 * again. The pumping before it no longer counts, and the tick count may
+	 * have started over, so the stop delay starts from the next tick.
+	 */
+	void reconnected()
+	{
+		worked = false;
+		lastActiveTick = -1;
 	}
 
 	/** Stopped on purpose or by something else taking over: no alert, countdowns gone. */
@@ -108,6 +128,7 @@ final class TrainingSession
 		startTick = -1;
 		lastActiveTick = -1;
 		started = false;
+		worked = false;
 		resumed = false;
 		reclickWarned = false;
 		stopWarned = false;
@@ -136,14 +157,16 @@ final class TrainingSession
 			return Collections.emptyList();
 		}
 
-		if (active)
+		if (active || lastActiveTick < 0)
 		{
 			lastActiveTick = tick;
 		}
+		worked |= active;
 		if (tick - lastActiveTick >= stopTicks)
 		{
+			final boolean news = worked;
 			end();
-			return Collections.singletonList(alert(ActivityAlerts.Type.METHOD_STOPPED));
+			return news ? Collections.singletonList(alert(ActivityAlerts.Type.METHOD_STOPPED)) : Collections.emptyList();
 		}
 
 		List<ActivityAlerts.Alert> out = null;
