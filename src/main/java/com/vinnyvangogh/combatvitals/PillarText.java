@@ -79,6 +79,25 @@ final class PillarText
 	}
 
 	/**
+	 * The inventory tooltip with a line per container the badge shows:
+	 * "Inventory: 10 of 28 free</br>Log basket 12/28 free".
+	 */
+	static String inventoryTooltip(int empty, InventoryCount count, java.util.List<ContainerRow> containers)
+	{
+		final String inventory = inventoryTooltip(empty, count);
+		if (inventory == null || containers.isEmpty())
+		{
+			return inventory;
+		}
+		final StringBuilder text = new StringBuilder(inventory);
+		for (ContainerRow row : containers)
+		{
+			text.append("</br>").append(row.label(count));
+		}
+		return text.toString();
+	}
+
+	/**
 	 * The target's hitpoints: exact when known, else the middle of the
 	 * recovered range, else -1 (only the bar's fraction is known).
 	 */

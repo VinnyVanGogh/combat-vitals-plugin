@@ -62,7 +62,7 @@ class CombatVitalsPanelOverlay extends OverlayPanel
 		setPosition(OverlayPosition.TOP_LEFT);
 		setPriority(PRIORITY_HIGH);
 		panelComponent.setBorder(new Rectangle(2, 2, 2, 2));
-		addMenuEntry(RUNELITE_OVERLAY_CONFIG, OPTION_CONFIGURE, "Combat Vitals overlay");
+		addMenuEntry(RUNELITE_OVERLAY_CONFIG, OPTION_CONFIGURE, PluginName.NAME + " overlay");
 	}
 
 	@Override

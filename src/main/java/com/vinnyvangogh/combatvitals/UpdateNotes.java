@@ -20,7 +20,12 @@ final class UpdateNotes
 	/** Must match {@code version} in runelite-plugin.properties (UpdateNotesTest). */
 	static final String VERSION = "1.1.0";
 
-	static final String TITLE = "Combat Vitals updated to " + VERSION + ", what's new:";
+	/** Says the old name too, so a player who knew "Combat Vitals" knows what this is. */
+	static final String TITLE = PluginName.FORMER_NAME + " is now " + PluginName.NAME
+		+ ", updated to " + VERSION + ". What's new:";
+
+	/** Where the skilling settings are, as the settings panel titles it. */
+	static final String CONFIGURE = "Configure " + PluginName.NAME + " > Skilling badge";
 
 	/** Written for 1.0.0 users: everything here is new to them, so nothing is a "fix". */
 	static final List<String> NOTES = Collections.unmodifiableList(Arrays.asList(
@@ -29,11 +34,11 @@ final class UpdateNotes
 		"New next fishing spot mark and path, and a warning when you are missing gear.",
 		"New activity alerts (inventory full, stopped gathering) and side pillars (off by default).",
 		"Bosses can show health differently; Hide game health bar is back, opt-in.",
-		"Turn things on in Configure Combat Vitals > Skilling badge."
+		"Turn things on in " + CONFIGURE + "."
 	));
 
-	static final String WELCOME = "Combat Vitals " + VERSION
-		+ " is on. Skilling badge, alerts and more: Configure Combat Vitals > Skilling badge.";
+	static final String WELCOME = PluginName.NAME + " " + VERSION
+		+ " is on. Skilling badge, alerts and more: " + CONFIGURE + ".";
 
 	private UpdateNotes()
 	{

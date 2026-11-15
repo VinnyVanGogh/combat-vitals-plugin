@@ -181,7 +181,12 @@ class SkillingBadgeRenderer
 
 		final Rows rows = new Rows(-width / 2, width);
 		final int invHeight = readout.getCatches().isEmpty() ? lineHeight : Math.max(lineHeight, FISH_ICON + 2);
-		final Layout layout = new Layout(text, icon, measured.cells, lines);
+		final Layout layout = new Layout(text, icon, measured.cells, lines, readout.getContainers().size());
+		// Container lines sit under the inventory line, the last one lowest.
+		for (int i = layout.containers.length - 1; i >= 0; i--)
+		{
+			layout.containers[i] = rows.add(true, lineHeight);
+		}
 		layout.inv = rows.add(readout.hasInventoryLine(), invHeight);
 		// Stacked upward, so the last line goes on first.
 		final boolean session = !readout.getSessionCells().isEmpty();
@@ -242,6 +247,25 @@ class SkillingBadgeRenderer
 		{
 			drawInventoryLine(graphics, inv, readout);
 		}
+		for (int i = 0; i < layout.containers.length; i++)
+		{
+			drawContainerLine(graphics, layout.containers[i], readout.getContainers().get(i),
+				readout.getContainerCount());
+		}
+	}
+
+	/**
+	 * "Log basket 12/28 free" on a bar filling as the inventory line's does;
+	 * an empty bar while the contents are unknown.
+	 */
+	private void drawContainerLine(Graphics2D graphics, Rectangle row, ContainerRow container, InventoryCount count)
+	{
+		final double fill = Math.max(0, container.fill());
+		Bars.across(graphics, row, fill,
+			InventoryFill.colour(fill, config.healthFullColour(), config.healthMidColour(), config.healthLowColour()),
+			config.barBackground());
+		OverlayUtil.renderTextLocation(graphics, new Point(row.x + PAD_X, textBaseline(row, graphics.getFontMetrics())),
+			container.label(count), Color.WHITE);
 	}
 
 	/**
@@ -320,7 +344,14 @@ class SkillingBadgeRenderer
 			metrics.stringWidth(label));
 		final List<FishingCatches.Catch> catches = readout.getCatches();
 		final int gap = label != null && !catches.isEmpty() ? InventoryLine.LABEL_GAP : 0;
-		return labelWidth + gap + catchesWidth(catches, metrics);
+		int width = labelWidth + gap + catchesWidth(catches, metrics);
+		// The container lines share the inventory line's width.
+		for (ContainerRow row : readout.getContainers())
+		{
+			final String text = row.label(readout.getContainerCount());
+			width = Math.max(width, InventoryLine.reservedWidth(text, metrics::charWidth, metrics.stringWidth(text)));
+		}
+		return width;
 	}
 
 	/** Each session cell's own width, the count's icon and the column padding included. */
@@ -352,17 +383,25 @@ class SkillingBadgeRenderer
 		return icon == null || icon.getHeight() <= 0 ? 0 : icon.getWidth() * SESSION_ICON / icon.getHeight() + ICON_GAP;
 	}
 
-	/** The header's words: the level and boost while working, "Not fishing" once stopped. */
+	/**
+	 * The header's words: the level and boost while working, "Not fishing" once stopped, each followed by
+	 * "in combat" or "under attack" while a fight is on.
+	 */
 	private static String headerText(SkillingReadout readout)
+	{
+		return SkillingText.withCombatTag(headerWords(readout), readout.getCombatTag());
+	}
+
+	private static String headerWords(SkillingReadout readout)
 	{
 		if (readout.isIdle())
 		{
-			return SkillingText.idleHeader(readout.getSkill());
+			return SkillingText.idleHeader(readout.getSkill(), readout.getMethod());
 		}
 
 		final int seconds = SkillingText.seconds(readout.getTicksUntilDrop(),
 			System.currentTimeMillis() - readout.getTickMillis());
-		return SkillingText.text(readout.getSkill().getName(), readout.getReal(), readout.getBoosted(), seconds,
+		return SkillingText.text(SkillingText.headerName(readout.getSkill(), readout.getMethod()), readout.getReal(), readout.getBoosted(), seconds,
 			!readout.isTimerConfirmed(), readout.getSpecPercent(), readout.getSource(), readout.getWarning());
 	}
 
@@ -574,15 +613,17 @@ class SkillingBadgeRenderer
 		private Rectangle gear;
 		private Rectangle xp;
 		private Rectangle inv;
+		private final Rectangle[] containers;
 		private Rectangle box;
 
-		Layout(String text, BufferedImage icon, int[] cellWidths, int[][] sessionLines)
+		Layout(String text, BufferedImage icon, int[] cellWidths, int[][] sessionLines, int containerLines)
 		{
 			this.text = text;
 			this.icon = icon;
 			this.cellWidths = cellWidths;
 			this.sessionLines = sessionLines;
 			this.session = new Rectangle[sessionLines.length];
+			this.containers = new Rectangle[containerLines];
 		}
 	}
 

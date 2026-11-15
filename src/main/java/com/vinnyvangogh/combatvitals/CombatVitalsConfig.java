@@ -19,61 +19,86 @@ public interface CombatVitalsConfig extends Config
 {
 	String GROUP = "combat-vitals";
 
-	@ConfigSection(
-		name = "Display",
-		description = "What the readout shows and where",
+	/*
+	 * The two master switches sit above every section (positions 0 and 1);
+	 * six sections follow, all collapsed, one per tab of the plugin's own
+	 * sidebar panel plus Advanced. Which section a setting is in, and its order
+	 * there, is PanelLayout's (PanelLayoutTest), so the list and the panel read
+	 * the same. Section names and positions are display only: every keyName is
+	 * frozen (ConfigKeyFreezeTest), and the section key strings are kept.
+	 */
+
+	@ConfigItem(
+		keyName = "combatVitals",
+		name = "Combat vitals",
+		description = "Health for your target and for you: the panel, the readout over the target, your own "
+			+ "health, the game health bar swap and the combat side pillar. Off turns all of it off.",
 		position = 0
+	)
+	default boolean combatVitals()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingVitals",
+		name = "Skilling vitals",
+		description = "The skilling badge, the skilling side pillars, the next fishing spot, and the activity "
+			+ "and boost alerts. Off turns all of it off.",
+		position = 1
+	)
+	default boolean skillingVitals()
+	{
+		return true;
+	}
+
+	@ConfigSection(
+		name = "Combat readout",
+		description = "The panel and the readout over your target, your own health, and the game's health bar. "
+			+ "Same as the sidebar panel's Combat tab.",
+		position = 2,
+		closedByDefault = true
 	)
 	String displaySection = "display";
 
 	@ConfigSection(
-		name = "Targets",
-		description = "Which opponents the readout appears for",
-		position = 1
+		name = "Combat targets",
+		description = "Which opponents get a readout, and how big targets show. Same as the Targets tab.",
+		position = 3,
+		closedByDefault = true
 	)
 	String targetSection = "targets";
 
 	@ConfigSection(
-		name = "Skilling vitals",
-		description = "A badge over your head while you work a fishing spot or other skilling NPC",
-		position = 2
+		name = "Skilling badge",
+		description = "The badge while you skill: which skills, its rows, boosts, once you stop, and the next "
+			+ "fishing spot. Same as the Skilling tab.",
+		position = 4,
+		closedByDefault = true
 	)
 	String skillingSection = "skilling";
 
 	@ConfigSection(
-		name = "Skilling badge",
-		description = "What the skilling badge shows, for which skills, where, and once you stop",
-		position = 3,
+		name = "Alerts and sounds",
+		description = "Inventory full, stopped, and more: on or off, what each sounds like, and repeats. Same as "
+			+ "the Alerts tab.",
+		position = 5,
 		closedByDefault = true
 	)
-	String skillingBadgeSection = "skillingBadge";
+	String alertsSection = "alerts";
 
 	@ConfigSection(
-		name = "Side pillars",
-		description = "Vitals on the bars beside the side panel, like RuneLite's Status Bars",
-		position = 4,
+		name = "Look",
+		description = "Colours, styles, positions and sizes of the readout and badge, and the side pillars. Same "
+			+ "as the Look tab.",
+		position = 6,
 		closedByDefault = true
 	)
 	String pillarsSection = "pillars";
 
 	@ConfigSection(
-		name = "Activity alerts",
-		description = "RuneLite notifications for gathering, thieving and make-X: inventory full, stopped, and more",
-		position = 5
-	)
-	String alertsSection = "alerts";
-
-	@ConfigSection(
-		name = "Alert sounds",
-		description = "What each activity alert sounds like, how loud, and whether it repeats until you are back",
-		position = 6,
-		closedByDefault = true
-	)
-	String alertSoundsSection = "alertSounds";
-
-	@ConfigSection(
 		name = "Advanced",
-		description = "Timeouts and diagnostics",
+		description = "Timeouts and update notes",
 		position = 7,
 		closedByDefault = true
 	)
@@ -131,8 +156,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "colourGradient",
 		name = "Colour by health",
 		description = "Fade the text from green to red as the target loses health.",
-		section = displaySection,
-		position = 8
+		section = pillarsSection,
+		position = 4
 	)
 	default boolean colourGradient()
 	{
@@ -143,8 +168,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "overheadPosition",
 		name = "Overhead position",
 		description = "Where above the target the text sits. Large NPCs often read better on Bottom.",
-		section = displaySection,
-		position = 5
+		section = pillarsSection,
+		position = 1
 	)
 	default OverheadPosition overheadPosition()
 	{
@@ -156,8 +181,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "healthFullColour",
 		name = "Colour at full",
 		description = "Colour of the readout at full health, used when Colour by health is on.",
-		section = displaySection,
-		position = 9
+		section = pillarsSection,
+		position = 5
 	)
 	default Color healthFullColour()
 	{
@@ -169,8 +194,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "healthMidColour",
 		name = "Colour at half",
 		description = "Colour the readout passes through at half health.",
-		section = displaySection,
-		position = 10
+		section = pillarsSection,
+		position = 6
 	)
 	default Color healthMidColour()
 	{
@@ -182,8 +207,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "healthLowColour",
 		name = "Colour at empty",
 		description = "Colour of the readout as health approaches zero.",
-		section = displaySection,
-		position = 11
+		section = pillarsSection,
+		position = 7
 	)
 	default Color healthLowColour()
 	{
@@ -198,8 +223,8 @@ public interface CombatVitalsConfig extends Config
 				+ "can stay white. Text above health bar lifts the text clear of the game's own bar "
 				+ "instead. Text only draws coloured text where it falls, which will overlap the "
 				+ "game's bar.",
-		section = displaySection,
-		position = 4
+		section = pillarsSection,
+		position = 0
 	)
 	default OverheadStyle overheadStyle()
 	{
@@ -214,8 +239,8 @@ public interface CombatVitalsConfig extends Config
 			"Colour behind the health fill, used by the Bar behind text style. Opaque by default so "
 				+ "the game's own health bar does not show through it. Lower the alpha to let it "
 				+ "show again.",
-		section = displaySection,
-		position = 7
+		section = pillarsSection,
+		position = 3
 	)
 	default Color barBackground()
 	{
@@ -227,8 +252,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "overheadOffset",
 		name = "Overhead offset",
 		description = "Extra height in pixels, applied after the position above.",
-		section = displaySection,
-		position = 6
+		section = pillarsSection,
+		position = 2
 	)
 	default int overheadOffset()
 	{
@@ -244,7 +269,7 @@ public interface CombatVitalsConfig extends Config
 				+ "game's place, so no bar goes missing. Hitsplats and overhead chat stay. Overrides "
 				+ "Interface Styles' HD health bars while on, and gives them back when off.",
 		section = displaySection,
-		position = 12
+		position = 5
 	)
 	default boolean hideGameHealthBar()
 	{
@@ -264,7 +289,7 @@ public interface CombatVitalsConfig extends Config
 				+ "The message keeps its full time on screen and goes back to the game when the readout goes. "
 				+ "Off: the game draws its own line and the plugin adds nothing. A skilling NPC is never touched.",
 		section = displaySection,
-		position = 13
+		position = 6
 	)
 	default boolean hideGameOverheadChat()
 	{
@@ -279,7 +304,7 @@ public interface CombatVitalsConfig extends Config
 		description =
 			"Draw your own health over your character while you are engaged, in the same style as your "
 				+ "opponent's. Taken from the hitpoints orb, so it is exact rather than recovered.",
-		section = targetSection,
+		section = displaySection,
 		position = 4
 	)
 	default boolean showOwnHealth()
@@ -348,7 +373,7 @@ public interface CombatVitalsConfig extends Config
 			"Compare your combat stats against a player opponent's, in the panel. Reads the same "
 				+ "cached hiscores result as the hitpoints lookup, so it costs no extra request.",
 		section = targetSection,
-		position = 5
+		position = 4
 	)
 	default boolean showStatComparison()
 	{
@@ -362,7 +387,7 @@ public interface CombatVitalsConfig extends Config
 			"Display for bosses and high-HP NPCs, as set by Big target is. Same as Display follows the "
 				+ "Display setting above. Players always use Display.",
 		section = targetSection,
-		position = 6
+		position = 5
 	)
 	default TargetDisplay bigTargetDisplay()
 	{
@@ -377,7 +402,7 @@ public interface CombatVitalsConfig extends Config
 			"Display for every NPC that is not a big target. Same as Display follows the Display "
 				+ "setting above.",
 		section = targetSection,
-		position = 7
+		position = 6
 	)
 	default TargetDisplay otherTargetDisplay()
 	{
@@ -392,7 +417,7 @@ public interface CombatVitalsConfig extends Config
 				+ "on the plugin's list of bosses. Max HP uses Big target max HP; an NPC whose max HP is "
 				+ "unknown counts as an other target.",
 		section = targetSection,
-		position = 8
+		position = 7
 	)
 	default BigTargetRule bigTargetRule()
 	{
@@ -405,7 +430,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Big target max HP",
 		description = "An NPC with at least this much max HP is a big target, when Big target is uses max HP.",
 		section = targetSection,
-		position = 9
+		position = 8
 	)
 	default int bigTargetMaxHp()
 	{
@@ -436,7 +461,7 @@ public interface CombatVitalsConfig extends Config
 				+ "now at full strength, the rest dimmed with the level they need. The fish you last caught "
 				+ "leads. Spots the plugin does not know show no icons.",
 		section = skillingSection,
-		position = 1
+		position = 12
 	)
 	default boolean skillingCatches()
 	{
@@ -451,7 +476,7 @@ public interface CombatVitalsConfig extends Config
 				+ "it is in its drain cycle, so the timer is an estimate (marked ~) from login until a drop "
 				+ "is seen, and exact after that. Preserve is accounted for.",
 		section = skillingSection,
-		position = 2
+		position = 22
 	)
 	default boolean skillingBoostTimer()
 	{
@@ -466,7 +491,7 @@ public interface CombatVitalsConfig extends Config
 				+ "ate, or the special attack of the tool you are wielding. Otherwise nothing is shown "
 				+ "rather than a guess.",
 		section = skillingSection,
-		position = 3
+		position = 23
 	)
 	default boolean skillingBoostSource()
 	{
@@ -480,7 +505,7 @@ public interface CombatVitalsConfig extends Config
 			"When the wielded tool has a special attack that boosts the skill (dragon, infernal, crystal "
 				+ "and 3rd age axes, pickaxes and harpoons), show the remaining special attack energy.",
 		section = skillingSection,
-		position = 4
+		position = 24
 	)
 	default boolean skillingSpecEnergy()
 	{
@@ -494,7 +519,7 @@ public interface CombatVitalsConfig extends Config
 			"Send a RuneLite notification when the badge's boost drops by one or wears off. The badge "
 				+ "itself always shows the cue.",
 		section = skillingSection,
-		position = 5
+		position = 25
 	)
 	default Notification skillingBoostNotify()
 	{
@@ -510,11 +535,42 @@ public interface CombatVitalsConfig extends Config
 				+ "and equipment hold their slot, so they are not free, but do not count as filling; red "
 				+ "means no free slot is left.",
 		section = skillingSection,
-		position = 6
+		position = 15
 	)
 	default boolean skillingInventoryBar()
 	{
 		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingContainers",
+		name = "Show containers",
+		description =
+			"Under the inventory line, a line for each container you carry that holds what you are gathering: "
+				+ "\"Log basket 12/28 free\" while woodcutting, the fish barrel while fishing, the coal bag while "
+				+ "mining, essence pouches while runecrafting. A basket, barrel or coal bag shows \"?\" until you "
+				+ "Check it once after logging in; the plugin never guesses what is inside.",
+		section = skillingSection,
+		position = 17
+	)
+	default boolean skillingContainers()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingContainersAsInventory",
+		name = "Count containers as free",
+		description =
+			"Add a container's free space to the inventory line, \"Inv 27/28 free (+16 basket)\", and only "
+				+ "notify Inventory full once the container is full too. The coal bag takes coal only, so it is "
+				+ "never counted; a container not yet checked counts as no space.",
+		section = skillingSection,
+		position = 18
+	)
+	default boolean skillingContainersAsInventory()
+	{
+		return false;
 	}
 
 	@ConfigItem(
@@ -524,8 +580,8 @@ public interface CombatVitalsConfig extends Config
 			"What the badge does when you stop: Off lets it go as before; Show for a while keeps it up for the "
 				+ "seconds below with the header turned to \"Not fishing\"; Until next activity keeps it until "
 				+ "you start something else or a fight starts. The level, XP and inventory rows stay.",
-		section = skillingBadgeSection,
-		position = 0
+		section = skillingSection,
+		position = 26
 	)
 	default IdleBadgeMode skillingIdleMode()
 	{
@@ -537,8 +593,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingIdleSeconds",
 		name = "Idle badge for (s)",
 		description = "How long the \"Not fishing\" badge stays up, with Show for a while.",
-		section = skillingBadgeSection,
-		position = 1
+		section = skillingSection,
+		position = 27
 	)
 	default int skillingIdleSeconds()
 	{
@@ -550,8 +606,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingIdleColour",
 		name = "Idle header colour",
 		description = "The header's colour while the badge says \"Not fishing\".",
-		section = skillingBadgeSection,
-		position = 2
+		section = pillarsSection,
+		position = 12
 	)
 	default Color skillingIdleColour()
 	{
@@ -562,8 +618,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingFishing",
 		name = "Fishing",
 		description = "Show the badge while fishing.",
-		section = skillingBadgeSection,
-		position = 3
+		section = skillingSection,
+		position = 2
 	)
 	default boolean skillingFishing()
 	{
@@ -574,8 +630,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingWoodcutting",
 		name = "Woodcutting",
 		description = "Show the badge while chopping trees.",
-		section = skillingBadgeSection,
-		position = 4
+		section = skillingSection,
+		position = 3
 	)
 	default boolean skillingWoodcutting()
 	{
@@ -586,8 +642,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingMining",
 		name = "Mining",
 		description = "Show the badge while mining rocks.",
-		section = skillingBadgeSection,
-		position = 5
+		section = skillingSection,
+		position = 4
 	)
 	default boolean skillingMining()
 	{
@@ -598,8 +654,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingThieving",
 		name = "Thieving",
 		description = "Show the badge while pickpocketing or stealing from stalls.",
-		section = skillingBadgeSection,
-		position = 6
+		section = skillingSection,
+		position = 5
 	)
 	default boolean skillingThieving()
 	{
@@ -610,8 +666,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingRunecraft",
 		name = "Runecraft",
 		description = "Show the badge while crafting runes at an altar.",
-		section = skillingBadgeSection,
-		position = 7
+		section = skillingSection,
+		position = 6
 	)
 	default boolean skillingRunecraft()
 	{
@@ -622,10 +678,146 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingHunter",
 		name = "Hunter",
 		description = "Show the badge while catching implings and butterflies.",
-		section = skillingBadgeSection,
-		position = 8
+		section = skillingSection,
+		position = 7
 	)
 	default boolean skillingHunter()
+	{
+		return true;
+	}
+
+	// The skills raised by their experience drops (XpSkilling). Position 8,
+	// like Hunter: equal positions sort by name, so they sit alphabetically
+	// among the skill switches without renumbering the rows below.
+
+	@ConfigItem(
+		keyName = "skillingHerblore",
+		name = "Herblore",
+		description = "Show the badge while cleaning herbs, making potions or crushing.",
+		section = skillingSection,
+		position = 30
+	)
+	default boolean skillingHerblore()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingCooking",
+		name = "Cooking",
+		description = "Show the badge while cooking, with the raw food left.",
+		section = skillingSection,
+		position = 31
+	)
+	default boolean skillingCooking()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingFletching",
+		name = "Fletching",
+		description = "Show the badge while fletching, with the logs, shafts or bows left.",
+		section = skillingSection,
+		position = 32
+	)
+	default boolean skillingFletching()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingCrafting",
+		name = "Crafting",
+		description = "Show the badge while crafting, with the gems, hides or glass left.",
+		section = skillingSection,
+		position = 33
+	)
+	default boolean skillingCrafting()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingSmithing",
+		name = "Smithing",
+		description = "Show the badge while smithing, with the bars left.",
+		section = skillingSection,
+		position = 34
+	)
+	default boolean skillingSmithing()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingFiremaking",
+		name = "Firemaking",
+		description = "Show the badge while lighting logs, with the logs left.",
+		section = skillingSection,
+		position = 35
+	)
+	default boolean skillingFiremaking()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingPrayer",
+		name = "Prayer",
+		description = "Show the badge while burying or offering bones, with the bones left.",
+		section = skillingSection,
+		position = 36
+	)
+	default boolean skillingPrayer()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingMagic",
+		name = "Magic",
+		description = "Show the badge while casting skilling spells (alchemy, enchant, superheat, plank make), never combat spells.",
+		section = skillingSection,
+		position = 37
+	)
+	default boolean skillingMagic()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingAgility",
+		name = "Agility",
+		description = "Show the badge on agility courses, with laps, lap time and marks of grace.",
+		section = skillingSection,
+		position = 38
+	)
+	default boolean skillingAgility()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingConstruction",
+		name = "Construction",
+		description = "Show the badge while building, with the planks left.",
+		section = skillingSection,
+		position = 39
+	)
+	default boolean skillingConstruction()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingSailing",
+		name = "Sailing",
+		description = "Show the badge while training Sailing.",
+		section = skillingSection,
+		position = 40
+	)
+	default boolean skillingSailing()
 	{
 		return true;
 	}
@@ -634,8 +826,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingShowHeader",
 		name = "Header row",
 		description = "The top row: the skill's icon, your level, boost, timer and spec energy.",
-		section = skillingBadgeSection,
-		position = 9
+		section = skillingSection,
+		position = 8
 	)
 	default boolean skillingShowHeader()
 	{
@@ -646,9 +838,9 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingShowXp",
 		name = "XP row",
 		description = "The row with your progress to the next level. The inventory row and catch list have their "
-			+ "own switches in Skilling vitals.",
-		section = skillingBadgeSection,
-		position = 10
+			+ "own switches in Skilling: badge.",
+		section = skillingSection,
+		position = 9
 	)
 	default boolean skillingShowXp()
 	{
@@ -659,8 +851,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingXpDisplay",
 		name = "XP shown as",
 		description = "The XP row as a percentage, the XP left, or both.",
-		section = skillingBadgeSection,
-		position = 11
+		section = skillingSection,
+		position = 10
 	)
 	default XpDisplay skillingXpDisplay()
 	{
@@ -671,8 +863,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingInventoryCount",
 		name = "Inventory count",
 		description = "Count free slots (\"Inv 26/28 free\") or used ones (\"Inv 2/28 used\").",
-		section = skillingBadgeSection,
-		position = 12
+		section = skillingSection,
+		position = 16
 	)
 	default InventoryCount skillingInventoryCount()
 	{
@@ -684,8 +876,8 @@ public interface CombatVitalsConfig extends Config
 		name = "Session count",
 		description = "A row with how many you caught, chopped or mined this session: one per experience drop. "
 			+ "Resets on logout or with Reset session below.",
-		section = skillingBadgeSection,
-		position = 13
+		section = skillingSection,
+		position = 19
 	)
 	default boolean skillingSessionCount()
 	{
@@ -697,8 +889,8 @@ public interface CombatVitalsConfig extends Config
 		name = "XP and actions per hour",
 		description = "XP per hour and actions per hour for the skill, this session, from your first experience "
 			+ "drop. Shown after a minute.",
-		section = skillingBadgeSection,
-		position = 14
+		section = skillingSection,
+		position = 20
 	)
 	default boolean skillingRates()
 	{
@@ -709,8 +901,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingSessionReset",
 		name = "Reset session",
 		description = "Tick to zero the session count and rates; it unticks itself.",
-		section = skillingBadgeSection,
-		position = 15
+		section = skillingSection,
+		position = 21
 	)
 	default boolean skillingSessionReset()
 	{
@@ -722,8 +914,8 @@ public interface CombatVitalsConfig extends Config
 		name = "Badge position",
 		description = "Over your head; over the spot, tree or rock you are working (over your head when idle); or "
 			+ "fixed on screen, where Alt-drag moves it like any other overlay.",
-		section = skillingBadgeSection,
-		position = 16
+		section = pillarsSection,
+		position = 9
 	)
 	default BadgePosition skillingPosition()
 	{
@@ -735,8 +927,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingOffset",
 		name = "Badge offset",
 		description = "Pixels to raise the badge (negative lowers it), over your head or the spot.",
-		section = skillingBadgeSection,
-		position = 17
+		section = pillarsSection,
+		position = 10
 	)
 	default int skillingOffset()
 	{
@@ -748,8 +940,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingScale",
 		name = "Badge size (%)",
 		description = "Scale the whole badge, text and icons included.",
-		section = skillingBadgeSection,
-		position = 18
+		section = pillarsSection,
+		position = 11
 	)
 	default int skillingScale()
 	{
@@ -760,8 +952,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingLockedFish",
 		name = "Fish above your level",
 		description = "Dim the fish you cannot catch yet and mark them with the level they need, or leave them out.",
-		section = skillingBadgeSection,
-		position = 19
+		section = skillingSection,
+		position = 13
 	)
 	default LockedFish skillingLockedFish()
 	{
@@ -770,10 +962,11 @@ public interface CombatVitalsConfig extends Config
 
 	@ConfigItem(
 		keyName = "skillingHideInCombat",
-		name = "Hide during combat",
-		description = "Hide the badge while you are being hit or hitting back. Fighting a target always replaces it.",
-		section = skillingBadgeSection,
-		position = 20
+		name = "Hide in combat (over head)",
+		description = "Over your head only: hide the badge while you are being hit or hitting back. Fighting a target"
+			+ " always replaces it there. Fixed or over the spot, a fight never hides it; it says 'in combat' instead.",
+		section = skillingSection,
+		position = 1
 	)
 	default boolean skillingHideInCombat()
 	{
@@ -784,8 +977,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingFishingColour",
 		name = "Fishing colour",
 		description = "The badge's colour for Fishing.",
-		section = skillingBadgeSection,
-		position = 21
+		section = pillarsSection,
+		position = 13
 	)
 	default Color skillingFishingColour()
 	{
@@ -796,8 +989,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingWoodcuttingColour",
 		name = "Woodcutting colour",
 		description = "The badge's colour for Woodcutting.",
-		section = skillingBadgeSection,
-		position = 22
+		section = pillarsSection,
+		position = 14
 	)
 	default Color skillingWoodcuttingColour()
 	{
@@ -808,8 +1001,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingMiningColour",
 		name = "Mining colour",
 		description = "The badge's colour for Mining.",
-		section = skillingBadgeSection,
-		position = 23
+		section = pillarsSection,
+		position = 15
 	)
 	default Color skillingMiningColour()
 	{
@@ -820,8 +1013,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingThievingColour",
 		name = "Thieving colour",
 		description = "The badge's colour for Thieving.",
-		section = skillingBadgeSection,
-		position = 24
+		section = pillarsSection,
+		position = 16
 	)
 	default Color skillingThievingColour()
 	{
@@ -832,8 +1025,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingRunecraftColour",
 		name = "Runecraft colour",
 		description = "The badge's colour for Runecraft.",
-		section = skillingBadgeSection,
-		position = 25
+		section = pillarsSection,
+		position = 17
 	)
 	default Color skillingRunecraftColour()
 	{
@@ -844,8 +1037,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "skillingHunterColour",
 		name = "Hunter colour",
 		description = "The badge's colour for Hunter.",
-		section = skillingBadgeSection,
-		position = 26
+		section = pillarsSection,
+		position = 18
 	)
 	default Color skillingHunterColour()
 	{
@@ -857,8 +1050,8 @@ public interface CombatVitalsConfig extends Config
 		name = "Warn if missing gear",
 		description = "When you click a fishing spot without the tool, bait or level the option needs,"
 			+ " say what is missing on the badge straight away. The click itself is never changed.",
-		section = skillingBadgeSection,
-		position = 27
+		section = skillingSection,
+		position = 14
 	)
 	default boolean skillingGearWarning()
 	{
@@ -870,8 +1063,8 @@ public interface CombatVitalsConfig extends Config
 		name = "Time to level",
 		description = "With XP and actions per hour on, add how long the next level takes at this session's "
 			+ "rate, \"lvl 18 in 6m\", to the session row.",
-		section = skillingBadgeSection,
-		position = 28
+		section = skillingSection,
+		position = 11
 	)
 	default boolean skillingTimeToLevel()
 	{
@@ -883,8 +1076,8 @@ public interface CombatVitalsConfig extends Config
 		name = "Badge layout",
 		description = "Full: every session stat on, wrapping to two lines when the row would be wider than the "
 			+ "badge. Compact: one short line, \"24 caught | 10.6k xp/h\".",
-		section = skillingBadgeSection,
-		position = 29
+		section = pillarsSection,
+		position = 8
 	)
 	default BadgeLayout skillingBadgeLayout()
 	{
@@ -899,7 +1092,7 @@ public interface CombatVitalsConfig extends Config
 				+ "prayer. Combat: your target's health. Skilling: XP to the next level and inventory fill. "
 				+ "If Status Bars is drawing, these sit beside its bars rather than over them.",
 		section = pillarsSection,
-		position = 0
+		position = 19
 	)
 	default PillarMode pillarMode()
 	{
@@ -911,7 +1104,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Target health on",
 		description = "Which pillar carries your target's health.",
 		section = pillarsSection,
-		position = 1
+		position = 20
 	)
 	default PillarSide pillarCombatSide()
 	{
@@ -923,7 +1116,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Skilling XP on",
 		description = "Which pillar carries XP to the next level; inventory fill takes the other.",
 		section = pillarsSection,
-		position = 2
+		position = 21
 	)
 	default PillarSide pillarXpSide()
 	{
@@ -937,7 +1130,7 @@ public interface CombatVitalsConfig extends Config
 			+ "a backpack, a heart) and the number under it (XP percent or XP left, free or used slots, "
 			+ "your target's hitpoints), the icon alone, or nothing. Hover a pillar for the whole story.",
 		section = pillarsSection,
-		position = 3
+		position = 22
 	)
 	default PillarLabels pillarLabels()
 	{
@@ -951,7 +1144,7 @@ public interface CombatVitalsConfig extends Config
 			+ "25% on XP and one per slot on the inventory, to match RuneLite's own bars beside them. "
 			+ "Flat: one colour on the bar background.",
 		section = pillarsSection,
-		position = 4
+		position = 23
 	)
 	default PillarStyle pillarStyle()
 	{
@@ -968,7 +1161,7 @@ public interface CombatVitalsConfig extends Config
 				+ "'On spot move' does it when your spot moves; either way, right-clicking the badge offers "
 				+ "'Path to next spot'. With no spot of that kind nearby, the nearest known location is used.",
 		section = skillingSection,
-		position = 7
+		position = 28
 	)
 	default FishingSpotPath fishingSpotPath()
 	{
@@ -983,7 +1176,7 @@ public interface CombatVitalsConfig extends Config
 				+ "path. Shortest Path ends its own path once you are within its 'Finish distance' (5 tiles by "
 				+ "default), which is why the plugin's own mark is drawn as well.",
 		section = skillingSection,
-		position = 8
+		position = 29
 	)
 	default boolean fishingSpotShortestPath()
 	{
@@ -1148,20 +1341,125 @@ public interface CombatVitalsConfig extends Config
 		return 10;
 	}
 
+	@ConfigItem(
+		keyName = "alertMethodStopped",
+		name = "Stopped pumping",
+		description = "Notify when operating the Blast Furnace pump has had no animation or Strength experience for "
+			+ "the stopped delay above. Not sent when you walk away or a fight starts.",
+		section = alertsSection,
+		position = 12
+	)
+	default Notification alertMethodStopped()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "alertReclickSoon",
+		name = "Idle logout soon",
+		description = "While pumping: notify a little before the game logs you out for no activity. Any input counts "
+			+ "(a click anywhere, moving the camera, typing), not only clicking the pump. The badge shows 'Active' "
+			+ "while you are, and counts down 'AFK logout in' once you've been idle 5 seconds.",
+		section = alertsSection,
+		position = 13
+	)
+	default Notification alertReclickSoon()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "alertAutoStopSoon",
+		name = "Pump stops soon",
+		description = "Notify a little before the Blast Furnace pump stops by itself, 100 minutes after you clicked "
+			+ "it; click the pump again to restart it. The badge counts it down as 'Pump stops in'.",
+		section = alertsSection,
+		position = 14
+	)
+	default Notification alertAutoStopSoon()
+	{
+		return Notification.ON;
+	}
+
+	@Range(min = 5, max = 300)
+	@ConfigItem(
+		keyName = "alertMethodWarnSeconds",
+		name = "Warn before (s)",
+		description = "How long before the idle logout or the pump's own stop the two alerts above fire.",
+		section = alertsSection,
+		position = 15
+	)
+	default int alertMethodWarnSeconds()
+	{
+		return 60;
+	}
+
 	String SOUND_HELP = " RuneLite: your RuneLite notification sound, as before. Soft chime, Music box, Retro blip: "
 		+ "bundled sounds. Voice line: says what happened. My sounds: your own WAV in "
 		+ ".runelite/combat-vitals/sounds/";
 	String VOLUME_HELP = "Volume of this alert's own sounds. RuneLite's sound keeps RuneLite's volume.";
 	String REPEAT_HELP = " again every 'Repeat every (s)', softly, until you click or press a key in the client, "
 		+ "start again, log out, or 'Repeat for (min)' runs out. Only listens; never sends any input.";
+	String SHARED_HELP = " Used by every alert while 'Same for every alert' is on; each alert's own is kept for when "
+		+ "it is off.";
+
+	@ConfigItem(
+		keyName = "alertSoundShared",
+		name = "Same for every alert",
+		description = "One sound, volume and repeat for every alert, set just below. Off: each alert has its own, "
+			+ "further down. Turning an alert on or off still happens per alert.",
+		section = alertsSection,
+		position = 16
+	)
+	default boolean alertSoundShared()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "alertSoundAll",
+		name = "Sound for all",
+		description = "What every alert sounds like." + SOUND_HELP + "<alert>.wav." + SHARED_HELP,
+		section = alertsSection,
+		position = 17
+	)
+	default AlertSound alertSoundAll()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "alertVolumeAll",
+		name = "Volume for all",
+		description = VOLUME_HELP + SHARED_HELP,
+		section = alertsSection,
+		position = 18
+	)
+	default int alertVolumeAll()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "alertRepeatAll",
+		name = "Repeat every alert",
+		description = "Sound every alert" + REPEAT_HELP + SHARED_HELP,
+		section = alertsSection,
+		position = 19
+	)
+	default boolean alertRepeatAll()
+	{
+		return false;
+	}
 
 	@Range(min = 5, max = 120)
 	@ConfigItem(
 		keyName = "repeatEverySeconds",
 		name = "Repeat every (s)",
 		description = "For alerts with Repeat on: seconds between repeats.",
-		section = alertSoundsSection,
-		position = 0
+		section = alertsSection,
+		position = 20
 	)
 	default int repeatEverySeconds()
 	{
@@ -1173,8 +1471,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "repeatMaxMinutes",
 		name = "Repeat for (min)",
 		description = "For alerts with Repeat on: stop repeating after this many minutes even if you are not back.",
-		section = alertSoundsSection,
-		position = 1
+		section = alertsSection,
+		position = 21
 	)
 	default int repeatMaxMinutes()
 	{
@@ -1185,8 +1483,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "soundInventoryFull",
 		name = "Full inv sound",
 		description = "What the inventory full alert sounds like." + SOUND_HELP + "inventory-full.wav",
-		section = alertSoundsSection,
-		position = 2
+		section = alertsSection,
+		position = 22
 	)
 	default AlertSound soundInventoryFull()
 	{
@@ -1198,8 +1496,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "volumeInventoryFull",
 		name = "Full inv volume",
 		description = VOLUME_HELP,
-		section = alertSoundsSection,
-		position = 3
+		section = alertsSection,
+		position = 23
 	)
 	default int volumeInventoryFull()
 	{
@@ -1210,8 +1508,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "repeatInventoryFull",
 		name = "Repeat full inv",
 		description = "Sound the inventory full alert" + REPEAT_HELP,
-		section = alertSoundsSection,
-		position = 4
+		section = alertsSection,
+		position = 24
 	)
 	default boolean repeatInventoryFull()
 	{
@@ -1222,8 +1520,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "soundGatheringStopped",
 		name = "Gathering sound",
 		description = "What the stopped gathering alert sounds like." + SOUND_HELP + "gathering-stopped.wav",
-		section = alertSoundsSection,
-		position = 5
+		section = alertsSection,
+		position = 25
 	)
 	default AlertSound soundGatheringStopped()
 	{
@@ -1235,8 +1533,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "volumeGatheringStopped",
 		name = "Gathering volume",
 		description = VOLUME_HELP,
-		section = alertSoundsSection,
-		position = 6
+		section = alertsSection,
+		position = 26
 	)
 	default int volumeGatheringStopped()
 	{
@@ -1247,8 +1545,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "repeatGatheringStopped",
 		name = "Repeat gathering",
 		description = "Sound the stopped gathering alert" + REPEAT_HELP,
-		section = alertSoundsSection,
-		position = 7
+		section = alertsSection,
+		position = 27
 	)
 	default boolean repeatGatheringStopped()
 	{
@@ -1259,8 +1557,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "soundSpotMoved",
 		name = "Spot moved sound",
 		description = "What the fishing spot moved alert sounds like." + SOUND_HELP + "spot-moved.wav",
-		section = alertSoundsSection,
-		position = 8
+		section = alertsSection,
+		position = 28
 	)
 	default AlertSound soundSpotMoved()
 	{
@@ -1272,8 +1570,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "volumeSpotMoved",
 		name = "Spot moved volume",
 		description = VOLUME_HELP,
-		section = alertSoundsSection,
-		position = 9
+		section = alertsSection,
+		position = 29
 	)
 	default int volumeSpotMoved()
 	{
@@ -1284,8 +1582,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "repeatSpotMoved",
 		name = "Repeat spot moved",
 		description = "Sound the fishing spot moved alert" + REPEAT_HELP,
-		section = alertSoundsSection,
-		position = 10
+		section = alertsSection,
+		position = 30
 	)
 	default boolean repeatSpotMoved()
 	{
@@ -1296,8 +1594,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "soundThievingStopped",
 		name = "Thieving sound",
 		description = "What the stopped thieving alert sounds like." + SOUND_HELP + "thieving-stopped.wav",
-		section = alertSoundsSection,
-		position = 11
+		section = alertsSection,
+		position = 31
 	)
 	default AlertSound soundThievingStopped()
 	{
@@ -1309,8 +1607,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "volumeThievingStopped",
 		name = "Thieving volume",
 		description = VOLUME_HELP,
-		section = alertSoundsSection,
-		position = 12
+		section = alertsSection,
+		position = 32
 	)
 	default int volumeThievingStopped()
 	{
@@ -1321,8 +1619,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "repeatThievingStopped",
 		name = "Repeat thieving",
 		description = "Sound the stopped thieving alert" + REPEAT_HELP,
-		section = alertSoundsSection,
-		position = 13
+		section = alertsSection,
+		position = 33
 	)
 	default boolean repeatThievingStopped()
 	{
@@ -1333,8 +1631,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "soundStunned",
 		name = "Stunned sound",
 		description = "What the stunned alert sounds like." + SOUND_HELP + "stunned.wav",
-		section = alertSoundsSection,
-		position = 14
+		section = alertsSection,
+		position = 34
 	)
 	default AlertSound soundStunned()
 	{
@@ -1346,8 +1644,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "volumeStunned",
 		name = "Stunned volume",
 		description = VOLUME_HELP,
-		section = alertSoundsSection,
-		position = 15
+		section = alertsSection,
+		position = 35
 	)
 	default int volumeStunned()
 	{
@@ -1358,8 +1656,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "repeatStunned",
 		name = "Repeat stunned",
 		description = "Sound the stunned alert" + REPEAT_HELP,
-		section = alertSoundsSection,
-		position = 16
+		section = alertsSection,
+		position = 36
 	)
 	default boolean repeatStunned()
 	{
@@ -1370,8 +1668,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "soundCoinPouch",
 		name = "Coin pouch sound",
 		description = "What the coin pouch alert sounds like." + SOUND_HELP + "coin-pouch-cap.wav",
-		section = alertSoundsSection,
-		position = 17
+		section = alertsSection,
+		position = 37
 	)
 	default AlertSound soundCoinPouch()
 	{
@@ -1383,8 +1681,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "volumeCoinPouch",
 		name = "Coin pouch volume",
 		description = VOLUME_HELP,
-		section = alertSoundsSection,
-		position = 18
+		section = alertsSection,
+		position = 38
 	)
 	default int volumeCoinPouch()
 	{
@@ -1395,8 +1693,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "repeatCoinPouch",
 		name = "Repeat coin pouch",
 		description = "Sound the coin pouch alert" + REPEAT_HELP,
-		section = alertSoundsSection,
-		position = 19
+		section = alertsSection,
+		position = 39
 	)
 	default boolean repeatCoinPouch()
 	{
@@ -1407,8 +1705,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "soundNecklaceBroke",
 		name = "Necklace sound",
 		description = "What the dodgy necklace alert sounds like." + SOUND_HELP + "necklace-broke.wav",
-		section = alertSoundsSection,
-		position = 20
+		section = alertsSection,
+		position = 40
 	)
 	default AlertSound soundNecklaceBroke()
 	{
@@ -1420,8 +1718,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "volumeNecklaceBroke",
 		name = "Necklace volume",
 		description = VOLUME_HELP,
-		section = alertSoundsSection,
-		position = 21
+		section = alertsSection,
+		position = 41
 	)
 	default int volumeNecklaceBroke()
 	{
@@ -1432,8 +1730,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "repeatNecklaceBroke",
 		name = "Repeat necklace",
 		description = "Sound the dodgy necklace alert" + REPEAT_HELP,
-		section = alertSoundsSection,
-		position = 22
+		section = alertsSection,
+		position = 42
 	)
 	default boolean repeatNecklaceBroke()
 	{
@@ -1444,8 +1742,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "soundMakeFinished",
 		name = "Make-X sound",
 		description = "What the make-X finished alert sounds like." + SOUND_HELP + "production-finished.wav",
-		section = alertSoundsSection,
-		position = 23
+		section = alertsSection,
+		position = 43
 	)
 	default AlertSound soundMakeFinished()
 	{
@@ -1457,8 +1755,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "volumeMakeFinished",
 		name = "Make-X volume",
 		description = VOLUME_HELP,
-		section = alertSoundsSection,
-		position = 24
+		section = alertsSection,
+		position = 44
 	)
 	default int volumeMakeFinished()
 	{
@@ -1469,8 +1767,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "repeatMakeFinished",
 		name = "Repeat make-X",
 		description = "Sound the make-X finished alert" + REPEAT_HELP,
-		section = alertSoundsSection,
-		position = 25
+		section = alertsSection,
+		position = 45
 	)
 	default boolean repeatMakeFinished()
 	{
@@ -1481,8 +1779,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "soundLowRunEnergy",
 		name = "Low energy sound",
 		description = "What the low run energy alert sounds like." + SOUND_HELP + "low-run-energy.wav",
-		section = alertSoundsSection,
-		position = 26
+		section = alertsSection,
+		position = 46
 	)
 	default AlertSound soundLowRunEnergy()
 	{
@@ -1494,8 +1792,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "volumeLowRunEnergy",
 		name = "Low energy volume",
 		description = VOLUME_HELP,
-		section = alertSoundsSection,
-		position = 27
+		section = alertsSection,
+		position = 47
 	)
 	default int volumeLowRunEnergy()
 	{
@@ -1506,10 +1804,121 @@ public interface CombatVitalsConfig extends Config
 		keyName = "repeatLowRunEnergy",
 		name = "Repeat low energy",
 		description = "Sound the low run energy alert" + REPEAT_HELP,
-		section = alertSoundsSection,
-		position = 28
+		section = alertsSection,
+		position = 48
 	)
 	default boolean repeatLowRunEnergy()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundMethodStopped",
+		name = "Pumping sound",
+		description = "What the stopped pumping alert sounds like." + SOUND_HELP + "method-stopped.wav",
+		section = alertsSection,
+		position = 49
+	)
+	default AlertSound soundMethodStopped()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeMethodStopped",
+		name = "Pumping volume",
+		description = VOLUME_HELP,
+		section = alertsSection,
+		position = 50
+	)
+	default int volumeMethodStopped()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatMethodStopped",
+		name = "Repeat pumping",
+		description = "Sound the stopped pumping alert" + REPEAT_HELP,
+		section = alertsSection,
+		position = 51
+	)
+	default boolean repeatMethodStopped()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundReclickSoon",
+		name = "Idle logout sound",
+		description = "What the idle logout soon alert sounds like." + SOUND_HELP + "reclick-soon.wav",
+		section = alertsSection,
+		position = 52
+	)
+	default AlertSound soundReclickSoon()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeReclickSoon",
+		name = "Idle logout volume",
+		description = VOLUME_HELP,
+		section = alertsSection,
+		position = 53
+	)
+	default int volumeReclickSoon()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatReclickSoon",
+		name = "Repeat idle logout",
+		description = "Sound the idle logout soon alert" + REPEAT_HELP,
+		section = alertsSection,
+		position = 54
+	)
+	default boolean repeatReclickSoon()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "soundAutoStopSoon",
+		name = "Pump stops sound",
+		description = "What the pump stops soon alert sounds like." + SOUND_HELP + "auto-stop-soon.wav",
+		section = alertsSection,
+		position = 55
+	)
+	default AlertSound soundAutoStopSoon()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeAutoStopSoon",
+		name = "Pump stops volume",
+		description = VOLUME_HELP,
+		section = alertsSection,
+		position = 56
+	)
+	default int volumeAutoStopSoon()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatAutoStopSoon",
+		name = "Repeat pump stops",
+		description = "Sound the pump stops soon alert" + REPEAT_HELP,
+		section = alertsSection,
+		position = 57
+	)
+	default boolean repeatAutoStopSoon()
 	{
 		return false;
 	}

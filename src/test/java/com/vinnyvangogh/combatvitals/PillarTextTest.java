@@ -124,6 +124,11 @@ public class PillarTextTest
 		assertEquals("Inventory: 10 of 28 free", PillarText.inventoryTooltip(10, InventoryCount.FREE));
 		assertEquals("Inventory: 18 of 28 used", PillarText.inventoryTooltip(10, InventoryCount.USED));
 		assertNull(PillarText.inventoryTooltip(-1, InventoryCount.FREE));
+		assertEquals("Inventory: 10 of 28 free</br>Log basket 12/28 free",
+			PillarText.inventoryTooltip(10, InventoryCount.FREE, java.util.Collections.singletonList(
+				new ContainerRow(SkillingContainer.LOG_BASKET, 16, 28))));
+		assertEquals("Inventory: 10 of 28 free",
+			PillarText.inventoryTooltip(10, InventoryCount.FREE, java.util.Collections.emptyList()));
 		assertEquals("Target: Rock Crab 12/50", PillarText.targetTooltip("Rock Crab", 12, 50, 0.24));
 		assertEquals("Target: Goblin 82%", PillarText.targetTooltip("Goblin", -1, 0, 0.82));
 	}

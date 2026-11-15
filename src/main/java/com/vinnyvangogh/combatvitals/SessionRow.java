@@ -3,7 +3,9 @@ package com.vinnyvangogh.combatvitals;
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import lombok.Value;
 import net.runelite.api.Skill;
@@ -200,43 +202,41 @@ final class SessionRow
 	/** What was done, after the count: "24 caught". */
 	private static String done(Skill skill)
 	{
-		switch (skill)
-		{
-			case FISHING:
-			case HUNTER:
-				return "caught";
-			case WOODCUTTING:
-				return "chopped";
-			case MINING:
-				return "mined";
-			case THIEVING:
-				return "stolen";
-			case RUNECRAFT:
-				return "crafted";
-			default:
-				return "done";
-		}
+		return DONE.getOrDefault(skill, "done");
 	}
 
 	/** One action, in the per-hour rate: "459 fish/h". */
 	private static String noun(Skill skill)
 	{
-		switch (skill)
-		{
-			case FISHING:
-				return "fish";
-			case WOODCUTTING:
-				return "logs";
-			case MINING:
-				return "ores";
-			case THIEVING:
-				return "steals";
-			case HUNTER:
-				return "catches";
-			case RUNECRAFT:
-				return "crafts";
-			default:
-				return "actions";
-		}
+		return NOUN.getOrDefault(skill, "actions");
+	}
+
+	private static final Map<Skill, String> DONE = new EnumMap<>(Skill.class);
+	private static final Map<Skill, String> NOUN = new EnumMap<>(Skill.class);
+
+	private static void words(Skill skill, String done, String noun)
+	{
+		DONE.put(skill, done);
+		NOUN.put(skill, noun);
+	}
+
+	static
+	{
+		words(Skill.FISHING, "caught", "fish");
+		words(Skill.HUNTER, "caught", "catches");
+		words(Skill.WOODCUTTING, "chopped", "logs");
+		words(Skill.MINING, "mined", "ores");
+		words(Skill.THIEVING, "stolen", "steals");
+		words(Skill.RUNECRAFT, "crafted", "crafts");
+		words(Skill.HERBLORE, "made", "potions");
+		words(Skill.COOKING, "cooked", "cooks");
+		words(Skill.FLETCHING, "fletched", "fletches");
+		words(Skill.CRAFTING, "crafted", "crafts");
+		words(Skill.SMITHING, "smithed", "items");
+		words(Skill.FIREMAKING, "burned", "logs");
+		words(Skill.PRAYER, "offered", "bones");
+		words(Skill.MAGIC, "cast", "casts");
+		words(Skill.AGILITY, "crossed", "obstacles");
+		words(Skill.CONSTRUCTION, "built", "builds");
 	}
 }

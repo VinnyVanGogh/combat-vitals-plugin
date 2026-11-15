@@ -134,12 +134,14 @@ public class ConfigKeysTest
 	 * A setting is read by a call, config.key(), or by a method reference,
 	 * config::key, handed on to be called later (SpotPathing's
 	 * fishingSpotShortestPath). The reference must end at the key's last
-	 * letter, so config::keyLonger does not count as reading key.
+	 * letter, so config::keyLonger does not count as reading key. An unbound
+	 * reference, CombatVitalsConfig::key, counts too (SkillSwitches' table).
 	 */
 	static boolean isRead(String code, String key)
 	{
 		return code.contains("config." + key + "()")
-			|| Pattern.compile("config::" + Pattern.quote(key) + "(?![\\p{javaJavaIdentifierPart}])").matcher(code).find();
+			|| Pattern.compile("(?:config|CombatVitalsConfig)::" + Pattern.quote(key)
+				+ "(?![\\p{javaJavaIdentifierPart}])").matcher(code).find();
 	}
 
 	@Test
@@ -167,6 +169,11 @@ public class ConfigKeysTest
 			NEW_PROFILE.skillingFishing(), NEW_PROFILE.skillingWoodcutting(), NEW_PROFILE.skillingMining(),
 			NEW_PROFILE.skillingThieving(), NEW_PROFILE.skillingRunecraft(), NEW_PROFILE.skillingHunter(),
 			NEW_PROFILE.skillingShowHeader(), NEW_PROFILE.skillingShowXp(), NEW_PROFILE.skillingGearWarning(),
+			NEW_PROFILE.skillingContainers(),
+			NEW_PROFILE.skillingHerblore(), NEW_PROFILE.skillingCooking(), NEW_PROFILE.skillingFletching(),
+			NEW_PROFILE.skillingCrafting(), NEW_PROFILE.skillingSmithing(), NEW_PROFILE.skillingFiremaking(),
+			NEW_PROFILE.skillingPrayer(), NEW_PROFILE.skillingMagic(), NEW_PROFILE.skillingAgility(),
+			NEW_PROFILE.skillingConstruction(), NEW_PROFILE.skillingSailing(),
 		};
 		for (boolean b : on)
 		{
@@ -180,6 +187,8 @@ public class ConfigKeysTest
 		final boolean[] off = {
 			NEW_PROFILE.skillingSessionCount(), NEW_PROFILE.skillingRates(),
 			NEW_PROFILE.skillingSessionReset(), NEW_PROFILE.skillingHideInCombat(),
+			// Container space counted as inventory changes what "Inv N/28" means: opt in (2026-11-14).
+			NEW_PROFILE.skillingContainersAsInventory(),
 		};
 		for (boolean b : off)
 		{

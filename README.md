@@ -1,16 +1,34 @@
-# Combat Vitals
+# Combat & Skilling Vitals
 
-Opponent health for NPC and player targets, drawn over the target instead of
-only in a corner panel, and honest about what the number is worth.
+One plugin, two halves, each with its own switch at the top of the settings.
 
-A standalone replacement for RuneLite's built-in **Opponent Information**.
+**Combat vitals.** Opponent health for NPC and player targets, drawn over the
+target instead of only in a corner panel, and honest about what the number is
+worth. A standalone replacement for RuneLite's built-in **Opponent
+Information**, with your own health drawn the same way.
+
+**Skilling vitals.** While you fish, chop, mine, thieve, hunt or runecraft: a
+badge over your head with your level, boost, progress to the next level,
+inventory fill and session rates; notifications for inventory full and for
+going idle; and the same vitals on side pillars beside the side panel.
 
 <p align="center">
-  <img src="docs/images/hero.png" alt="Overhead health readout on a player target, showing 30 / 91 (33%)" width="640">
+  <img src="docs/images/hero.png" alt="Overhead health readout on a player target, showing 30 / 91 (33%)" width="420">
+  <img src="docs/images/woodcutting-badge.png" alt="Skilling badge over the player while woodcutting" width="300">
 </p>
 
-<p align="center"><em>A player target at 33%. The number comes from the hiscores;
-the bar is sized to the text so the two never collide.</em></p>
+<p align="center"><em>Left, combat: a player target at 33%. The number comes from
+the hiscores; the bar is sized to the text so the two never collide. Right,
+skilling: the woodcutting badge over your own head.</em></p>
+
+Don't want one half? Turn off **Combat vitals** or **Skilling vitals** at the
+top of the settings and every overlay, side pillar and alert of that half goes
+with it; the other half stays exactly as you set it. Both are on by default.
+
+Combat & Skilling Vitals used to be called *Combat Vitals*. It is still the
+same plugin: it keeps its Hub id `combat-vitals`, its on/off state and every
+setting you have saved. If you had pinned it in the plugin list, pin it again:
+RuneLite remembers pins by name.
 
 ---
 
@@ -21,6 +39,7 @@ the bar is sized to the text so the two never collide.</em></p>
 - [About that number](#about-that-number)
 - [Watching it work](#watching-it-work)
 - [How it compares to Opponent Information](#how-it-compares-to-opponent-information)
+- [Sidebar panel](#sidebar-panel)
 - [Settings](#settings)
 - [Compatibility](#compatibility)
 - [Privacy and network use](#privacy-and-network-use)
@@ -126,6 +145,16 @@ wear hold their slot for the whole trip, so they shrink the capacity instead.
 A harpoon and 27 fish is solid red. It uses the health colours from Display,
 run backwards.
 
+**Containers.** Carry a container that holds what you are gathering and it
+gets its own line under the inventory line: `Log basket 12/28 free` while
+woodcutting (log basket or forestry basket), the fish barrel while fishing,
+the coal bag while mining, your essence pouches while runecrafting. The
+plugin reads the basket, barrel and coal bag from the game's own messages, so
+until you Check one after logging in it shows `?/28 (check the basket once)`
+rather than a guess. Turn on *Count containers as free* to read
+`Inv 27/28 free (+16 basket)` and get *Inventory full* only once the basket
+is full too. The coal bag takes coal only, so it is never counted.
+
 | Nearly empty (27/28 free) | Half full | Full (harpoon + 27 fish) |
 |:---:|:---:|:---:|
 | <img src="docs/images/inventory-fill-empty.png" alt="Inventory fill nearly empty at 27/28 free" width="260"> | <img src="docs/images/inventory-fill-half.png" alt="Inventory fill half full" width="260"> | <img src="docs/images/inventory-fill-full.png" alt="Inventory fill completely full" width="260"> |
@@ -149,7 +178,7 @@ plugin does not know shows no fish.
 
 **Activity alerts.** RuneLite notifications for the moments you would
 otherwise miss while looking at something else, each with its own toggle in
-the *Activity alerts* section. They go through RuneLite's notifier, so your
+the *Skilling: activity alerts* section. They go through RuneLite's notifier, so your
 RuneLite notification settings (tray, flash, sound, focus) decide how they
 arrive. By default the sound is RuneLite's; *Alert sounds* can give any
 alert a sound of its own, a voice line, or your own file, and can repeat it
@@ -246,7 +275,7 @@ the case that broke every earlier iteration of this overlay.
 
 ## How it compares to Opponent Information
 
-| | Opponent Information | Combat Vitals |
+| | Opponent Information | Combat & Skilling Vitals |
 |---|---|---|
 | Corner panel | Yes | Yes |
 | Drawn at the target | No | Yes |
@@ -258,10 +287,104 @@ the case that broke every earlier iteration of this overlay.
 | Combat stat comparison panel | Yes | Yes |
 | Shows your own health too | No | Yes |
 
+## Sidebar panel
+
+The plugin has its own button in RuneLite's sidebar (a small health bar over
+a skilling bar). It holds every setting from RuneLite's settings list, the
+same settings with the same values, laid out to be easier to find: presets at
+the top, then five tabs. Change something in either place and the other shows
+it. Timeouts and update notes stay in the settings list, under Advanced.
+
+The screenshots are rendered from the real panel by `./gradlew screenshots`
+(`VitalsSidePanelShots`).
+
+### Presets
+
+<img src="docs/images/panel-presets.png" alt="Presets, with Skiller's preview open" width="240">
+
+A whole setup in one click. A preset only changes the few settings it lists;
+everything else stays as you set it. Click a preset to see exactly what it
+would change, then Apply. Undo puts those settings back as they were.
+
+| Preset | What it sets |
+|---|---|
+| Skiller | Skilling vitals and the skilling badge on, skilling side pillars, every alert as a Voice line that repeats until you are back |
+| PvM | Combat vitals on: readout over the target, the panel, your own health, NPC targets, the stat comparison, the combat side pillar |
+| Minimal | Just the health bar over your target: no panel, no own health, no stat comparison, no side pillars, Skilling vitals off |
+| Everything | Both halves on: readout, panel, your own health, the stat comparison, the skilling badge, both side pillars |
+
+Walkthrough: click Skiller, read the list (each line is a setting, what it is
+now, and what it becomes), click Apply. Changed your mind? Click Undo.
+
+### Combat tab
+
+<img src="docs/images/panel-combat.png" alt="The Combat tab with its guide open" width="240">
+
+Your target's health while you fight: in a small panel, and over the target
+itself. Also your own health, and the game's own health bar and chat. Combat
+vitals at the top turns this whole half on or off.
+
+1. Leave Combat vitals ticked.
+2. Tick Show over target for the readout over the monster, Show panel for the box.
+3. Pick Display: hitpoints, percentage, or both.
+4. Tick Hide game health bar to see only this plugin's bar.
+
+### Targets tab
+
+<img src="docs/images/panel-targets.png" alt="The Targets tab with its guide open" width="240">
+
+Who gets a readout: monsters, players, and how big targets like bosses show.
+
+1. Tick NPC targets for monsters; Player targets for PvP.
+2. Set Big target is to Bosses only, then Big targets to Both for hitpoints and percent on bosses.
+
+### Skilling tab
+
+<img src="docs/images/panel-skilling.png" alt="The Skilling tab with its guide open" width="240">
+
+A badge over your head while you fish, cut, mine, thieve, runecraft or hunt:
+XP to level, inventory, catches, boosts, and the next fishing spot. Skilling
+vitals at the top turns this whole half on or off.
+
+1. Leave Skilling vitals and Skilling badge ticked.
+2. Untick any skill you do not want a badge for.
+3. Under Rows, untick rows you do not read; Badge layout on the Look tab makes it smaller.
+4. Once you stop: choose how long the badge stays after you stop.
+
+### Alerts tab
+
+<img src="docs/images/panel-alerts.png" alt="The Alerts tab with its guide open" width="240">
+
+A notification when something needs you: inventory full, you stopped
+gathering or thieving, the fishing spot moved, and more. Each alert is a row:
+tick it on or off, and **Test** plays it as it is set up now. **Same for every
+alert** gives them all one sound, volume and repeat (sound packs included);
+untick it and each alert's own sound, volume and Repeat show in its row.
+
+1. Tick Same for every alert.
+2. Pick Voice line as the sound and set the volume, e.g. 40.
+3. Tick Repeat every alert if you want it again until you are back.
+4. Click Test on Inventory full to hear it.
+
+### Look tab
+
+<img src="docs/images/panel-look.png" alt="The Look tab with its guide open" width="240">
+
+How things look: the readout's style and position, health colours, the badge's
+size, place and colours, and the side pillars. The preview at the top redraws
+as you change things: the health colours as a bar fading from full to empty,
+and where the skilling badge sits for its position, offset and size. It is a
+sketch, not the game's own drawing.
+
+1. Pick a Style for the readout over your target.
+2. Change the three health colours; the preview bar shows the fade.
+3. Move the badge with Badge position and Badge offset; the preview shows where.
+4. Side pillars: pick Combat, Skilling or Both.
+
 ## Settings
 
 <p align="center">
-  <img src="docs/images/settings.png" alt="The Combat Vitals settings panel" width="300">
+  <img src="docs/images/settings.png" alt="The Combat & Skilling Vitals settings panel" width="300">
 </p>
 
 <details>
@@ -270,17 +393,50 @@ the case that broke every earlier iteration of this overlay.
 | Section | Screenshot |
 |---|---|
 | **Overview** | <img src="docs/images/settings.png" alt="Main settings overview" width="280"> |
-| **Display** | <img src="docs/images/settings-display.png" alt="Display settings" width="280"> |
-| **Targets** | <img src="docs/images/settings-targets.png" alt="Targets settings" width="280"> |
-| **Skilling vitals** | <img src="docs/images/settings-skilling-vitals.png" alt="Skilling vitals settings" width="280"> |
-| **Skilling badge** | <img src="docs/images/settings-skilling-badge.png" alt="Skilling badge settings" width="280"> |
+| **Combat: display** | <img src="docs/images/settings-display.png" alt="Display settings" width="280"> |
+| **Combat: targets** | <img src="docs/images/settings-targets.png" alt="Targets settings" width="280"> |
+| **Skilling: badge** | <img src="docs/images/settings-skilling-vitals.png" alt="Skilling badge settings" width="280"> |
+| **Skilling: badge details** | <img src="docs/images/settings-skilling-badge.png" alt="Skilling badge details settings" width="280"> |
+| **Skilling: activity alerts** | <img src="docs/images/alerts-settings.png" alt="Activity alerts settings" width="280"> |
 | **Side pillars** | <img src="docs/images/settings-side-pillars.png" alt="Side pillars settings" width="280"> |
-| **Activity alerts** | <img src="docs/images/alerts-settings.png" alt="Activity alerts settings" width="280"> |
 | **Advanced** | <img src="docs/images/settings-advanced.png" alt="Advanced settings" width="280"> |
+
+The screenshots predate the two master switches and the regrouped sections.
 
 </details>
 
-### Display
+RuneLite's list now has six sections, all collapsed, each the twin of a
+sidebar panel tab with the same settings in the same order: **Combat
+readout** (Combat tab), **Combat targets** (Targets), **Skilling badge**
+(Skilling, which now also holds what was "Skilling: badge details" and the
+next fishing spot), **Alerts and sounds** (Alerts: each alert's switch, then
+"Same for every alert", the repeat timing, then each alert's own sound),
+**Look** (colours, styles, positions and sizes, and the side pillars), and
+**Advanced**. The tables below keep their old headings; every setting and its
+key is unchanged.
+
+<details>
+<summary>Old section names</summary>
+
+Combat: display, Combat: targets, Skilling: badge, Skilling: badge details,
+Skilling: activity alerts, Skilling: alert sounds, Side pillars, Advanced.
+
+</details>
+
+### Master switches
+
+At the top of the settings, above every section.
+
+| Setting | Default | What it does |
+|---|---|---|
+| Combat vitals | On | Off: no corner panel, no readout over the target or over you, no game health bar swap, no combat side pillar |
+| Skilling vitals | On | Off: no skilling badge, no skilling side pillars, no next fishing spot mark or path, no activity alerts or boost notifications; an alert already repeating stops |
+
+Both halves on and Side pillars set to Both: the combat pillar shows while you
+fight and the skilling pillars otherwise, as before. With one half off, its
+pillars never show and the other half's take the bars.
+
+### Combat: display
 
 | Setting | Default | What it does |
 |---|---|---|
@@ -297,7 +453,7 @@ the case that broke every earlier iteration of this overlay.
 | Hide game health bar | Off | Replace the game's own health bar: your target and you get the readout, and every other player and NPC that shows a bar gets a plain one in the game's place, so no bar goes missing |
 | Chat above readout | On | While the readout or skilling badge is over you or your opponent, take the game's overhead chat line off the moment it is posted and draw it above the readout instead, so it shows once and never under the readout. Off: the game draws its own line and the plugin adds nothing. A skilling NPC is never touched |
 
-### Targets
+### Combat: targets
 
 | Setting | Default | What it does |
 |---|---|---|
@@ -312,7 +468,7 @@ the case that broke every earlier iteration of this overlay.
 | Big target is | Bosses + max HP | Bosses only, Bosses + max HP, or Max HP only. A boss is an NPC the game's boss health bar is showing, or one on a bundled list from the OSRS wiki's Boss page. Unknown max HP counts as an other target |
 | Big target max HP | 200 | Max HP at or above which an NPC is a big target, 1–10000 |
 
-### Skilling vitals
+### Skilling: badge
 
 | Setting | Default | What it does |
 |---|---|---|
@@ -323,13 +479,15 @@ the case that broke every earlier iteration of this overlay.
 | Show spec energy | On | Remaining special attack energy when wielding a spec skilling tool |
 | Notify on boost drop | Off | RuneLite notification when the badge's boost drops or wears off |
 | Show inventory fill | On | `Inv 26/28 free` on a bar under the badge, green to red as the inventory fills; stackables, tools and equipment do not count toward the fill |
+| Show containers | On | A line per carried log basket, fish barrel, coal bag or essence pouches under the inventory line, for the skill they serve: `Log basket 12/28 free`, or `?/28` until checked |
+| Count containers as free | Off | `Inv 27/28 free (+16 basket)`, and Inventory full waits for the container to fill too; the coal bag and unchecked containers never count |
 | Next spot path | Off | Mark the nearest fishing spot of the same kind when yours moves, or only from the badge's right-click menu: its tile outlined, a line from you to it, an arrow at the screen's edge while it is off screen. The mark stays until you fish again |
 | Next spot: Shortest Path | On | Also send the next spot to Shortest Path for a walking path, when it is installed. Shortest Path ends its own path within its *Finish distance* (5 tiles by default), which is why the mark is drawn as well |
 
 A fish above your level is dimmed with `Lv 15` over it in red; hover it for
 `Needs Fishing 15`.
 
-### Skilling badge
+### Skilling: badge details
 
 | Setting | Default | What it does |
 |---|---|---|
@@ -337,7 +495,8 @@ A fish above your level is dimmed with `Lv 15` over it in red; hover it for
 | Idle badge for (s) | 60 | How long `Not fishing` stays up |
 | Idle header colour | Red | The header's colour while idle |
 | Fishing, Woodcutting, Mining, Thieving, Runecraft, Hunter | On | Which skills get a badge |
-| Header row, XP row | On | Turn rows off; the inventory row and catch list are in Skilling vitals |
+| Agility, Construction, Cooking, Crafting, Firemaking, Fletching, Herblore, Magic, Prayer, Sailing, Smithing | On | The skills with no spot to click: the badge comes up on the skill's XP drop. The inventory line says what is left to process (`14 left, done in ~25s`); for Agility, laps, last lap time and marks of grace. Magic is skilling spells only; nothing shows during a fight |
+| Header row, XP row | On | Turn rows off; the inventory row and catch list are in Skilling: badge |
 | XP shown as | Both | `64%`, `1,234 xp`, or both |
 | Inventory count | Free slots | `Inv 26/28 free` or `Inv 2/28 used` |
 | Session count | Off | A row with what you caught, chopped or mined this session and for how long, `24 caught in 3m`, after the skill's icon (one per experience drop). Resets on logout |
@@ -347,7 +506,7 @@ A fish above your level is dimmed with `Lv 15` over it in red; hover it for
 | Badge offset | 0 | Pixels to raise the badge, ±200 |
 | Badge size (%) | 100 | Scale the whole badge, 50 to 200 |
 | Fish above your level | Dim | Dim them with the level, or hide them |
-| Hide during combat | Off | Hide the badge while you are hit or hitting back; fighting a target always replaces it. A stun or hit from the NPC you are pickpocketing is not combat; while pickpocketing your own health shows above the badge |
+| Hide in combat (over head) | Off | Over your head only: hide the badge while you are hit or hitting back; fighting a target always replaces it there. Fixed or over the spot a fight never hides it: the header adds `in combat` (`Not woodcutting \| in combat`) or `under attack` while still gathering, and the idle badge runs out on its own timer. A stun or hit from the NPC you are pickpocketing is not combat; while pickpocketing your own health shows above the badge |
 | Fishing colour … Hunter colour | The palette | Per-skill colour overrides |
 | Warn if missing gear | On | Click a fishing option without its tool, bait or level and the badge says `Needs: Fishing rod + bait` in red for 8 seconds, before the game's dialog. Worn or carried tools count, as does barehanded harpooning after Barbarian Training. The click itself is never changed |
 | Time to level | On | With XP and actions per hour on, how long the next level takes at this session's rate, `lvl 18 in 6m`. Not shown before a rate is known, or at 99 |
@@ -390,7 +549,7 @@ the bank (`SidePillars`).
 
 <p align="center"><em>From left: skilling pillars (XP progress on left, inventory fill on right); full inventory indicator; combat target health pillar; detailed hover tooltip. Also supports placing combat health on the right pillar (<a href="docs/images/side-pillars-combat-right.png">preview</a>) and active skilling pillars for <a href="docs/images/side-pillars-woodcutting.png">Woodcutting</a> and <a href="docs/images/side-pillars-thieving.png">Thieving</a>.</em></p>
 
-### Activity alerts
+### Skilling: activity alerts
 
 Every alert is a RuneLite notification with its own toggle, and follows your
 RuneLite notification settings.
@@ -427,9 +586,18 @@ does the same.
   5. boss-vs-everything-else.png: side-by-side or comparison of big target vs standard NPC display.
 -->
 
-### Alert sounds
+### Skilling: alert sounds
 
-Closed by default. Every activity alert has three settings here:
+One sound for all of them, or each its own:
+
+| Setting | Default | What it does |
+|---|---|---|
+| Same for every alert | Off | On: the four settings below replace every alert's own sound, volume and Repeat; each alert still turns on and off by itself. Off: each alert's own, as below |
+| Sound for all | RuneLite | The same choices as each alert's own, sound packs included |
+| Volume for all | 40 | Volume of the plugin's own sounds for every alert |
+| Repeat every alert | Off | Every alert repeats until you are back |
+
+Every activity alert has three settings of its own:
 
 | Setting | Default | What it does |
 |---|---|---|
