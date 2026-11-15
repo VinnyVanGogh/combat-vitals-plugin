@@ -44,7 +44,26 @@ public class SessionRowTest
 		assertEquals("2 stolen in 0s", SessionRow.count(Skill.THIEVING, 2, 0));
 		assertEquals("0 caught", SessionRow.count(Skill.HUNTER, 0, -1));
 		assertEquals("5 crafted in 2m", SessionRow.count(Skill.RUNECRAFT, 5, 2 * MINUTE));
-		assertEquals("1 done in 1m", SessionRow.count(Skill.COOKING, 1, MINUTE));
+		assertEquals("1 cooked in 1m", SessionRow.count(Skill.COOKING, 1, MINUTE));
+		assertEquals("1 done in 1m", SessionRow.count(Skill.SLAYER, 1, MINUTE));
+	}
+
+	@Test
+	public void theXpDropSkillsNameWhatWasMade()
+	{
+		assertEquals("14 made", SessionRow.count(Skill.HERBLORE, 14, -1));
+		assertEquals("14 fletched", SessionRow.count(Skill.FLETCHING, 14, -1));
+		assertEquals("14 crafted", SessionRow.count(Skill.CRAFTING, 14, -1));
+		assertEquals("14 smithed", SessionRow.count(Skill.SMITHING, 14, -1));
+		assertEquals("14 burned", SessionRow.count(Skill.FIREMAKING, 14, -1));
+		assertEquals("14 offered", SessionRow.count(Skill.PRAYER, 14, -1));
+		assertEquals("14 cast", SessionRow.count(Skill.MAGIC, 14, -1));
+		assertEquals("14 crossed", SessionRow.count(Skill.AGILITY, 14, -1));
+		assertEquals("14 built", SessionRow.count(Skill.CONSTRUCTION, 14, -1));
+		assertEquals("2.4k potions/h", SessionRow.actionRate(Skill.HERBLORE, 2_400));
+		assertEquals("900 logs/h", SessionRow.actionRate(Skill.FIREMAKING, 900));
+		assertEquals("1.2k casts/h", SessionRow.actionRate(Skill.MAGIC, 1_200));
+		assertEquals("600 obstacles/h", SessionRow.actionRate(Skill.AGILITY, 600));
 	}
 
 	@Test

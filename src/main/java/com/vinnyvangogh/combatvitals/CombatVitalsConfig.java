@@ -692,6 +692,142 @@ public interface CombatVitalsConfig extends Config
 		return true;
 	}
 
+	// The skills raised by their experience drops (XpSkilling). Position 8,
+	// like Hunter: equal positions sort by name, so they sit alphabetically
+	// among the skill switches without renumbering the rows below.
+
+	@ConfigItem(
+		keyName = "skillingHerblore",
+		name = "Herblore",
+		description = "Show the badge while cleaning herbs, making potions or crushing.",
+		section = skillingBadgeSection,
+		position = 8
+	)
+	default boolean skillingHerblore()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingCooking",
+		name = "Cooking",
+		description = "Show the badge while cooking, with the raw food left.",
+		section = skillingBadgeSection,
+		position = 8
+	)
+	default boolean skillingCooking()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingFletching",
+		name = "Fletching",
+		description = "Show the badge while fletching, with the logs, shafts or bows left.",
+		section = skillingBadgeSection,
+		position = 8
+	)
+	default boolean skillingFletching()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingCrafting",
+		name = "Crafting",
+		description = "Show the badge while crafting, with the gems, hides or glass left.",
+		section = skillingBadgeSection,
+		position = 8
+	)
+	default boolean skillingCrafting()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingSmithing",
+		name = "Smithing",
+		description = "Show the badge while smithing, with the bars left.",
+		section = skillingBadgeSection,
+		position = 8
+	)
+	default boolean skillingSmithing()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingFiremaking",
+		name = "Firemaking",
+		description = "Show the badge while lighting logs, with the logs left.",
+		section = skillingBadgeSection,
+		position = 8
+	)
+	default boolean skillingFiremaking()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingPrayer",
+		name = "Prayer",
+		description = "Show the badge while burying or offering bones, with the bones left.",
+		section = skillingBadgeSection,
+		position = 8
+	)
+	default boolean skillingPrayer()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingMagic",
+		name = "Magic",
+		description = "Show the badge while casting skilling spells (alchemy, enchant, superheat, plank make), never combat spells.",
+		section = skillingBadgeSection,
+		position = 8
+	)
+	default boolean skillingMagic()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingAgility",
+		name = "Agility",
+		description = "Show the badge on agility courses, with laps, lap time and marks of grace.",
+		section = skillingBadgeSection,
+		position = 8
+	)
+	default boolean skillingAgility()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingConstruction",
+		name = "Construction",
+		description = "Show the badge while building, with the planks left.",
+		section = skillingBadgeSection,
+		position = 8
+	)
+	default boolean skillingConstruction()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillingSailing",
+		name = "Sailing",
+		description = "Show the badge while training Sailing.",
+		section = skillingBadgeSection,
+		position = 8
+	)
+	default boolean skillingSailing()
+	{
+		return true;
+	}
+
 	@ConfigItem(
 		keyName = "skillingShowHeader",
 		name = "Header row",

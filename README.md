@@ -383,6 +383,7 @@ A fish above your level is dimmed with `Lv 15` over it in red; hover it for
 | Idle badge for (s) | 60 | How long `Not fishing` stays up |
 | Idle header colour | Red | The header's colour while idle |
 | Fishing, Woodcutting, Mining, Thieving, Runecraft, Hunter | On | Which skills get a badge |
+| Agility, Construction, Cooking, Crafting, Firemaking, Fletching, Herblore, Magic, Prayer, Sailing, Smithing | On | The skills with no spot to click: the badge comes up on the skill's XP drop. The inventory line says what is left to process (`14 left, done in ~25s`); for Agility, laps, last lap time and marks of grace. Magic is skilling spells only; nothing shows during a fight |
 | Header row, XP row | On | Turn rows off; the inventory row and catch list are in Skilling: badge |
 | XP shown as | Both | `64%`, `1,234 xp`, or both |
 | Inventory count | Free slots | `Inv 26/28 free` or `Inv 2/28 used` |
