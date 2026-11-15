@@ -56,16 +56,22 @@ final class SkillingText
 	}
 
 	/**
-	 * "Re-click in 4:12 | Stops in 97:30": the training method's line, either
-	 * half left out while unknown, null with both.
+	 * "AFK logout in 4:12 | Pump stops in 97:30": the training method's line,
+	 * either half left out while unknown, null with both. Any input resets the
+	 * game's idle logout (a click, a camera drag, typing), not only clicking
+	 * the method's object, so the first half reads "Active" while the player is
+	 * (Board, 2026-11-14) and counts down only once they have been idle a while.
 	 *
 	 * @param reclickMillis until the idle logout, or -1
+	 * @param active        input within {@link TrainingSession#ACTIVE_MS}
+	 * @param thing         what the game stops ("Pump"), or null for plain "Stops in"
 	 * @param stopTicks     game ticks until the game stops the method, or -1
 	 */
-	static String methodTimers(long reclickMillis, int stopTicks)
+	static String methodTimers(long reclickMillis, boolean active, String thing, int stopTicks)
 	{
-		final String reclick = reclickMillis < 0 ? null : "Re-click in " + clock(reclickMillis);
-		final String stops = stopTicks < 0 ? null : "Stops in " + clock(stopTicks * (long) Constants.GAME_TICK_LENGTH);
+		final String reclick = reclickMillis < 0 ? null : active ? "Active" : "AFK logout in " + clock(reclickMillis);
+		final String stops = stopTicks < 0 ? null
+			: (thing == null ? "Stops in " : thing + " stops in ") + clock(stopTicks * (long) Constants.GAME_TICK_LENGTH);
 		if (reclick == null)
 		{
 			return stops;

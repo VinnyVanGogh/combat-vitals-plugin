@@ -1357,9 +1357,9 @@ public interface CombatVitalsConfig extends Config
 	@ConfigItem(
 		keyName = "alertReclickSoon",
 		name = "Idle logout soon",
-		description = "While pumping: notify a little before the game logs you out for not touching the mouse or "
-			+ "keyboard (5 minutes by default, up to 25 in the game's settings). The badge counts it down as "
-			+ "'Re-click in'.",
+		description = "While pumping: notify a little before the game logs you out for no activity. Any input counts "
+			+ "(a click anywhere, moving the camera, typing), not only clicking the pump. The badge shows 'Active' "
+			+ "while you are, and counts down 'AFK logout in' once you've been idle 5 seconds.",
 		section = alertsSection,
 		position = 13
 	)
@@ -1372,7 +1372,7 @@ public interface CombatVitalsConfig extends Config
 		keyName = "alertAutoStopSoon",
 		name = "Pump stops soon",
 		description = "Notify a little before the Blast Furnace pump stops by itself, 100 minutes after you clicked "
-			+ "it. The badge counts it down as 'Stops in'.",
+			+ "it; click the pump again to restart it. The badge counts it down as 'Pump stops in'.",
 		section = alertsSection,
 		position = 14
 	)
