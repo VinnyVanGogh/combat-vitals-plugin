@@ -14,7 +14,9 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
 import org.junit.Before;
@@ -85,14 +87,38 @@ public class LiveSectionTest
 
 	static LiveVitals.Skilling chopping()
 	{
-		return new LiveVitals.Skilling("Woodcutting 72 (+3) 41s", Color.GREEN,
-			new LiveVitals.Bar(0.64, "Lv 72 -> 73: 64% (34,120 xp)", Color.GREEN),
-			Arrays.asList("142 chopped in 1h 05m | 60.1k xp/h | 131 logs/h | lvl 73 in 34m", "Inv 20/28 free",
-				"Log basket 16/28 free"));
+		final Map<SessionRow.Kind, String> stats = new EnumMap<>(SessionRow.Kind.class);
+		stats.put(SessionRow.Kind.COUNT, "142 chopped in 1h 05m");
+		stats.put(SessionRow.Kind.XP_RATE, "60.1k xp/h");
+		stats.put(SessionRow.Kind.ACTION_RATE, "131 logs/h");
+		stats.put(SessionRow.Kind.TIME_TO_LEVEL, "lvl 73 in 34m");
+		return new LiveVitals.Skilling("Woodcutting 72 (+3) 41s", Color.GREEN, null,
+			new LiveVitals.Bar(0.64, "Lv 72 -> 73: 64% (34,120 xp)", Color.GREEN), stats, Collections.emptyList(),
+			Arrays.asList("Inv 20/28 free", "Log basket 16/28 free"));
 	}
 
-	static final List<String> SESSION = Arrays.asList("Ranged: +412k xp, +2 lvls in 2h 10m",
-		"Woodcutting: +86.2k xp in 1h 05m");
+	/** The Blast Furnace pump: a training method's timers as chips, no inventory line. */
+	static LiveVitals.Skilling pumping()
+	{
+		final Map<SessionRow.Kind, String> stats = new EnumMap<>(SessionRow.Kind.class);
+		stats.put(SessionRow.Kind.XP_RATE, "84.0k xp/h");
+		stats.put(SessionRow.Kind.TIME_TO_LEVEL, "lvl 86 in 1h 12m");
+		return new LiveVitals.Skilling("Pumping (Blast Furnace) | Strength 85", new Color(0xC8, 0x50, 0x3C), null,
+			new LiveVitals.Bar(0.31, "Lv 85 -> 86: 31% (61,004 xp)", new Color(0xC8, 0x50, 0x3C)), stats,
+			Arrays.asList("Active", "Pump stops in 97:30"), Collections.emptyList());
+	}
+
+	static LiveVitals.Gain gain(String text, int xp)
+	{
+		return new LiveVitals.Gain(text, xp, Color.GREEN);
+	}
+
+	static final List<LiveVitals.Gain> SESSION = Arrays.asList(gain("Ranged: +412k xp, +2 lvls in 2h 10m", 412_000),
+		gain("Woodcutting: +86.2k xp in 1h 05m", 86_200));
+
+	static final List<LiveVitals.Gain> LONG_SESSION = Arrays.asList(SESSION.get(0), SESSION.get(1),
+		gain("Hitpoints: +137k xp in 2h 10m", 137_000), gain("Strength: +20.1k xp in 31m", 20_100),
+		gain("Agility: +4.2k xp in 12m", 4_200));
 
 	@Test
 	public void showsAFight()
@@ -100,7 +126,8 @@ public class LiveSectionTest
 		live(new LiveVitals(true, fighting(), LiveVitals.skilling(null), SESSION));
 		ui.assertShows("Hitpoints 72/99");
 		ui.assertShows("Prayer 43/70");
-		ui.assertShows("Run 64% | Spec 100%");
+		ui.assertShows("Run 64%");
+		ui.assertShows("Spec 100%");
 		ui.assertShows("Vorkath");
 		ui.assertShows("466/750");
 		ui.assertShows("Ranged: Lv 92 -> 93");
@@ -119,10 +146,66 @@ public class LiveSectionTest
 		ui.assertShows(LiveSection.NOT_IN_COMBAT);
 		ui.assertShows("Woodcutting 72 (+3) 41s");
 		ui.assertShows("Lv 72 -> 73: 64%");
+		ui.assertShows("XP / hour");
+		ui.assertShows("60.1k xp/h");
 		ui.assertShows("131 logs/h");
+		ui.assertShows("lvl 73 in 34m");
+		ui.assertShows("142 chopped in 1h 05m");
 		ui.assertShows("Log basket 16/28 free");
 		ui.assertHides(LiveSection.NOT_SKILLING);
 		shot("panel-live-skilling.png");
+	}
+
+	@Test
+	public void showsAMethodsTimersAsChips()
+	{
+		live(new LiveVitals(true, idleCombat(), pumping(), SESSION.subList(1, 2)));
+		ui.assertShows("Pumping (Blast Furnace) | Strength 85");
+		ui.assertShows("Active");
+		ui.assertShows("Pump stops in 97:30");
+		ui.assertShows("84.0k xp/h");
+		ui.assertHides("Actions / hour");
+		final Chip chip = SwingDriver.onEdt(() -> ui.find(Chip.class, c -> "Active".equals(c.getText()), "Active chip"));
+		assertTrue(chip.isVisible());
+		shot("panel-live-pump.png");
+	}
+
+	@Test
+	public void idleShowsNotInCombatAndNotSkilling()
+	{
+		live(new LiveVitals(true, idleCombat(), LiveVitals.skilling(null), SESSION));
+		ui.assertShows(LiveSection.NOT_IN_COMBAT);
+		ui.assertShows(LiveSection.NOT_SKILLING);
+		ui.assertShows("Hitpoints 99/99");
+		ui.assertHides("XP / hour");
+		shot("panel-live-idle.png");
+	}
+
+	@Test
+	public void thisSessionShowsTheTopThreeThenAll()
+	{
+		final List<LiveVitals.Gain> ranked = new ArrayList<>(LONG_SESSION);
+		ranked.sort((a, b) -> Integer.compare(b.xp, a.xp));
+		live(new LiveVitals(true, idleCombat(), LiveVitals.skilling(null), ranked));
+		final LiveSection section = section();
+		assertEquals(Arrays.asList("Ranged: +412k xp, +2 lvls in 2h 10m", "Hitpoints: +137k xp in 2h 10m",
+			"Woodcutting: +86.2k xp in 1h 05m"), SwingDriver.onEdt(section::sessionShown));
+		ui.assertHides("Agility: +4.2k xp");
+		shot("panel-live-session.png");
+
+		SwingDriver.onEdt(() ->
+		{
+			ui.click("Show all 5");
+			ui.layout(WIDTH);
+		});
+		assertEquals(5, (int) SwingDriver.onEdt(() -> section.sessionShown().size()));
+		ui.assertShows("Agility: +4.2k xp in 12m");
+		SwingDriver.onEdt(() ->
+		{
+			ui.click(LiveSection.SHOW_TOP);
+			ui.layout(WIDTH);
+		});
+		ui.assertHides("Agility: +4.2k xp");
 	}
 
 	@Test
@@ -191,7 +274,7 @@ public class LiveSectionTest
 		assertTrue(SwingDriver.onEdt(panel::wantsLive));
 		SwingDriver.onEdt(() ->
 		{
-			ui.click("- " + LiveSection.TITLE);
+			ui.click(LiveSection.TITLE);
 			ui.layout(WIDTH);
 		});
 		assertEquals(Boolean.FALSE, store.values.get(LiveSection.OPEN_KEY));
@@ -209,7 +292,8 @@ public class LiveSectionTest
 			d.layout(WIDTH);
 			return d;
 		});
-		ui2.assertShows("+ " + LiveSection.TITLE);
+		ui2.assertShows(LiveSection.TITLE);
+		assertFalse(SwingDriver.onEdt(() -> ((FoldCard.Header) ui2.button(LiveSection.TITLE)).isOpen()));
 		ui2.assertHides(LiveSection.LOGGED_OUT);
 
 		// Opened from the list (or another panel): the refresh that follows opens it.
@@ -225,7 +309,7 @@ public class LiveSectionTest
 	@Test
 	public void theLiveSectionSitsAboveThePresets()
 	{
-		final int liveY = SwingDriver.onEdt(() -> ui.yOf(ui.button("- " + LiveSection.TITLE)));
+		final int liveY = SwingDriver.onEdt(() -> ui.yOf(ui.button(LiveSection.TITLE)));
 		final int presetsY = SwingDriver.onEdt(() -> ui.yOf(ui.label("Presets")));
 		assertTrue(liveY < presetsY);
 	}
@@ -233,15 +317,15 @@ public class LiveSectionTest
 	@Test
 	public void noTextRunsPastThePanelsRightEdge()
 	{
-		live(new LiveVitals(true, fighting(), chopping(), SESSION));
+		live(new LiveVitals(true, fighting(), chopping(), LONG_SESSION));
 		SwingDriver.onEdt(() ->
 		{
-			ui.click("+ Guide: presets");
+			ui.click("Show all 5");
 			for (PanelLayout.Tab tab : PanelLayout.Tab.values())
 			{
 				panel.show(tab);
 				ui.layout(WIDTH);
-				ui.click("+ Guide: " + tab.label);
+				openEverything();
 				ui.layout(WIDTH);
 				final int edge = WIDTH - panel.getInsets().right;
 				for (JLabel l : ui.all(JLabel.class))
@@ -261,6 +345,22 @@ public class LiveSectionTest
 		});
 	}
 
+	/** Opens every folded card on screen, More settings first, so every label is laid out. */
+	private void openEverything()
+	{
+		for (int pass = 0; pass < 3; pass++)
+		{
+			for (FoldCard.Header h : ui.all(FoldCard.Header.class))
+			{
+				if (!h.isOpen())
+				{
+					ui.click(h);
+				}
+			}
+			ui.layout(WIDTH);
+		}
+	}
+
 	private static List<Component> tree(Component c)
 	{
 		final List<Component> out = new ArrayList<>();
@@ -278,7 +378,8 @@ public class LiveSectionTest
 	private void shot(String name)
 	{
 		final BufferedImage full = SwingDriver.onEdt(() -> ui.render(WIDTH, 0, 2.0));
-		final int presets = SwingDriver.onEdt(() -> ui.yOf(ui.label("Presets")));
+		final int presets = SwingDriver.onEdt(() -> ui.yOf(ui.find(GuideCard.class,
+			g -> VitalsSidePanel.PRESETS_GUIDE.equals(g.id), "the presets guide")));
 		final BufferedImage image = full.getSubimage(0, 0, full.getWidth(), presets * 2);
 		assertTrue(name + " is empty", image.getHeight() > 100);
 		SwingDriver.writePng(image, new File(System.getProperty("screenshots.dir", "build/screenshots"), name));

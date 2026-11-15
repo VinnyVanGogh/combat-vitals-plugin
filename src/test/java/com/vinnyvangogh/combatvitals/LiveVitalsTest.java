@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 import java.awt.Color;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import net.runelite.api.Experience;
 import net.runelite.api.Skill;
 import org.junit.Test;
@@ -65,8 +66,25 @@ public class LiveVitalsTest
 		final LiveVitals.Skilling s = LiveVitals.skilling(r);
 		assertEquals(SkillingBadgeRenderer.headerText(r), s.header);
 		assertEquals("Lv 70 -> 71: 0%", s.xp.text);
-		assertEquals(Arrays.asList("24 chopped in 3m | 60.1k xp/h", "Inv 20/28 free", "Log basket 16/28 free"),
-			s.lines);
+		assertEquals("24 chopped in 3m", s.stats.get(SessionRow.Kind.COUNT));
+		assertEquals("60.1k xp/h", s.stats.get(SessionRow.Kind.XP_RATE));
+		assertNull("no rate yet, no tile", s.stats.get(SessionRow.Kind.ACTION_RATE));
+		assertTrue("no method, no timers", s.chips.isEmpty());
+		assertEquals(Arrays.asList("Inv 20/28 free", "Log basket 16/28 free"), s.lines);
+	}
+
+	@Test
+	public void aMethodsTimersAreChipsNotTheInventoryLine()
+	{
+		final SkillingReadout r = SkillingReadout.builder()
+			.skill(Skill.STRENGTH).real(85).boosted(85).colour(Color.RED).header(true)
+			.method(TrainingMethod.values()[0])
+			.inventoryLabel("Active | Pump stops in 97:30")
+			.tickMillis(System.currentTimeMillis())
+			.build();
+		final LiveVitals.Skilling s = LiveVitals.skilling(r);
+		assertEquals(Arrays.asList("Active", "Pump stops in 97:30"), s.chips);
+		assertTrue(s.lines.isEmpty());
 	}
 
 	@Test
@@ -90,13 +108,31 @@ public class LiveVitalsTest
 		assertEquals(100, s.xpGained(Skill.FISHING));
 		assertEquals(1, s.levelsGained(Skill.FISHING));
 		assertEquals("baseline only, no gain", 0, s.xpGained(Skill.ATTACK));
-		assertEquals(Collections.singletonList("Fishing: +100 xp, +1 lvl in 1m"), LiveVitals.session(s, 61_000));
+		final List<LiveVitals.Gain> gains = LiveVitals.session(s, 61_000, SkillColours::of);
+		assertEquals("Attack's reading is a baseline, not a gain", 1, gains.size());
+		assertEquals("Fishing: +100 xp, +1 lvl in 1m", gains.get(0).text);
+		assertEquals(100, gains.get(0).xp);
+		assertEquals(SkillColours.of(Skill.FISHING), gains.get(0).colour);
 
 		s.reset();
 		assertEquals(0, s.xpGained(Skill.FISHING));
 		s.xp(Skill.FISHING, start + 130, 70_000);
 		assertEquals("counted from the reset's total", 30, s.xpGained(Skill.FISHING));
 		assertEquals(0, s.levelsGained(Skill.FISHING));
+	}
+
+	@Test
+	public void theSessionRanksTheMostXpFirst()
+	{
+		final SkillingSession s = new SkillingSession();
+		s.xp(Skill.FISHING, 1_000, 0);
+		s.xp(Skill.FISHING, 1_050, 1_000);
+		s.xp(Skill.ATTACK, 1_000, 0);
+		s.xp(Skill.ATTACK, 1_900, 1_000);
+		final List<LiveVitals.Gain> gains = LiveVitals.session(s, 2_000, SkillColours::of);
+		assertEquals(900, gains.get(0).xp);
+		assertTrue(gains.get(0).text.startsWith("Attack"));
+		assertEquals(50, gains.get(1).xp);
 	}
 
 	@Test

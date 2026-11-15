@@ -87,6 +87,7 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.game.FishingSpot;
 import net.runelite.client.game.NPCManager;
+import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.hiscore.HiscoreEndpoint;
 import net.runelite.client.hiscore.HiscoreManager;
 import net.runelite.client.hiscore.HiscoreResult;
@@ -152,6 +153,9 @@ public class CombatVitalsPlugin extends Plugin
 
 	@Inject
 	private NPCManager npcManager;
+
+	@Inject
+	private SkillIconManager skillIconManager;
 
 	@Inject
 	private HiscoreManager hiscoreManager;
@@ -681,10 +685,20 @@ public class CombatVitalsPlugin extends Plugin
 			configManager.setConfiguration(CombatVitalsConfig.GROUP, "skillingSessionReset", false);
 		}
 		final VitalsSidePanel panel = sidePanel;
-		if (panel != null)
+		if (panel == null)
 		{
-			SwingUtilities.invokeLater(panel::refresh);
+			return;
 		}
+		if (VitalsSidePanel.GUIDES_CLOSED_KEY.equals(event.getKey())
+			|| VitalsSidePanel.GUIDES_HIDDEN_KEY.equals(event.getKey()))
+		{
+			// Folding a guide redraws the guides only, not every input in the panel.
+			final boolean hidden = config.sidebarGuidesHidden();
+			final String closed = config.sidebarGuidesClosed();
+			SwingUtilities.invokeLater(() -> panel.guides(hidden, closed));
+			return;
+		}
+		SwingUtilities.invokeLater(panel::refresh);
 	}
 
 	/** Shortest Path as the pather sees it: unavailable while the user has it switched off here. */
@@ -1761,8 +1775,15 @@ public class CombatVitalsPlugin extends Plugin
 		final long now = System.currentTimeMillis();
 		return new LiveVitals(true,
 			VitalsHalves.combat(config) ? liveCombat(now) : null,
-			VitalsHalves.skilling(config) ? LiveVitals.skilling(skillingReadout) : null,
-			LiveVitals.session(session, now));
+			VitalsHalves.skilling(config) ? liveSkilling() : null,
+			LiveVitals.session(session, now, this::skillColour));
+	}
+
+	/** The badge's readout for the Skilling card, with the skill's small icon for its title. */
+	private LiveVitals.Skilling liveSkilling()
+	{
+		final SkillingReadout r = skillingReadout;
+		return LiveVitals.skilling(r, r == null ? null : skillIconManager.getSkillImage(r.getSkill(), true));
 	}
 
 	/** Your vitals, the target as the overhead readout has it, and the combat skill gained in last. */

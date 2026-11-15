@@ -1,10 +1,16 @@
 package com.vinnyvangogh.combatvitals;
 
 import java.awt.Color;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 import net.runelite.api.Skill;
 
 /**
@@ -30,10 +36,10 @@ final class LiveVitals
 	final Combat combat;
 	/** Null while Skilling vitals is off. */
 	final Skilling skilling;
-	/** "Fishing: +12.3k xp, +1 lvl in 23m", one per skill gained in this session. */
-	final List<String> session;
+	/** "Fishing: +12.3k xp, +1 lvl in 23m", one per skill gained in this session, the most XP first. */
+	final List<Gain> session;
 
-	LiveVitals(boolean loggedIn, Combat combat, Skilling skilling, List<String> session)
+	LiveVitals(boolean loggedIn, Combat combat, Skilling skilling, List<Gain> session)
 	{
 		this.loggedIn = loggedIn;
 		this.combat = combat;
@@ -106,17 +112,42 @@ final class LiveVitals
 		/** The badge's header ("Fishing 72 (+3) 41s", "Not fishing"), or null: "Not skilling". */
 		final String header;
 		final Color colour;
+		/** The skill's small icon, or null (then a dot in the skill's colour). Drawn only. */
+		final BufferedImage icon;
 		/** The XP row, or null with it off. */
 		final Bar xp;
-		/** Gear warning, the session row, the inventory line and each container's, as the badge has them. */
+		/** The session row's stats by kind ("60.1k xp/h"), the ones the badge has now. */
+		final Map<SessionRow.Kind, String> stats;
+		/** A training method's timers, "Active" and "Pump stops in 97:30", each its own chip. */
+		final List<String> chips;
+		/** Gear warning, the inventory line and each container's, as the badge has them. */
 		final List<String> lines;
 
-		Skilling(String header, Color colour, Bar xp, List<String> lines)
+		Skilling(String header, Color colour, BufferedImage icon, Bar xp, Map<SessionRow.Kind, String> stats,
+			List<String> chips, List<String> lines)
 		{
 			this.header = header;
 			this.colour = colour;
+			this.icon = icon;
 			this.xp = xp;
+			this.stats = stats;
+			this.chips = chips;
 			this.lines = lines;
+		}
+	}
+
+	/** One skill gained in this session: its line, its XP for ranking, and its colour for the bar. */
+	static final class Gain
+	{
+		final String text;
+		final int xp;
+		final Color colour;
+
+		Gain(String text, int xp, Color colour)
+		{
+			this.text = text;
+			this.xp = xp;
+			this.colour = colour;
 		}
 	}
 
@@ -173,33 +204,41 @@ final class LiveVitals
 	/** The skilling half from the badge's own readout; a null readout is "Not skilling". */
 	static Skilling skilling(SkillingReadout r)
 	{
+		return skilling(r, null);
+	}
+
+	/** The same, with the skill's icon for the card's title. */
+	static Skilling skilling(SkillingReadout r, BufferedImage icon)
+	{
 		if (r == null)
 		{
-			return new Skilling(null, SkillColours.DEFAULT, null, Collections.emptyList());
+			return new Skilling(null, SkillColours.DEFAULT, null, null, Collections.emptyMap(),
+				Collections.emptyList(), Collections.emptyList());
 		}
 		final Bar xp = r.getXpText() == null || r.getXp() == null ? null
 			: new Bar(r.getXp().getFraction(), r.getXpText(), r.getColour());
-		return new Skilling(SkillingBadgeRenderer.headerText(r), r.getColour(), xp, lines(r));
+		final Map<SessionRow.Kind, String> stats = new EnumMap<>(SessionRow.Kind.class);
+		for (SessionRow.Cell c : r.getSessionCells())
+		{
+			stats.put(c.getKind(), c.getText());
+		}
+		// A training method puts its timers where the inventory line goes ("Active | Pump stops in 97:30").
+		final boolean timers = r.getMethod() != null && r.getInventoryLabel() != null;
+		final List<String> chips = timers ? Arrays.asList(r.getInventoryLabel().split(" \\| "))
+			: Collections.emptyList();
+		return new Skilling(SkillingBadgeRenderer.headerText(r), r.getColour(), icon, xp, stats, chips,
+			lines(r, !timers));
 	}
 
-	/** The badge's lines under its XP row: gear warning, session row, inventory, containers. */
-	private static List<String> lines(SkillingReadout r)
+	/** The badge's lines under its XP and session rows: gear warning, inventory, containers. */
+	private static List<String> lines(SkillingReadout r, boolean inventory)
 	{
 		final List<String> lines = new ArrayList<>();
 		if (r.getGearText() != null)
 		{
 			lines.add(r.getGearText());
 		}
-		final StringBuilder cells = new StringBuilder();
-		for (SessionRow.Cell c : r.getSessionCells())
-		{
-			cells.append(cells.length() == 0 ? "" : " | ").append(c.getText());
-		}
-		if (cells.length() > 0)
-		{
-			lines.add(cells.toString());
-		}
-		if (r.getInventoryLabel() != null)
+		if (inventory && r.getInventoryLabel() != null)
 		{
 			lines.add(r.getInventoryLabel());
 		}
@@ -210,26 +249,29 @@ final class LiveVitals
 		return lines;
 	}
 
-	/** One line per skill gained in this session, in the skill list's order. */
-	static List<String> session(SkillingSession s, long nowMillis)
+	/** Each skill gained in this session, the most XP first; colours from the Look tab's skill colours. */
+	static List<Gain> session(SkillingSession s, long nowMillis, Function<Skill, Color> colours)
 	{
-		final List<String> out = new ArrayList<>();
+		final List<Gain> out = new ArrayList<>();
 		for (Skill skill : Skill.values())
 		{
-			if (s.actions(skill) == 0)
+			final int gained = s.xpGained(skill);
+			// Only gains: the login reading is a baseline, never shown as XP made.
+			if (s.actions(skill) == 0 || gained <= 0)
 			{
 				continue;
 			}
 			final StringBuilder line = new StringBuilder(skill.getName()).append(": +")
-				.append(SessionRow.shortNumber(s.xpGained(skill))).append(" xp");
+				.append(SessionRow.shortNumber(gained)).append(" xp");
 			final int levels = s.levelsGained(skill);
 			if (levels > 0)
 			{
 				line.append(", +").append(levels).append(levels == 1 ? " lvl" : " lvls");
 			}
 			line.append(" in ").append(SessionRow.duration(s.elapsed(skill, nowMillis)));
-			out.add(line.toString());
+			out.add(new Gain(line.toString(), gained, colours.apply(skill)));
 		}
+		out.sort(Comparator.comparingInt((Gain g) -> g.xp).reversed());
 		return out;
 	}
 }

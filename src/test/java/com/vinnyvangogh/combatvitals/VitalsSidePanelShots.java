@@ -11,7 +11,8 @@ import org.junit.Test;
 /**
  * Renders the README's sidebar panel screenshots from the real panel over
  * default settings: presets with Skiller's preview open, then each tab with
- * its guide open. {@code ./gradlew test} renders them into build/screenshots,
+ * its guide open as a first-time user sees it, then each tab with the guides
+ * hidden. {@code ./gradlew test} renders them into build/screenshots,
  * so a broken shot fails the build; {@code ./gradlew screenshots} writes them
  * into docs/images (GIM Utilities' ReadmeShots, same driver).
  */
@@ -44,11 +45,19 @@ public class VitalsSidePanelShots
 			{
 				panel.show(tab);
 				ui.layout(WIDTH);
-				ui.click("+ Guide: " + tab.label);
 				shot(ui, "panel-" + tab.name().toLowerCase() + ".png");
 			}
+			// The same tabs with the guides hidden: what a returning user sees.
+			ui.click(VitalsSidePanel.HIDE_GUIDES);
+			for (PanelLayout.Tab tab : PanelLayout.Tab.values())
+			{
+				panel.show(tab);
+				ui.layout(WIDTH);
+				shot(ui, "panel-" + tab.name().toLowerCase() + "-no-guides.png");
+			}
 		});
-		assertTrue("rendering wrote settings: " + store.writes, store.writes.isEmpty());
+		assertTrue("rendering wrote settings: " + store.writes,
+			store.writes.equals(java.util.Collections.singletonList(VitalsSidePanel.GUIDES_HIDDEN_KEY)));
 	}
 
 	private static void shot(SwingDriver ui, String name)
