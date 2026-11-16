@@ -1,5 +1,6 @@
 package com.vinnyvangogh.combatvitals;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -29,6 +30,8 @@ import org.junit.Test;
 public class AlertSoundsTest
 {
 	private static final Predicate<String> BUNDLED = p -> AlertSounds.class.getResource(p) != null;
+	/** tools/voice/generate_voice.py: RATE = 16000, setnchannels(1), setsampwidth(2); little-endian signed. */
+	private static final AudioFormat VOICE = new AudioFormat(16000f, 16, 1, true, false);
 	private static final ActivityAlerts.Alert STOPPED =
 		new ActivityAlerts.Alert(ActivityAlerts.Type.GATHERING_STOPPED, Skill.WOODCUTTING);
 
@@ -135,32 +138,129 @@ public class AlertSoundsTest
 			plan.resources);
 	}
 
+	/** The joined line is one valid WAV, read back by javax.sound itself, with every sample in order. */
 	@Test
-	public void joinedClipsKeepEveryFrame() throws Exception
+	public void joinedClipsPlayAsOneValidWav() throws Exception
 	{
-		final AudioFormat format = new AudioFormat(16000f, 16, 1, true, false);
 		final Map<String, byte[]> clips = new HashMap<>();
-		clips.put("a", wav(format, 1600));
-		clips.put("b", wav(format, 800));
-		clips.put("c", wav(format, 400));
+		clips.put("a", wav(VOICE, 1600));
+		clips.put("b", wav(VOICE, 800));
+		clips.put("c", wav(VOICE, 400));
 
 		final byte[] joined = AlertSounds.join(Arrays.asList("a", "b", "c"),
 			p -> new ByteArrayInputStream(clips.get(p)));
 		try (AudioInputStream audio = AudioSystem.getAudioInputStream(new ByteArrayInputStream(joined)))
 		{
 			assertEquals(2800, audio.getFrameLength());
-			assertTrue(audio.getFormat().matches(format));
+			assertTrue(audio.getFormat().matches(VOICE));
+			final ByteArrayOutputStream expected = new ByteArrayOutputStream();
+			expected.write(pcm(VOICE, 1600));
+			expected.write(pcm(VOICE, 800));
+			expected.write(pcm(VOICE, 400));
+			assertArrayEquals(expected.toByteArray(), readAll(audio));
 		}
 	}
 
+	/** Chunks other than fmt and data (a LIST tag from an editor) are skipped, an odd one with its pad byte. */
+	@Test
+	public void otherChunksAreSkipped() throws Exception
+	{
+		final byte[] plain = wav(VOICE, 10);
+		final byte[] extra = {'L', 'I', 'S', 'T', 3, 0, 0, 0, 'a', 'b', 'c', 0};
+		final ByteArrayOutputStream tagged = new ByteArrayOutputStream();
+		tagged.write(plain, 0, 36); // RIFF header and fmt chunk
+		tagged.write(extra);
+		tagged.write(plain, 36, plain.length - 36);
+
+		final byte[] joined = AlertSounds.join(Collections.singletonList("a"),
+			p -> new ByteArrayInputStream(tagged.toByteArray()));
+		assertArrayEquals(plain, joined);
+	}
+
+	/** A part in another format is refused as a checked error the plugin logs, never converted or crashed on. */
+	@Test(expected = java.io.IOException.class)
+	public void joiningAClipInAnotherFormatIsRefused() throws Exception
+	{
+		final Map<String, byte[]> clips = new HashMap<>();
+		clips.put("a", wav(VOICE, 160));
+		clips.put("b", wav(new AudioFormat(22050f, 16, 1, true, false), 160));
+		AlertSounds.join(Arrays.asList("a", "b"), p -> new ByteArrayInputStream(clips.get(p)));
+	}
+
 	/** A part that is not audio fails as a checked error the plugin logs, never a crash. */
-	@Test(expected = javax.sound.sampled.UnsupportedAudioFileException.class)
+	@Test(expected = java.io.IOException.class)
 	public void joiningSomethingThatIsNotAudioFailsCleanly() throws Exception
 	{
 		final Map<String, byte[]> clips = new HashMap<>();
-		clips.put("a", wav(new AudioFormat(16000f, 16, 1, true, false), 160));
+		clips.put("a", wav(VOICE, 160));
 		clips.put("b", "not a wav file at all".getBytes(java.nio.charset.StandardCharsets.US_ASCII));
 		AlertSounds.join(Arrays.asList("a", "b"), p -> new ByteArrayInputStream(clips.get(p)));
+	}
+
+	/** A voice clip in another format counts as missing when planning, so RuneLite's sound plays instead. */
+	@Test
+	public void voiceClipInAnotherFormatFallsBackToRuneLite() throws Exception
+	{
+		final byte[] good = wav(VOICE, 160);
+		final byte[] wrong = wav(new AudioFormat(22050f, 16, 1, true, false), 160);
+		final Predicate<String> oneWrong = AlertSounds.playable(
+			p -> new ByteArrayInputStream(p.equals("voice/stopped.wav") ? wrong : good));
+
+		final AlertSounds.Plan plan = AlertSounds.plan(AlertSound.VOICE, STOPPED, "Yew logs", voice,
+			oneWrong, f -> false);
+		assertFalse(plan.resources.contains("voice/stopped.wav"));
+		assertTrue("all clips fine: the line plays", !AlertSounds.plan(AlertSound.VOICE, STOPPED, "Yew logs", voice,
+			AlertSounds.playable(p -> new ByteArrayInputStream(good)), f -> false).runelite);
+
+		final AlertSounds.Plan allWrong = AlertSounds.plan(AlertSound.VOICE, STOPPED, "Yew logs", voice,
+			AlertSounds.playable(p -> new ByteArrayInputStream(wrong)), f -> false);
+		assertTrue(allWrong.runelite);
+		assertTrue(allWrong.resources.isEmpty());
+	}
+
+	/** Pack clips play whole through AudioPlayer, so they keep their own format. */
+	@Test
+	public void packClipsAreNotHeldToTheVoiceFormat()
+	{
+		final Predicate<String> bundled = AlertSounds.playable(AlertSounds.class::getResourceAsStream);
+		for (AlertSound sound : AlertSound.values())
+		{
+			if (sound.getResource() != null)
+			{
+				assertTrue(sound.name(), bundled.test(sound.getResource()));
+			}
+		}
+		assertFalse(bundled.test("voice/no-such-clip.wav"));
+	}
+
+	/**
+	 * Every bundled voice clip is in the one format the joiner takes, the
+	 * format tools/voice/generate_voice.py writes, and javax.sound agrees.
+	 */
+	@Test
+	public void everyVoiceClipIsInTheJoinFormat() throws Exception
+	{
+		int checked = 0;
+		for (String clip : voice.clips().keySet())
+		{
+			final String path = VoiceLines.path(clip);
+			try (InputStream in = AlertSounds.class.getResourceAsStream(path))
+			{
+				if (in == null)
+				{
+					continue; // not rendered yet: plans fall back, covered above
+				}
+				try (AudioInputStream audio = AudioSystem.getAudioInputStream(new java.io.BufferedInputStream(in)))
+				{
+					assertTrue(path + " is " + audio.getFormat(), audio.getFormat().matches(VOICE));
+				}
+			}
+			checked++;
+		}
+		assertTrue("voice clips are bundled", checked > 50);
+		assertEquals(1, AlertSounds.Wav.VOICE.channels);
+		assertEquals((int) VOICE.getSampleRate(), AlertSounds.Wav.VOICE.sampleRate);
+		assertEquals(VOICE.getSampleSizeInBits(), AlertSounds.Wav.VOICE.bits);
 	}
 
 	@Test(expected = java.io.IOException.class)
@@ -183,16 +283,34 @@ public class AlertSoundsTest
 		return AlertSounds.plan(sound, STOPPED, null, voice, BUNDLED, fileExists);
 	}
 
-	private static byte[] wav(AudioFormat format, int frames) throws Exception
+	private static byte[] pcm(AudioFormat format, int frames)
 	{
 		final byte[] pcm = new byte[frames * format.getFrameSize()];
 		for (int i = 0; i < pcm.length; i++)
 		{
-			pcm[i] = (byte) (i * 7);
+			pcm[i] = (byte) (i * 7 + frames);
 		}
+		return pcm;
+	}
+
+	/** A WAV written by javax.sound, so the hand-made reader is checked against the JDK's writer. */
+	private static byte[] wav(AudioFormat format, int frames) throws Exception
+	{
 		final ByteArrayOutputStream out = new ByteArrayOutputStream();
-		AudioSystem.write(new AudioInputStream(new ByteArrayInputStream(pcm), format, frames),
+		AudioSystem.write(new AudioInputStream(new ByteArrayInputStream(pcm(format, frames)), format, frames),
 			AudioFileFormat.Type.WAVE, out);
+		return out.toByteArray();
+	}
+
+	private static byte[] readAll(InputStream in) throws Exception
+	{
+		final ByteArrayOutputStream out = new ByteArrayOutputStream();
+		final byte[] buffer = new byte[4096];
+		int read;
+		while ((read = in.read(buffer)) > 0)
+		{
+			out.write(buffer, 0, read);
+		}
 		return out.toByteArray();
 	}
 }

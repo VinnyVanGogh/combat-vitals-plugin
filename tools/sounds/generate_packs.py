@@ -8,8 +8,7 @@ third-party audio. Developer tool only; never shipped in the plugin jar.
     python3 tools/sounds/generate_packs.py
 
 Writes src/main/resources/com/vinnyvangogh/combatvitals/sounds/*.wav as
-22050 Hz mono 16-bit PCM WAV, which javax.sound (RuneLite's AudioPlayer)
-plays everywhere. Deterministic: the same script gives byte-identical files.
+22050 Hz mono 16-bit PCM WAV, which RuneLite's AudioPlayer plays everywhere. Deterministic: the same script gives byte-identical files.
 """
 
 import math
