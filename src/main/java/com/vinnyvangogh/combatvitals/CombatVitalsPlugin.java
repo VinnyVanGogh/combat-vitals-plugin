@@ -6,8 +6,8 @@ import java.awt.Rectangle;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -73,7 +73,6 @@ import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.Notifier;
-import net.runelite.client.RuneLite;
 import net.runelite.client.audio.AudioPlayer;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatColorType;
@@ -105,6 +104,7 @@ import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.components.colorpicker.ColorPickerManager;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ColorUtil;
+import net.runelite.client.util.Filepath;
 import net.runelite.client.util.Text;
 
 /**
@@ -125,6 +125,10 @@ import net.runelite.client.util.Text;
 	// thing keyed by this name is the plugin list's pin (PluginListPanel
 	// pinnedPlugins), so anyone who pinned "Combat Vitals" pins it again.
 	name = PluginName.NAME,
+	// The Plugin Hub name: getPluginDirectory() is .runelite/plugin-data/combat-vitals (the Filepath API).
+	internalName = "combat-vitals",
+	// RuneLite moves the old .runelite/combat-vitals folder (My sounds) there on first use.
+	legacyDataDirectory = "combat-vitals",
 	description = "Combat: health for your target and for you. Skilling: a badge, alerts and side pillars while you skill",
 	tags = {"combat", "vitals", "health", "hitpoints", "hp", "overlay", "overhead", "opponent", "pvp", "pvm",
 		"skilling", "woodcutting", "fishing", "mining", "thieving", "runecraft", "hunter", "inventory", "idle", "xp",
@@ -2738,7 +2742,8 @@ public class CombatVitalsPlugin extends Plugin
 		play(plan, settings.volume);
 		if (alertSounds.shouldHint(plan, alert.type))
 		{
-			consoleLine(ChatColorType.HIGHLIGHT, PluginName.NAME + ": no sound file at " + plan.file.getPath()
+			consoleLine(ChatColorType.HIGHLIGHT, PluginName.NAME + ": no sound file at .runelite/plugin-data/"
+				+ "combat-vitals/" + AlertSounds.USER_FOLDER + "/" + plan.file
 				+ ", so RuneLite's sound played instead.");
 		}
 		alertRepeat.fired(alert, settings.repeat, nowMs, config.repeatEverySeconds(), config.repeatMaxMinutes());
@@ -2772,8 +2777,35 @@ public class CombatVitalsPlugin extends Plugin
 	private AlertSounds.Plan soundPlan(AlertSettings settings, ActivityAlerts.Alert alert)
 	{
 		return AlertSounds.plan(settings.sound, alert, lastGainedItem, voiceLines,
-			path -> AlertSounds.class.getResource(path) != null,
-			new File(RuneLite.RUNELITE_DIR, AlertSounds.USER_FOLDER), File::canRead);
+			CombatVitalsPlugin::bundled, name -> userSound(name) != null);
+	}
+
+	/** {@code name} in the user's sounds folder through the Filepath API, or null when it is not a file there. */
+	private Filepath userSound(String name)
+	{
+		try
+		{
+			final Filepath file = getPluginDirectory().joinSegment(AlertSounds.USER_FOLDER).joinSegment(name);
+			return file.isFile() ? file : null;
+		}
+		catch (IOException | RuntimeException e)
+		{
+			log.debug("No user sound {}", name, e);
+			return null;
+		}
+	}
+
+	/** A sound bundled in the jar: opened the jar-safe way and closed again. */
+	private static boolean bundled(String path)
+	{
+		try (java.io.InputStream in = AlertSounds.class.getResourceAsStream(path))
+		{
+			return in != null;
+		}
+		catch (java.io.IOException e)
+		{
+			return false;
+		}
 	}
 
 	/** Plays the plugin's own sound off the client thread; RuneLite's own is the Notifier's to play. */
@@ -2790,7 +2822,16 @@ public class CombatVitalsPlugin extends Plugin
 			{
 				if (plan.file != null)
 				{
-					audioPlayer.play(plan.file, gain);
+					final Filepath file = userSound(plan.file);
+					if (file == null)
+					{
+						return;
+					}
+					// Read whole: the audio player needs a stream it can mark and reset.
+					try (InputStream in = file.openInputStream())
+					{
+						audioPlayer.play(new ByteArrayInputStream(in.readAllBytes()), gain);
+					}
 				}
 				else if (plan.resources.size() == 1)
 				{

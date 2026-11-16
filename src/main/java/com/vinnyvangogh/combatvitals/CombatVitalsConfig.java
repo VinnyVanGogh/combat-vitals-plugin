@@ -1570,7 +1570,7 @@ public interface CombatVitalsConfig extends Config
 
 	String SOUND_HELP = " RuneLite: your RuneLite notification sound, as before. Soft chime, Music box, Retro blip: "
 		+ "bundled sounds. Voice line: says what happened. My sounds: your own WAV in "
-		+ ".runelite/combat-vitals/sounds/";
+		+ ".runelite/plugin-data/combat-vitals/sounds/";
 	String VOLUME_HELP = "Volume of this alert's own sounds. RuneLite's sound keeps RuneLite's volume.";
 	String REPEAT_HELP = " again every 'Repeat every (s)', softly, until you click or press a key in the client, "
 		+ "start again, log out, or 'Repeat for (min)' runs out. Only listens; never sends any input.";

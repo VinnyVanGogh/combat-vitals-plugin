@@ -3,7 +3,6 @@ package com.vinnyvangogh.combatvitals;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
@@ -28,8 +27,8 @@ import javax.sound.sampled.UnsupportedAudioFileException;
  */
 final class AlertSounds
 {
-	/** The user's folder, under {@code RuneLite.RUNELITE_DIR}. */
-	static final String USER_FOLDER = "combat-vitals" + File.separator + "sounds";
+	/** The user's folder, under the plugin's data directory ({@code .runelite/plugin-data/combat-vitals}). */
+	static final String USER_FOLDER = "sounds";
 
 	/** What to play for one alert. */
 	static final class Plan
@@ -38,12 +37,12 @@ final class AlertSounds
 		final boolean runelite;
 		/** Class resource paths to play joined in order; empty unless bundled. */
 		final List<String> resources;
-		/** The user's file, or null. */
-		final File file;
+		/** The user's file's name in {@link #USER_FOLDER}, or null; the plugin opens it through the Filepath API. */
+		final String file;
 		/** "My sounds" was chosen but the file is not there. */
 		final boolean missingFile;
 
-		private Plan(boolean runelite, List<String> resources, File file, boolean missingFile)
+		private Plan(boolean runelite, List<String> resources, String file, boolean missingFile)
 		{
 			this.runelite = runelite;
 			this.resources = resources;
@@ -56,7 +55,7 @@ final class AlertSounds
 			return new Plan(true, Collections.emptyList(), null, false);
 		}
 
-		static Plan missing(File file)
+		static Plan missing(String file)
 		{
 			return new Plan(true, Collections.emptyList(), file, true);
 		}
@@ -66,7 +65,7 @@ final class AlertSounds
 			return new Plan(false, resources, null, false);
 		}
 
-		static Plan file(File file)
+		static Plan file(String file)
 		{
 			return new Plan(false, Collections.emptyList(), file, false);
 		}
@@ -77,11 +76,10 @@ final class AlertSounds
 	/**
 	 * @param item           the item that last landed in the inventory, for voice lines; may be null
 	 * @param resourceExists whether a class resource path is bundled
-	 * @param userDir        the user's sounds folder
-	 * @param fileExists     whether a file exists and can be read
+	 * @param fileExists     whether a file of that name is in the user's sounds folder and readable
 	 */
 	static Plan plan(AlertSound sound, ActivityAlerts.Alert alert, String item, VoiceLines voice,
-		Predicate<String> resourceExists, File userDir, Predicate<File> fileExists)
+		Predicate<String> resourceExists, Predicate<String> fileExists)
 	{
 		if (sound == null || sound == AlertSound.RUNELITE)
 		{
@@ -89,7 +87,7 @@ final class AlertSounds
 		}
 		if (sound == AlertSound.MY_SOUNDS)
 		{
-			final File file = new File(userDir, fileName(alert.type));
+			final String file = fileName(alert.type);
 			return fileExists.test(file) ? Plan.file(file) : Plan.missing(file);
 		}
 		final List<String> resources = sound == AlertSound.VOICE
