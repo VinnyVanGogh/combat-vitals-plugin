@@ -1,7 +1,9 @@
 package com.vinnyvangogh.combatvitals;
 
 import java.awt.Color;
+import java.util.EnumMap;
 import java.util.Locale;
+import java.util.Map;
 import net.runelite.api.Constants;
 import net.runelite.api.Skill;
 
@@ -41,18 +43,98 @@ final class SkillingText
 		return "Not " + activity(skill);
 	}
 
+	/** "Not pumping" for a training method, or the skill's header without one. */
+	static String idleHeader(Skill skill, TrainingMethod method)
+	{
+		return method == null ? idleHeader(skill) : "Not " + method.verb();
+	}
+
+	/** "Pumping (Blast Furnace) | Strength": the header's name for a training method, or the skill's name. */
+	static String headerName(Skill skill, TrainingMethod method)
+	{
+		return method == null ? skill.getName() : method.label() + " | " + skill.getName();
+	}
+
+	/**
+	 * "AFK logout in 4:12 | Pump stops in 97:30": the training method's line,
+	 * either half left out while unknown, null with both. Any input resets the
+	 * game's idle logout (a click, a camera drag, typing), not only clicking
+	 * the method's object, so the first half reads "Active" while the player is
+	 * (Board, 2026-11-14) and counts down only once they have been idle a while.
+	 *
+	 * @param reclickMillis until the idle logout, or -1
+	 * @param active        input within {@link TrainingSession#ACTIVE_MS}
+	 * @param thing         what the game stops ("Pump"), or null for plain "Stops in"
+	 * @param stopTicks     game ticks until the game stops the method, or -1
+	 */
+	static String methodTimers(long reclickMillis, boolean active, String thing, int stopTicks)
+	{
+		return methodTimers(reclickMillis, active, thing, stopTicks, null);
+	}
+
+	/**
+	 * The training method's line with one more chip on the end, the pump's
+	 * "Coke runs out in 1:30" ({@link PumpChecks#cokeText}), or as above
+	 * without it when null.
+	 */
+	static String methodTimers(long reclickMillis, boolean active, String thing, int stopTicks, String extra)
+	{
+		final String timers = timers(reclickMillis, active, thing, stopTicks);
+		if (extra == null)
+		{
+			return timers;
+		}
+		return timers == null ? extra : timers + " | " + extra;
+	}
+
+	private static String timers(long reclickMillis, boolean active, String thing, int stopTicks)
+	{
+		final String reclick = reclickMillis < 0 ? null : active ? "Active" : "AFK logout in " + clock(reclickMillis);
+		final String stops = stopTicks < 0 ? null
+			: (thing == null ? "Stops in " : thing + " stops in ") + clock(stopTicks * (long) Constants.GAME_TICK_LENGTH);
+		if (reclick == null)
+		{
+			return stops;
+		}
+		return stops == null ? reclick : reclick + " | " + stops;
+	}
+
+	/** "97:05": whole minutes, then seconds, rounded up so 0:00 means now. */
+	static String clock(long millis)
+	{
+		final long seconds = (Math.max(0, millis) + 999) / 1000;
+		return String.format("%d:%02d", seconds / 60, seconds % 60);
+	}
+
+	/**
+	 * "Not woodcutting | in combat": the header with the fight's tag
+	 * ({@link BadgeCombat#tag}), or the header alone without one. The bar is
+	 * the header's own separator, the one Spec and the boost source use.
+	 */
+	static String withCombatTag(String header, String tag)
+	{
+		return tag == null ? header : header + " | " + tag;
+	}
+
 	/** The activity's name in a sentence, "fishing", "hunting". */
 	private static String activity(Skill skill)
 	{
-		switch (skill)
-		{
-			case HUNTER:
-				return "hunting";
-			case RUNECRAFT:
-				return "runecrafting";
-			default:
-				return skill.getName().toLowerCase(Locale.ROOT);
-		}
+		final String named = ACTIVITY.get(skill);
+		return named != null ? named : skill.getName().toLowerCase(Locale.ROOT);
+	}
+
+	/** Skills whose name is not already the activity: "Not prayer" reads wrong. */
+	private static final Map<Skill, String> ACTIVITY = new EnumMap<>(Skill.class);
+
+	static
+	{
+		ACTIVITY.put(Skill.HUNTER, "hunting");
+		ACTIVITY.put(Skill.RUNECRAFT, "runecrafting");
+		ACTIVITY.put(Skill.HERBLORE, "doing herblore");
+		ACTIVITY.put(Skill.PRAYER, "training prayer");
+		ACTIVITY.put(Skill.MAGIC, "casting");
+		ACTIVITY.put(Skill.AGILITY, "training agility");
+		ACTIVITY.put(Skill.CONSTRUCTION, "building");
 	}
 
 	/**

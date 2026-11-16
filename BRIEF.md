@@ -299,6 +299,32 @@ Not done, deliberately:
   coal only, so its space is not free space at any other rock.
 - **Herb sack, seed box, plank sack**: Herblore, Farming and Construction
   have no skilling badge, so there is no line to put them under.
+
+### Skilling badge for the XP-drop skills, compliance (added 2026-11-14, task-5328e2df)
+
+Board, 2026-11-14, from a groupmate: "the skilling one doesn't show when I'm
+doing herblore". The badge now also comes up for Herblore, Cooking,
+Fletching, Crafting, Smithing, Firemaking, Prayer, Magic (skilling spells),
+Agility, Construction and Sailing. Farming stays out: RuneLite's Time
+Tracking covers it and it has no repeated AFK action to time.
+
+| Element | Nearest rule | Precedent | Verdict |
+|---|---|---|---|
+| Badge raised by an experience drop in the skill (`StatChanged`), held by further drops or any local-player animation, stopped after a per-skill gap (`XpSkilling`) | None: own-account stats and own animation | Base client XP Tracker (XP drops, rates, time to level) and Idle Notifier (own animation stopping); the plugin's own Activity alerts use the same XP + animation pair since 2026-11-03 | Allowed |
+| Not raised during a fight or a tick with Hitpoints XP (combat spells, bonecrusher), nor over an NPC or object badge (infernal harpoon / axe / pickaxe) | None | Same | Allowed |
+| "14 left, done in ~25s": what one action used up, from the own inventory's change between drops, divided into what is held; pace from the gap between drops | None: own inventory, nothing automated or suggested beyond a count | Base client XP Tracker's "actions left" and the Inventory fill line already here | Allowed |
+| Agility: laps from the game's "Your <course> lap count is: N." line, last lap time, marks of grace picked up (own inventory `ItemID.GRACE`) | None: reads `ChatMessage` | Base client Chat Commands plugin parses the same lap-count line (`KILLCOUNT_PATTERN`); base Agility plugin counts laps and marks | Allowed |
+| Per-skill switches (default on), new additive keys `skillingHerblore` … `skillingSailing` | Config keys freeze at publish | Appended to `published-config-keys.txt` | Allowed |
+
+Detection research, gameval (`runelite-api` 1.13.6, read with javap
+2026-11-14): `Skill.SAILING` exists, so Sailing is included through its XP
+drops. Animation ids such as `AnimationID.HUMAN_HERBING_VIAL` (363),
+`HUMAN_HERBING_GRIND` (364), `HUMAN_COOKING` (896),
+`HUMAN_CASTHIGHLVLALCHEMY` (713) and `HUMAN_CASTSUPERHEATITEM` (725) exist,
+but the badge does not list them: every one of these actions animates, and a
+per-recipe id list would go stale; "any animation" is what Idle Notifier and
+the plugin's own alerts already use. Not done: per-recipe output names, the
+herb sack and plank sack contents, and anything for Farming.
 ### Alert sounds, repeat until you're back, voice lines (added 2026-11-14, Board)
 
 Board, 2026-11-14, woodcutting AFK: the stopped alert should be able to keep
@@ -345,6 +371,148 @@ Not done, deliberately, and why:
 Bundle size: no Plugin Hub size limit was found in this pass (unverified,
 the plugin-hub README was not re-read). The clips are 16 kHz mono 16-bit
 WAV to keep the jar small; the PR states the jar size before and after.
+
+### Skilling notifications: nests, Forestry, clues, pets, level-ups, randoms (added 2026-11-14, task-be51ad0f)
+
+Board, 2026-11-14, woodcutting AFK: alert on the things worth coming back
+for. Each is its own alert with on/off, sound, volume and Repeat, through the
+same `Notifier` + `AlertSounds` + `AlertRepeat` path as the 2026-11-14 alert
+sounds. Board's pre-run answers: nests, clues, pets and Forestry default on;
+level-ups and random events default off. A clue nest goes to the Clue drop
+alert with its tier, or to Bird nest when Clue drop is off. Level-up has a
+filter: all skills, or the non-combat ones only.
+
+Sources, read 2026-11-14 by disassembling the RuneLite client jar the build
+compiles against (`net.runelite:client:1.13.6`, `javap -c -constants`):
+
+- `plugins/woodcutting/WoodcuttingPlugin.onChatMessage` (GAMEMESSAGE, SPAM or
+  MESBOX): `contains("A bird's nest falls out of the tree")` notifies "A bird
+  nest has spawned!"; `onItemSpawned` records the clue nest tier
+  (`ClueNestTier.getTierFromItem`) *before* the chat line, which the chat
+  handler then reads. So the ground item comes first.
+- `WoodcuttingPlugin.onGameObjectSpawned`: Rising Roots objects 47482, 47483;
+  Struggling Sapling 47484, 47485, 47487, 47488, 47490, 47491.
+  `onNpcSpawned`: Flowering Bush 12120, 12134, 12141, 12143, 12145, 12147,
+  12149, 12151 (`isFloweringBush`); Leprechaun 12163; Poachers 12559, 12560;
+  Pheasant Control (Freaky Forester) 12536; Bee Hive 12518; Enchantment
+  Ritual 12519; Friendly Ent (entling) 12543. Each has its own
+  `forestry*Notification` in `WoodcuttingConfig`. There is no chat line for a
+  Forestry event starting; the spawn is the signal.
+- `plugins/screenshot/ScreenshotPlugin`: pet lines "You have a funny feeling
+  like you're being followed", "You feel something weird sneaking into your
+  backpack", "You have a funny feeling like you would have been followed".
+- `plugins/randomevents/RandomEventPlugin.onInteractingChanged`: notifies only
+  when the source is an NPC in `EVENT_NPCS` (33 ids: 307, 314, 322, 326, 327,
+  375, 376, 380, 390, 5426, 5429, 5436 to 5441, 5510, 6738, 6743, 6744, 6746
+  to 6755, 12551, 12552), the target is the local player, and the local
+  player is not already interacting with it; at most once per 150 ticks.
+- Clue geodes, clue bottles and scroll boxes: no chat line in the client jar
+  (searched the jar's strings for "clue geode", "clue bottle", "scroll box"),
+  and the OSRS wiki pages "Clue geode", "Clue bottle", "Scroll box" (read
+  2026-11-14) quote none. Item names per tier from those pages: "Clue geode
+  (beginner|easy|medium|hard|elite)", "Clue bottle (...)", "Scroll box
+  (beginner ... master)". So these are read from the player's own inventory
+  gaining one while skilling.
+- "Tree Spirit" from the brief is not a Forestry event in the base plugin's
+  list (nine events above); the Enchantment Ritual is the one the brief did
+  not name, and is covered.
+
+| Element | Nearest rule | Precedent | Verdict |
+|---|---|---|---|
+| Bird nest fell: the game's own chat line, kind read from the clue nest ground item that spawned with it | None: a notification of a chat line the game already shows | Base Woodcutting plugin "Bird nest notification" and "Clue nest notification" (above) | Allowed |
+| Forestry event started near you, by object or NPC spawn id, within 15 tiles while you have had Woodcutting experience in the last minute; once per event | None: the events are visible on screen, and the plugin only notifies | Base Woodcutting plugin's per-event Forestry notifications and overlays, same ids | Allowed |
+| Clue drop while skilling: a clue geode, bottle, nest or scroll box landing in your own inventory while a gathering/thieving activity is armed, bank closed | None: own inventory | Base Woodcutting clue nest notification; Loot Tracker reads the same inventory changes | Allowed |
+| Pet: the game's chat line | None | Base Screenshot plugin's pet screenshot on the same three lines | Allowed |
+| Level-up, from `StatChanged` real level rising from a baseline | None: the game shows a level-up dialogue | Base Screenshot plugin (level-up screenshots); Idle Notifier-style notification only | Allowed |
+| Random event targeting you: only when the event NPC interacts with the local player, never another player's | Rejected-features list bans helpers that *solve* random events; this only notifies that one is talking to you, and does not touch menus | Base Random Events plugin, same condition and cooldown | Allowed, notify-only |
+
+Not done, deliberately: no menu changes for random events (the base plugin
+already offers "Remove others' menu options"); no hint arrows or highlights
+for Forestry objects (the base Woodcutting plugin draws its own); nothing
+here sends input, and Repeat still stops on a click or key press.
+
+### Training methods: the Blast Furnace pump, compliance (added 2026-11-14, task-20b05b6b)
+
+Board, 2026-11-14, training Strength at the Blast Furnace pump: the same
+badge as skilling, a countdown to when you must click again and to the
+pump's own stop, and an alert with a voice line a little before each.
+
+Facts, read 2026-11-14: OSRS Wiki, Pump (Blast Furnace): object 9090,
+option Operate, "Operating the pump yields 2 Strength experience every
+tick", "The pump can be operated for up to 100 minutes before automatically
+stopping. However, you are typically logged out after 5 minutes ... this can
+be changed in the Settings menu." Gameval (`runelite-api` 1.13.6, javap):
+`ObjectID.BLAST_FURNACE_PUMP = 9090`, `AnimationID.BLAST_FURNACE_HUMAN_AIR_PUMP
+= 2432`. The game's idle setting goes from 5 to 25 minutes (third-party
+guides, 2026; the Board's "~25-30 min" is this). The Board's "forced stop
+every hour" is the wiki's 100 minutes. RuneLite's `IdleNotifierPlugin`
+(`checkIdleLogout`, master, read 2026-11-14) reads the logout as
+`min(getKeyboardIdleTicks(), getMouseIdleTicks())` against
+`getIdleTimeout()`, all client ticks (`Constants.CLIENT_TICK_LENGTH`, 20 ms).
+
+| Element | Nearest rule | Precedent | Verdict |
+|---|---|---|---|
+| Badge raised by the player's own Operate click on the pump plus animating beside it, held by Strength XP or animation; same rows as skilling (`TrainingMethod`, `ObjectSkilling`) | None: own click, own animation, own stats | The tree/rock object badge here since 2026-11-04; base Blast Furnace plugin highlights the same objects | Allowed |
+| "Re-click in 4:12": time left on the client's idle logout from its own idle counters, and an alert a minute before | Must not keep a player logged in or act on idleness | Base client Idle Notifier's "Idle logout" warning reads exactly these counters and warns 20 s ahead; Logout Timer plugin sets the timeout itself. This only counts down and makes a sound; it never moves, clicks or types | Allowed |
+| "Stops in 97:30": 100 minutes from the click, an alert a minute before | None: a fixed, published game rule and the player's own click time | Base client Timers plugin counts down known game durations (potions, teleblock) | Allowed |
+| "You've stopped pumping": no animation or Strength XP for the stopped delay; not on walking away or a fight | None | Idle Notifier; the plugin's own stopped alerts since 2026-11-03 | Allowed |
+| New additive keys for the three alerts, appended to `published-config-keys.txt` | Config keys freeze at publish | Same as every earlier row | Allowed |
+
+Not done: no input of any kind to stay logged in, and nothing for the
+coal/ore runs, Giants' Foundry or other methods yet (`TrainingMethod` is the
+table they slot into).
+
+### Pump checks: world, stoking, coke, compliance (added 2026-11-14, task-f45717a8)
+
+Board, 2026-11-14, pumping: tell me when I am not on World 302 or another
+pumping world, when nobody is coking the stove on this world, and how long
+until the stove needs coke.
+
+Facts, read 2026-11-14:
+
+- OSRS Wiki, [Pump (Blast Furnace)](https://oldschool.runescape.wiki/w/Pump_(Blast_Furnace)):
+  "In order to receive experience, the Blast Furnace must be filled with
+  Coke. In the event that the Blast Furnace is empty, experience gains will
+  be halted until it is filled with Coke." "Operating the pump yields 2
+  Strength experience every tick." "The current unofficial world for this is
+  302 ... Alternatively world 303 can be as active as world 302." Default
+  list: `302, 303`; the user edits it (`pumpWorlds`).
+- OSRS Wiki, [Stove (Blast Furnace)](https://oldschool.runescape.wiki/w/Stove_(Blast_Furnace)?action=raw),
+  infobox: `id1 = 9085` "There's not much coke in the stove", `id2 = 9086`
+  "a fair amount", `id3 = 9087` "lots"; "It takes 30 spades of coke to
+  completely fill up the stove". Burn rate: not published.
+- RuneLite gameval `VarbitID` (master, read 2026-11-14): Blast Furnace
+  varbits are the bar/ore counts, the coffer, `BLAST_FURNACE_TEMPERATURE_READING`
+  (937) and `BLAST_FURNACE_FUEL_LOW_READING` (939); no named varbit for the
+  stove's coke. 937/939 are readings of the temperature gauge interface, so
+  they are only current while the player reads the gauge; not used.
+- RuneLite's own Blast Furnace plugin (`BlastFurnacePlugin`, master): coffer
+  overlay, foreman timer, conveyor/dispenser clickboxes. No stove state; no
+  gameval varbit or animation for it.
+- No refuel animation is named in gameval `AnimationID` that could be
+  confirmed offline, so other players' refuelling is not watched; the empty
+  stove is read from the player's own missing experience instead.
+
+Design: `PumpChecks`. Wrong world: `client.getWorld()` against the list.
+Nobody stoking: the pumping animation for 8 ticks without Strength XP (the
+wiki's own consequence of an empty stove). Coke: the stove's look by object
+id (through its impostor if it is a multiloc); the ticks between two drops in
+a row with no refuel between are one step, and from a drop the time left is
+that step for each look left, the current one included. Nothing shows until
+a step is timed. Assumed, unverified in game: the steps are even, the
+stove's spawned object id is one of 9085 to 9087, and a full stove still
+looks "Lots" until it drops.
+
+| Element | Nearest rule | Precedent | Verdict |
+|---|---|---|---|
+| "World 420: not a pumping world" on the badge, one alert when you start pumping off the list | None: the player's own world number against their own list | World Hopper and the world list show the world; nothing about other players | Allowed |
+| "Stove: no one stoking": your own Strength XP stopped while you animate | None: own stats and animation | Idle Notifier, the plugin's stopped alerts | Allowed |
+| "Coke runs out in 1:30": the stove's visible look over time, an alert a little before | No crowdsourcing or other players' data; no input | The stove's look is what the player sees; base Blast Furnace plugin overlays the same room's state (coffer); Timers counts down durations | Allowed |
+| Other players' refuel animations | "No player group summaries" is about players, not the stove | Not built: no confirmed id, and the own-XP signal is enough | Not done |
+| New additive keys (`alertWrongWorld`, `alertNoStoking`, `alertCokeLow`, `pumpWorlds`, sound/volume/repeat each), appended to `published-config-keys.txt` | Config keys freeze at publish | Every earlier row | Allowed |
+
+Nothing is sent anywhere, no input is made, and nothing reads another
+player.
 
 ---
 

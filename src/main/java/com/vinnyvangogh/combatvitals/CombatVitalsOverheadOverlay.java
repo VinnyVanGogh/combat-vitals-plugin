@@ -162,7 +162,7 @@ class CombatVitalsOverheadOverlay extends Overlay
 	 */
 	private Rectangle drawSkilling(Graphics2D graphics, SkillingReadout readout, Rectangle below)
 	{
-		if (readout == null || !config.skillingEnabled() || config.skillingPosition() == BadgePosition.FIXED)
+		if (readout == null || !VitalsHalves.skillingBadge(config) || config.skillingPosition() == BadgePosition.FIXED)
 		{
 			return null;
 		}

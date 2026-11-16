@@ -2,10 +2,13 @@
 # the clip generator (tools/voice/generate_voice.py). Tab separated:
 #   kind	key	clip	spoken
 # kind phrase:   a fixed opening, key = its name in VoiceLines
-# kind alert:    a whole line for one ActivityAlerts.Type, key = the type
+# kind alert:    a whole line for one ActivityAlerts.Type, key = the type, or
+#                type|TrainingMethod for that method's own line
 # kind verb:     the activity, key = the Skill
 # kind resource: what you were gathering, key = Skill|item name in lower case;
 #                several items may share one clip
+# kind detail:   a whole line more particular than its alert's, key =
+#                SkillingEvents.voiceKey ("CLUE_DROP|hard"); said instead of the alert line
 # Each clip is voice/<clip>.wav. Keep the words plain: this ships on the Plugin Hub.
 phrase	stopped	stopped	You've stopped
 phrase	stopped-gathering	stopped-gathering	You've stopped gathering.
@@ -17,6 +20,37 @@ alert	COIN_POUCH_CAP	coin-pouches	Time to open your coin pouches.
 alert	NECKLACE_BROKE	necklace-broke	Your dodgy necklace crumbled.
 alert	LOW_RUN_ENERGY	low-run-energy	You're low on run energy.
 alert	PRODUCTION_FINISHED	all-done	All done!
+alert	METHOD_STOPPED	method-stopped	You've stopped training.
+alert	METHOD_STOPPED|BLAST_FURNACE_PUMP	pump-stopped	You've stopped pumping.
+alert	RECLICK_SOON	reclick-soon	Click soon, or you'll be logged out.
+alert	AUTO_STOP_SOON	method-stopping	Your training stops soon. Click again.
+alert	AUTO_STOP_SOON|BLAST_FURNACE_PUMP	pump-stopping	The pump stops soon. Click it again.
+alert	WRONG_WORLD	pump-wrong-world	This isn't a pumping world.
+alert	NO_STOKING	stove-not-stoked	No one is stoking the stove.
+alert	COKE_LOW	coke-low	The stove's coke runs out soon.
+alert	BIRD_NEST	bird-nest	A bird's nest fell!
+alert	CLUE_DROP	clue-drop	You got a clue!
+alert	FORESTRY_EVENT	forestry-event	A Forestry event started!
+alert	PET	pet	You have a funny feeling you're being followed!
+alert	LEVEL_UP	level-up	Level up!
+alert	RANDOM_EVENT	random-event	A random event is here for you.
+detail	BIRD_NEST|clue	clue-nest-fell	A clue nest fell!
+detail	CLUE_DROP|beginner	clue-beginner	You got a beginner clue!
+detail	CLUE_DROP|easy	clue-easy	You got an easy clue!
+detail	CLUE_DROP|medium	clue-medium	You got a medium clue!
+detail	CLUE_DROP|hard	clue-hard	You got a hard clue!
+detail	CLUE_DROP|elite	clue-elite	You got an elite clue!
+detail	CLUE_DROP|master	clue-master	You got a master clue!
+detail	PET|duplicate	pet-duplicate	You would have got a pet!
+detail	FORESTRY_EVENT|RISING_ROOTS	forestry-rising-roots	Forestry event: Rising Roots!
+detail	FORESTRY_EVENT|STRUGGLING_SAPLING	forestry-struggling-sapling	Forestry event: Struggling Sapling!
+detail	FORESTRY_EVENT|FLOWERING_BUSH	forestry-flowering-bush	Forestry event: Flowering Bush!
+detail	FORESTRY_EVENT|LEPRECHAUN	forestry-leprechaun	Forestry event: a Leprechaun!
+detail	FORESTRY_EVENT|POACHERS	forestry-poachers	Forestry event: Poachers!
+detail	FORESTRY_EVENT|PHEASANT_CONTROL	forestry-pheasant-control	Forestry event: Pheasant Control!
+detail	FORESTRY_EVENT|BEE_HIVE	forestry-bee-hive	Forestry event: a Bee Hive!
+detail	FORESTRY_EVENT|ENCHANTMENT_RITUAL	forestry-enchantment-ritual	Forestry event: Enchantment Ritual!
+detail	FORESTRY_EVENT|FRIENDLY_ENT	forestry-friendly-ent	Forestry event: a Friendly Ent!
 verb	WOODCUTTING	verb-chopping	chopping
 verb	FISHING	verb-fishing	fishing
 verb	MINING	verb-mining	mining

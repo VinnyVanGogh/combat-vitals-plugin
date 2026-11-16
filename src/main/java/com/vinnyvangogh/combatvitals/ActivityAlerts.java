@@ -21,7 +21,8 @@ import net.runelite.api.Skill;
  * without firing: walking (to the next spot, or the bank), the bank opening,
  * items leaving the inventory (deposited or dropped), the inventory filling
  * (that has its own alert), the spot moving (likewise), and logging out or
- * hopping ({@link #clear}).
+ * hopping ({@link #clear}) or reconnecting ({@link #reconnected}). Only
+ * experience after the login sync arms it, so it never fires on login.
  *
  * <h3>Inventory full</h3>
  * Fires on the tick the last free slot is taken while a gathering or
@@ -56,25 +57,66 @@ final class ActivityAlerts
 		STUNNED,
 		COIN_POUCH_CAP,
 		NECKLACE_BROKE,
-		LOW_RUN_ENERGY
+		LOW_RUN_ENERGY,
+		/** A {@link TrainingMethod} has stopped: "You've stopped pumping" ({@link TrainingSession}). */
+		METHOD_STOPPED,
+		/** The idle logout is near: touch the client or click again. */
+		RECLICK_SOON,
+		/** The game is about to stop the method by itself: the pump's 100 minutes. */
+		AUTO_STOP_SOON,
+		/** Pumping on a world not on the user's pumping list ({@link PumpChecks}). */
+		WRONG_WORLD,
+		/** Pumping without Strength experience: the stove is out and nobody is refuelling it. */
+		NO_STOKING,
+		/** The stove's coke runs out soon, from its measured burn rate. */
+		COKE_LOW,
+		/** The rest are {@link SkillingEvents}': news while skilling, not stopping. */
+		BIRD_NEST,
+		CLUE_DROP,
+		FORESTRY_EVENT,
+		PET,
+		LEVEL_UP,
+		RANDOM_EVENT
 	}
 
-	/** One alert to send, with the skill it is about when there is one. */
+	/** One alert to send, with the skill it is about when there is one, and the training method. */
 	static final class Alert
 	{
 		final Type type;
 		final Skill skill;
+		/** What exactly happened, for the skilling events ("Clue geode (easy)"); null otherwise. */
+		final String detail;
+		/** The training method the alert is about, or null for gathering and the rest. */
+		final TrainingMethod method;
 
 		Alert(Type type, Skill skill)
 		{
+			this(type, skill, null, null);
+		}
+
+		Alert(Type type, Skill skill, String detail)
+		{
+			this(type, skill, detail, null);
+		}
+
+		Alert(Type type, Skill skill, TrainingMethod method)
+		{
+			this(type, skill, null, method);
+		}
+
+		private Alert(Type type, Skill skill, String detail, TrainingMethod method)
+		{
 			this.type = type;
 			this.skill = skill;
+			this.detail = detail;
+			this.method = method;
 		}
 
 		@Override
 		public String toString()
 		{
-			return skill == null ? type.name() : type + "(" + skill + ")";
+			final String base = skill == null ? type.name() : type + "(" + skill + ")";
+			return detail == null ? base : base + "[" + detail + "]";
 		}
 	}
 
@@ -326,13 +368,24 @@ final class ActivityAlerts
 		return out == null ? Collections.emptyList() : out;
 	}
 
+	/**
+	 * The connection came back without a logout: to the player, logging in
+	 * again (Board, 2026-11-14). What was armed before it does not count; the
+	 * next real experience drop arms the detector again. Baselines and the
+	 * inventory are kept: nothing changed while away.
+	 */
+	void reconnected()
+	{
+		active = null;
+		lastActiveTick = -1;
+		xpThisTick = null;
+	}
+
 	/** Logged out or hopped: everything is a baseline again. */
 	void clear()
 	{
 		java.util.Arrays.fill(xpBySkill, -1);
-		active = null;
-		lastActiveTick = -1;
-		xpThisTick = null;
+		reconnected();
 		experienced = false;
 		banked = false;
 		stunned = false;
@@ -346,6 +399,12 @@ final class ActivityAlerts
 
 	/** The notification text for an alert. */
 	static String message(Alert alert, int pouchCap)
+	{
+		final String event = SkillingEvents.message(alert);
+		return event != null ? event : activityMessage(alert, pouchCap);
+	}
+
+	private static String activityMessage(Alert alert, int pouchCap)
 	{
 		switch (alert.type)
 		{
@@ -365,8 +424,31 @@ final class ActivityAlerts
 			case NECKLACE_BROKE:
 				return "Your dodgy necklace has crumbled";
 			case LOW_RUN_ENERGY:
-			default:
 				return "You have low run energy";
+			default:
+				return methodMessage(alert);
+		}
+	}
+
+	/** A training method alert's text: "You have stopped pumping". */
+	private static String methodMessage(Alert alert)
+	{
+		final String verb = alert.method == null ? "training" : alert.method.verb();
+		switch (alert.type)
+		{
+			case RECLICK_SOON:
+				return "Click soon or you will be logged out for being idle";
+			case AUTO_STOP_SOON:
+				return "You will stop " + verb + " soon: click again to keep going";
+			case WRONG_WORLD:
+				return "This is not one of your pumping worlds";
+			case NO_STOKING:
+				return "No one is stoking the stove: pumping gives no experience";
+			case COKE_LOW:
+				return "The stove's coke runs out soon";
+			case METHOD_STOPPED:
+			default:
+				return "You have stopped " + verb;
 		}
 	}
 

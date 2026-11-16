@@ -24,6 +24,10 @@ import net.runelite.api.coords.WorldPoint;
 final class SkillingReadout
 {
 	private final Skill skill;
+
+	/** The training method the badge is for, the Blast Furnace pump, or null for plain skilling. */
+	private final TrainingMethod method;
+
 	private final int real;
 	private final int boosted;
 
@@ -32,6 +36,9 @@ final class SkillingReadout
 
 	/** The activity has stopped and the header says "Not fishing" ({@link IdleBadge}). */
 	private final boolean idle;
+
+	/** "in combat" or "under attack" after the header while a fight is on ({@link BadgeCombat#tag}), or null. */
+	private final String combatTag;
 
 	/** The top row is on. */
 	private final boolean header;

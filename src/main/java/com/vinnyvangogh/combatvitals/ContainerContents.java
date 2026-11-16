@@ -36,7 +36,7 @@ final class ContainerContents
 
 	private static final Pattern BASKET_CHECK = Pattern.compile("^The basket contains:(.*)$");
 	private static final Pattern BASKET_EMPTY = Pattern.compile(
-		"^(?:(?:Your|The) basket is empty|You empty your basket into the bank)\\.?$");
+		"^(?:(?:Your|The) basket is empty|You empty your basket(?: into the bank)?)\\.?$");
 	private static final Pattern BASKET_ADD = Pattern.compile("^You get some (?:[\\w' -]+ )?logs[.!]?$");
 	private static final Pattern BASKET_EXTRA = Pattern.compile("^The nature offerings enabled you to chop an extra log\\.?$");
 
@@ -57,6 +57,14 @@ final class ContainerContents
 	private boolean clickedFill;
 	private int clickedTick;
 
+	/**
+	 * Empty clicked with the bank open: what was inside goes straight to the
+	 * bank, so no inventory change follows. The bank's contents changing
+	 * within {@link #CLICK_TICKS} confirms it (Board, 2026-11-14).
+	 */
+	private SkillingContainer bankEmptied;
+	private int bankEmptiedTick;
+
 	/** The open container the last gathered item should have gone into, and the tick it was gathered. */
 	private SkillingContainer gathered;
 	private int gatheredTick = Integer.MIN_VALUE;
@@ -68,6 +76,12 @@ final class ContainerContents
 	{
 		final Integer n = contents.get(container);
 		return n == null ? -1 : n;
+	}
+
+	/** Carried open at the last scan. */
+	boolean isOpen(SkillingContainer container)
+	{
+		return open.contains(container);
 	}
 
 	/** Every known count, for the plugin to keep across logins. */
@@ -128,9 +142,20 @@ final class ContainerContents
 	/** The tick of the message being handled, MIN_VALUE when the caller has none. */
 	private int tick = Integer.MIN_VALUE;
 
-	/** Fill, Empty or Empty to bank clicked on a container; anything else is ignored. */
+	/** Fill, Empty or Empty to bank clicked on a container, the bank closed. */
 	void clicked(SkillingContainer container, String option, int tick)
 	{
+		clicked(container, option, tick, false);
+	}
+
+	/**
+	 * Fill, Empty or Empty to bank clicked on a container; anything else is ignored.
+	 *
+	 * @param bankOpen the bank is open, so an Empty goes into it rather than the inventory
+	 */
+	void clicked(SkillingContainer container, String option, int tick, boolean bankOpen)
+	{
+		bankEmptied = null;
 		if ("Empty to bank".equalsIgnoreCase(option))
 		{
 			contents.put(container, 0);
@@ -141,7 +166,31 @@ final class ContainerContents
 			clicked = container;
 			clickedFill = "Fill".equalsIgnoreCase(option);
 			clickedTick = tick;
+			if (bankOpen && !clickedFill)
+			{
+				bankEmptied = container;
+				bankEmptiedTick = tick;
+			}
 		}
+	}
+
+	/**
+	 * The bank's contents changed on {@code tick}: an Empty clicked in the
+	 * bank just before went into it, so the container is now empty.
+	 *
+	 * @return whether a count changed
+	 */
+	boolean bankChanged(int tick)
+	{
+		final SkillingContainer container = bankEmptied;
+		if (container == null || tick - bankEmptiedTick > CLICK_TICKS)
+		{
+			return false;
+		}
+		bankEmptied = null;
+		clicked = null;
+		contents.put(container, 0);
+		return true;
 	}
 
 	/**
@@ -174,6 +223,7 @@ final class ContainerContents
 		open = Collections.emptySet();
 		capacities = Collections.emptyMap();
 		clicked = null;
+		bankEmptied = null;
 		gathered = null;
 		gatheredTick = Integer.MIN_VALUE;
 		grewTick = Integer.MIN_VALUE;
@@ -256,6 +306,11 @@ final class ContainerContents
 			return false;
 		}
 		contents.put(container, 0);
+		if (bankEmptied == container)
+		{
+			// The line settled the bank Empty; the bank change after it moves nothing more.
+			bankEmptied = null;
+		}
 		return true;
 	}
 

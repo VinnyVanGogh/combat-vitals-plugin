@@ -23,6 +23,29 @@ Back to the [README](README.md).
   <img src="docs/images/settings.png" alt="The Combat Vitals settings panel" width="300">
 </p>
 
+RuneLite's list now has six sections, all collapsed, each the twin of a
+sidebar panel tab with the same settings in the same order: **Combat
+readout** (Combat tab), **Combat targets** (Targets), **Skilling badge**
+(Skilling, which now also holds what was "Skilling: badge details" and the
+next fishing spot), **Alerts and sounds** (Alerts: each alert's switch, then
+"Same for every alert", the repeat timing, then each alert's own sound),
+**Look** (colours, styles, positions and sizes, and the side pillars), and
+**Advanced**. The tables below keep their old headings; every setting and its
+key is unchanged.
+
+### Master switches
+
+At the top of the settings, above every section.
+
+| Setting | Default | What it does |
+|---|---|---|
+| Combat vitals | On | Off: no corner panel, no readout over the target or over you, no game health bar swap, no combat side pillar |
+| Skilling vitals | On | Off: no skilling badge, no skilling side pillars, no next fishing spot mark or path, no activity alerts or boost notifications; an alert already repeating stops |
+
+Both halves on and Side pillars set to Both: the combat pillar shows while you
+fight and the skilling pillars otherwise, as before. With one half off, its
+pillars never show and the other half's take the bars.
+
 ### Display
 
 | Setting | Default | What it does |

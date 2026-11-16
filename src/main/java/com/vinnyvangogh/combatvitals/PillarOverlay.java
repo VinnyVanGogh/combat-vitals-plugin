@@ -57,9 +57,10 @@ class PillarOverlay extends Overlay
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
-		final PillarMode mode = config.pillarMode();
+		final PillarMode mode = VitalsHalves.pillarMode(config);
 		final CombatVitalsPlugin.Readout target = mode.combat() ? plugin.getReadout() : null;
-		final SkillingReadout skilling = mode.skilling() && config.skillingEnabled() ? plugin.getSkillingReadout() : null;
+		final SkillingReadout skilling = mode.skilling() && VitalsHalves.skillingBadge(config)
+			? plugin.getSkillingReadout() : null;
 		final SidePillars.Layout pillars = target == null && skilling == null ? null : layout();
 		if (pillars == null)
 		{
@@ -93,7 +94,7 @@ class PillarOverlay extends Overlay
 		}
 		final PillarSide xpSide = config.pillarXpSide();
 		draw(graphics, pillars.get(xpSide), xpPillar(skilling), xpFill, now);
-		final Pillar inventory = inventoryPillar(skilling);
+		final Pillar inventory = InventoryPillar.of(skilling, config, PillarIcons.backpack());
 		if (inventory != null)
 		{
 			draw(graphics, pillars.get(xpSide.other()), inventory, inventoryFill, now);
@@ -147,27 +148,6 @@ class PillarOverlay extends Overlay
 			.divisions(XP_DIVISIONS)
 			.idle(skilling.isIdle())
 			.tooltip(PillarText.xpTooltip(skilling.getSkill().getName(), xp))
-			.build();
-	}
-
-	/** Green to red as it fills, one mark per slot; null with the inventory line off. */
-	private Pillar inventoryPillar(SkillingReadout skilling)
-	{
-		final double fill = skilling.getInventoryFill();
-		if (fill < 0)
-		{
-			return null;
-		}
-		final InventoryCount count = config.skillingInventoryCount();
-		return Pillar.builder()
-			.fraction(fill)
-			.colour(InventoryFill.colour(fill, config.healthFullColour(), config.healthMidColour(),
-				config.healthLowColour()))
-			.icon(PillarIcons.backpack())
-			.number(PillarText.inventoryNumber(skilling.getInventoryFree(), count))
-			.divisions(InventoryFill.SLOTS)
-			.idle(skilling.isIdle())
-			.tooltip(PillarText.inventoryTooltip(skilling.getInventoryFree(), count, skilling.getContainers()))
 			.build();
 	}
 

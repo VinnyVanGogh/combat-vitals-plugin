@@ -48,6 +48,13 @@ overlap Status Bars.
 |:---:|:---:|
 | <img src="docs/images/side-pillars-skilling.png" alt="Side pillars while fishing: XP progress on the left, inventory fill on the right" width="220"> | <img src="docs/images/side-pillars-combat.png" alt="Side pillar showing the target's health in combat" width="220"> |
 
+The XP pillar shows the percent to your next level at the top and your level
+at the bottom.
+
+<p align="center">
+  <img src="docs/images/pillar-xp-percent.png" alt="XP side pillar: 44% at the top, level 46 at the bottom" width="220">
+</p>
+
 ## Skilling
 
 ### The skilling badge
@@ -81,6 +88,17 @@ space so *Inventory full* waits for it too.
   <img src="docs/images/inventory-fill-full.png" alt="Inventory line full and red" width="300">
 </p>
 
+### Blast Furnace pump
+
+Operate the pump and the badge counts your Strength XP and pumps, and says how
+long until the pump stops by itself and until you would be logged out for
+being idle. It also warns when you are on a world that isn't a pumping world,
+when no one is stoking the stove, and when the stove's coke runs low.
+
+| Pumping | A problem to fix |
+|:---:|:---:|
+| <img src="docs/images/pump-badge-active.png" alt="Pumping badge: XP to level 47, 54 pumps in a minute, rates, pump stops in 99:57" width="320"> | <img src="docs/images/pump-badge-checks.png" alt="Pumping badge in red: not a pumping world, no one stoking the stove" width="320"> |
+
 ### Activity alerts
 
 RuneLite notifications for: inventory full, stopped gathering (not when you
@@ -93,6 +111,102 @@ back.
 <p align="center">
   <img src="docs/images/alerts-settings.png" alt="The Activity alerts settings section" width="280">
 </p>
+
+## Sidebar panel
+
+The plugin has its own button in RuneLite's sidebar (a small health bar over
+a skilling bar). It holds every setting from RuneLite's settings list, the
+same settings with the same values, laid out to be easier to find: presets at
+the top, then five tabs. Change something in either place and the other shows
+it. Timeouts and update notes stay in the settings list, under Advanced.
+
+The screenshots are rendered from the real panel by `./gradlew screenshots`
+(`VitalsSidePanelShots`).
+
+### Presets
+
+<img src="docs/images/panel-presets.png" alt="Presets, with Skiller's preview open" width="240">
+
+A whole setup in one click. A preset only changes the few settings it lists;
+everything else stays as you set it. Click a preset to see exactly what it
+would change, then Apply. Undo puts those settings back as they were.
+
+| Preset | What it sets |
+|---|---|
+| Skiller | Skilling vitals and the skilling badge on, skilling side pillars, every alert as a Voice line that repeats until you are back |
+| PvM | Combat vitals on: readout over the target, the panel, your own health, NPC targets, the stat comparison, the combat side pillar |
+| Minimal | Just the health bar over your target: no panel, no own health, no stat comparison, no side pillars, Skilling vitals off |
+| Everything | Both halves on: readout, panel, your own health, the stat comparison, the skilling badge, both side pillars |
+
+Walkthrough: click Skiller, read the list (each line is a setting, what it is
+now, and what it becomes), click Apply. Changed your mind? Click Undo.
+
+### Combat tab
+
+<img src="docs/images/panel-combat.png" alt="The Combat tab with its guide open" width="240">
+
+Your target's health while you fight: in a small panel, and over the target
+itself. Also your own health, and the game's own health bar and chat. Combat
+vitals at the top turns this whole half on or off.
+
+1. Leave Combat vitals ticked.
+2. Tick Show over target for the readout over the monster, Show panel for the box.
+3. Pick Display: hitpoints, percentage, or both.
+4. Tick Hide game health bar to see only this plugin's bar.
+
+### Targets tab
+
+<img src="docs/images/panel-targets.png" alt="The Targets tab with its guide open" width="240">
+
+Who gets a readout: monsters, players, and how big targets like bosses show.
+
+1. Tick NPC targets for monsters; Player targets for PvP.
+2. Set Big target is to Bosses only, then Big targets to Both for hitpoints and percent on bosses.
+
+### Skilling tab
+
+<img src="docs/images/panel-skilling.png" alt="The Skilling tab with its guide open" width="240">
+
+A badge over your head while you fish, cut, mine, thieve, runecraft or hunt:
+XP to level, inventory, catches, boosts, and the next fishing spot. Skilling
+vitals at the top turns this whole half on or off.
+
+1. Leave Skilling vitals and Skilling badge ticked.
+2. Untick any skill you do not want a badge for.
+3. Under Rows, untick rows you do not read; Badge layout on the Look tab makes it smaller.
+4. Once you stop: choose how long the badge stays after you stop.
+
+### Alerts tab
+
+<img src="docs/images/panel-alerts.png" alt="The Alerts tab with its guide open" width="240">
+
+A notification when something needs you: inventory full, you stopped
+gathering or thieving, the fishing spot moved, the Blast Furnace pump and more.
+Each alert is a card, folded to its name: open it to tick it on or off, and
+**Test** plays it as it is set up now. **Same for every alert** gives them all
+one sound, volume and repeat (sound packs included); untick it and each alert's
+own sound, volume and Repeat show in its card. Every sound starts as
+RuneLite's own; voice lines play only for the alerts you set to Voice line.
+
+1. Tick Same for every alert.
+2. Pick Voice line as the sound and set the volume, e.g. 40.
+3. Tick Repeat every alert if you want it again until you are back.
+4. Open Inventory full and click Test to hear it.
+
+### Look tab
+
+<img src="docs/images/panel-look.png" alt="The Look tab with its guide open" width="240">
+
+How things look: the readout's style and position, health colours, the badge's
+size, place and colours, and the side pillars. The preview at the top redraws
+as you change things: the health colours as a bar fading from full to empty,
+and where the skilling badge sits for its position, offset and size. It is a
+sketch, not the game's own drawing.
+
+1. Pick a Style for the readout over your target.
+2. Change the three health colours; the preview bar shows the fade.
+3. Move the badge with Badge position and Badge offset; the preview shows where.
+4. Side pillars: pick Combat, Skilling or Both.
 
 ## Privacy
 

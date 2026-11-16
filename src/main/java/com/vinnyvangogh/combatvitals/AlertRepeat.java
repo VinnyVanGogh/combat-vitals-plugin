@@ -68,10 +68,16 @@ final class AlertRepeat
 		stop();
 	}
 
-	/** The stopped activity started again. */
+	/**
+	 * The stopped activity started again. A skilling event (a nest, a pet)
+	 * comes while you are still at it, so it carries on until you are back.
+	 */
 	synchronized void activityResumed()
 	{
-		stop();
+		if (alert != null && !SkillingEvents.isEvent(alert.type))
+		{
+			stop();
+		}
 	}
 
 	synchronized void stop()

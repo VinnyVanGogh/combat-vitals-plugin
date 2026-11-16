@@ -20,7 +20,22 @@ final class AlertSettings
 		this.repeat = repeat;
 	}
 
+	/**
+	 * With "Same for every alert" on, the shared sound, volume and repeat
+	 * replace the alert's own; whether the alert is on at all stays its own.
+	 */
 	static AlertSettings of(CombatVitalsConfig config, ActivityAlerts.Type type)
+	{
+		final AlertSettings own = SkillingEvents.isEvent(type) ? ofEvent(config, type) : ofActivity(config, type);
+		if (!config.alertSoundShared())
+		{
+			return own;
+		}
+		return new AlertSettings(own.notification, config.alertSoundAll(), config.alertVolumeAll(),
+			config.alertRepeatAll());
+	}
+
+	private static AlertSettings ofActivity(CombatVitalsConfig config, ActivityAlerts.Type type)
 	{
 		switch (type)
 		{
@@ -49,9 +64,64 @@ final class AlertSettings
 				return new AlertSettings(config.alertNecklaceBroke(), config.soundNecklaceBroke(),
 					config.volumeNecklaceBroke(), config.repeatNecklaceBroke());
 			case LOW_RUN_ENERGY:
-			default:
 				return new AlertSettings(config.alertLowRunEnergy(), config.soundLowRunEnergy(),
 					config.volumeLowRunEnergy(), config.repeatLowRunEnergy());
+			default:
+				return ofMethod(config, type);
+		}
+	}
+
+	/** The training method alerts: the Blast Furnace pump's stopped, idle logout, auto stop, world, stove and coke. */
+	private static AlertSettings ofMethod(CombatVitalsConfig config, ActivityAlerts.Type type)
+	{
+		switch (type)
+		{
+			case RECLICK_SOON:
+				return new AlertSettings(config.alertReclickSoon(), config.soundReclickSoon(),
+					config.volumeReclickSoon(), config.repeatReclickSoon());
+			case AUTO_STOP_SOON:
+				return new AlertSettings(config.alertAutoStopSoon(), config.soundAutoStopSoon(),
+					config.volumeAutoStopSoon(), config.repeatAutoStopSoon());
+			case WRONG_WORLD:
+				return new AlertSettings(config.alertWrongWorld(), config.soundWrongWorld(),
+					config.volumeWrongWorld(), config.repeatWrongWorld());
+			case NO_STOKING:
+				return new AlertSettings(config.alertNoStoking(), config.soundNoStoking(),
+					config.volumeNoStoking(), config.repeatNoStoking());
+			case COKE_LOW:
+				return new AlertSettings(config.alertCokeLow(), config.soundCokeLow(),
+					config.volumeCokeLow(), config.repeatCokeLow());
+			case METHOD_STOPPED:
+			default:
+				return new AlertSettings(config.alertMethodStopped(), config.soundMethodStopped(),
+					config.volumeMethodStopped(), config.repeatMethodStopped());
+		}
+	}
+
+	/** The skilling events' settings ({@link SkillingEvents#TYPES}). */
+	private static AlertSettings ofEvent(CombatVitalsConfig config, ActivityAlerts.Type type)
+	{
+		switch (type)
+		{
+			case BIRD_NEST:
+				return new AlertSettings(config.alertBirdNest(), config.soundBirdNest(),
+					config.volumeBirdNest(), config.repeatBirdNest());
+			case CLUE_DROP:
+				return new AlertSettings(config.alertClueDrop(), config.soundClueDrop(),
+					config.volumeClueDrop(), config.repeatClueDrop());
+			case FORESTRY_EVENT:
+				return new AlertSettings(config.alertForestryEvent(), config.soundForestryEvent(),
+					config.volumeForestryEvent(), config.repeatForestryEvent());
+			case PET:
+				return new AlertSettings(config.alertPet(), config.soundPet(),
+					config.volumePet(), config.repeatPet());
+			case LEVEL_UP:
+				return new AlertSettings(config.alertLevelUp(), config.soundLevelUp(),
+					config.volumeLevelUp(), config.repeatLevelUp());
+			case RANDOM_EVENT:
+			default:
+				return new AlertSettings(config.alertRandomEvent(), config.soundRandomEvent(),
+					config.volumeRandomEvent(), config.repeatRandomEvent());
 		}
 	}
 
