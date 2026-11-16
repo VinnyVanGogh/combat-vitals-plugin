@@ -31,6 +31,7 @@ import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.Constants;
 import net.runelite.api.EquipmentInventorySlot;
+import net.runelite.api.GameObject;
 import net.runelite.api.GameState;
 import net.runelite.api.Item;
 import net.runelite.api.ItemComposition;
@@ -334,6 +335,8 @@ public class CombatVitalsPlugin extends Plugin
 	 * swing starts, instead of flickering off for the walk.
 	 */
 	private boolean objectBadge;
+	/** A gain in the clicked object's skill counts as working, like its animation. */
+	private final RecentGain recentGain = new RecentGain();
 
 	/** The training method the clicked object starts (the Blast Furnace pump), or null for a tree or rock. */
 	private TrainingMethod objectMethod;
@@ -343,6 +346,12 @@ public class CombatVitalsPlugin extends Plugin
 
 	/** The pump's stopped, idle logout and auto stop alerts and countdowns. */
 	private final TrainingSession trainingSession = new TrainingSession();
+
+	/** The pump's world, stove and coke checks. */
+	private final PumpChecks pumpChecks = new PumpChecks();
+
+	/** The Blast Furnace stove in the scene, for how much coke it shows, or null. */
+	private GameObject stove;
 
 	/** Herblore, the Make-X skills, Firemaking, Prayer, Magic, Agility, Construction, Sailing: by XP drop. */
 	private final XpSkilling xpSkilling = new XpSkilling();
@@ -799,6 +808,7 @@ public class CombatVitalsPlugin extends Plugin
 		loginSync.loggingIn();
 		boostsSeeded = false;
 		trainingSession.reconnected();
+		pumpChecks.reconnected();
 		activityAlerts.reconnected();
 		alertRepeat.stop();
 	}
@@ -815,6 +825,8 @@ public class CombatVitalsPlugin extends Plugin
 		objectMethod = null;
 		objectClickTick = -1;
 		trainingSession.clear();
+		recentGain.clear();
+		pumpChecks.clear();
 		xpSkilling.clear();
 		xpBadge = false;
 		productionInputs.forget();
@@ -1036,6 +1048,7 @@ public class CombatVitalsPlugin extends Plugin
 		session.xp(skill, xp, System.currentTimeMillis());
 		xpSkilling.xp(skill, xp);
 		trainingSession.xp(skill, xp);
+		recentGain.xp(skill, xp, tick);
 	}
 
 	/**
@@ -1396,10 +1409,18 @@ public class CombatVitalsPlugin extends Plugin
 		skillingEvents.groundItem(client.getItemDefinition(event.getItem().getId()).getName(), client.getTickCount());
 	}
 
-	/** Rising Roots and Struggling Sapling are objects; the other Forestry events are NPCs. */
+	/**
+	 * Rising Roots and Struggling Sapling are objects; the other Forestry
+	 * events are NPCs. The Blast Furnace stove is kept for how much coke it
+	 * shows ({@link PumpChecks}).
+	 */
 	@Subscribe
 	public void onGameObjectSpawned(GameObjectSpawned event)
 	{
+		if (PumpChecks.isStove(event.getGameObject().getId()))
+		{
+			stove = event.getGameObject();
+		}
 		final SkillingEvents.Forestry kind = SkillingEvents.forestryObject(event.getGameObject().getId());
 		if (kind != null)
 		{
@@ -1411,6 +1432,10 @@ public class CombatVitalsPlugin extends Plugin
 	@Subscribe
 	public void onGameObjectDespawned(GameObjectDespawned event)
 	{
+		if (event.getGameObject() == stove)
+		{
+			stove = null;
+		}
 		final SkillingEvents.Forestry kind = SkillingEvents.forestryObject(event.getGameObject().getId());
 		if (kind != null)
 		{
@@ -2009,8 +2034,10 @@ public class CombatVitalsPlugin extends Plugin
 		}
 
 		final WorldPoint at = self.getWorldLocation();
-		// -1 is the idle animation.
-		final boolean animating = self.getAnimation() != -1;
+		// -1 is the idle animation. A drop in the object's skill counts too: spam-clicking the pump cuts the
+		// animation short while Strength keeps coming in.
+		final boolean animating = self.getAnimation() != -1
+			|| recentGain.gained(objectSkilling.skill(), client.getTickCount());
 		final Instant now = Instant.now();
 		switch (objectSkilling.tick(client.getTickCount(), at.getX(), at.getY(), at.getPlane(), animating))
 		{
@@ -2325,11 +2352,13 @@ public class CombatVitalsPlugin extends Plugin
 	{
 		final int stopTicks = trainingSession.stopTicksLeft();
 		final int autoStop = method.autoStopTicks();
+		final boolean pump = method == TrainingMethod.BLAST_FURNACE_PUMP;
 		return builder
 			.method(method)
+			.gearText(pump ? pumpChecks.warning() : null)
 			.inventoryFill(stopTicks < 0 || autoStop <= 0 ? 0 : 1 - (double) stopTicks / autoStop)
 			.inventoryLabel(SkillingText.methodTimers(trainingSession.reclickMillis(), trainingSession.active(),
-				method.stopNoun(), stopTicks));
+				method.stopNoun(), stopTicks, pump ? pumpChecks.cokeText() : null));
 	}
 
 	/**
@@ -2579,6 +2608,7 @@ public class CombatVitalsPlugin extends Plugin
 		final List<ActivityAlerts.Alert> fired = new ArrayList<>(activityAlerts.tick(now, stopTicks, pouchCap,
 			config.alertRunEnergyThreshold()));
 		fired.addAll(tickTraining(now.tick, now.animating, stopTicks));
+		fired.addAll(tickPump(now.tick, now.animating));
 		addSkillingEvents(fired, now.tick);
 		sendAlerts(fired, pouchCap);
 	}
@@ -2612,6 +2642,35 @@ public class CombatVitalsPlugin extends Plugin
 		final long logout = client.getIdleTimeout() * (long) Constants.CLIENT_TICK_LENGTH;
 		return trainingSession.tick(tick, animating, idle, logout, stopTicks,
 			config.alertMethodWarnSeconds() * 1000L);
+	}
+
+	/** The pump's world, stove and coke checks, after the training session's tick. */
+	private List<ActivityAlerts.Alert> tickPump(int tick, boolean animating)
+	{
+		pumpChecks.stove(stoveLevel(), tick);
+		final boolean pumping = trainingSession.running()
+			&& trainingSession.method() == TrainingMethod.BLAST_FURNACE_PUMP;
+		return pumpChecks.tick(tick, pumping, animating, trainingSession.gainedLastTick(), client.getWorld(),
+			PumpChecks.worlds(config.pumpWorlds()), config.alertMethodWarnSeconds() * 1000L);
+	}
+
+	/**
+	 * How much coke the stove shows, 0 to 2, or -1 when it is not in the
+	 * scene. Through its impostor in case the look is chosen by a varbit
+	 * rather than by swapping the object.
+	 */
+	private int stoveLevel()
+	{
+		if (stove == null)
+		{
+			return -1;
+		}
+		ObjectComposition def = client.getObjectDefinition(stove.getId());
+		if (def != null && def.getImpostorIds() != null)
+		{
+			def = def.getImpostor();
+		}
+		return def == null ? -1 : PumpChecks.stoveLevel(def.getId());
 	}
 
 	/** This tick's alerts, then any repeat that is due. */

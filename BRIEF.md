@@ -462,6 +462,58 @@ Not done: no input of any kind to stay logged in, and nothing for the
 coal/ore runs, Giants' Foundry or other methods yet (`TrainingMethod` is the
 table they slot into).
 
+### Pump checks: world, stoking, coke, compliance (added 2026-11-14, task-f45717a8)
+
+Board, 2026-11-14, pumping: tell me when I am not on World 302 or another
+pumping world, when nobody is coking the stove on this world, and how long
+until the stove needs coke.
+
+Facts, read 2026-11-14:
+
+- OSRS Wiki, [Pump (Blast Furnace)](https://oldschool.runescape.wiki/w/Pump_(Blast_Furnace)):
+  "In order to receive experience, the Blast Furnace must be filled with
+  Coke. In the event that the Blast Furnace is empty, experience gains will
+  be halted until it is filled with Coke." "Operating the pump yields 2
+  Strength experience every tick." "The current unofficial world for this is
+  302 ... Alternatively world 303 can be as active as world 302." Default
+  list: `302, 303`; the user edits it (`pumpWorlds`).
+- OSRS Wiki, [Stove (Blast Furnace)](https://oldschool.runescape.wiki/w/Stove_(Blast_Furnace)?action=raw),
+  infobox: `id1 = 9085` "There's not much coke in the stove", `id2 = 9086`
+  "a fair amount", `id3 = 9087` "lots"; "It takes 30 spades of coke to
+  completely fill up the stove". Burn rate: not published.
+- RuneLite gameval `VarbitID` (master, read 2026-11-14): Blast Furnace
+  varbits are the bar/ore counts, the coffer, `BLAST_FURNACE_TEMPERATURE_READING`
+  (937) and `BLAST_FURNACE_FUEL_LOW_READING` (939); no named varbit for the
+  stove's coke. 937/939 are readings of the temperature gauge interface, so
+  they are only current while the player reads the gauge; not used.
+- RuneLite's own Blast Furnace plugin (`BlastFurnacePlugin`, master): coffer
+  overlay, foreman timer, conveyor/dispenser clickboxes. No stove state; no
+  gameval varbit or animation for it.
+- No refuel animation is named in gameval `AnimationID` that could be
+  confirmed offline, so other players' refuelling is not watched; the empty
+  stove is read from the player's own missing experience instead.
+
+Design: `PumpChecks`. Wrong world: `client.getWorld()` against the list.
+Nobody stoking: the pumping animation for 8 ticks without Strength XP (the
+wiki's own consequence of an empty stove). Coke: the stove's look by object
+id (through its impostor if it is a multiloc); the ticks between two drops in
+a row with no refuel between are one step, and from a drop the time left is
+that step for each look left, the current one included. Nothing shows until
+a step is timed. Assumed, unverified in game: the steps are even, the
+stove's spawned object id is one of 9085 to 9087, and a full stove still
+looks "Lots" until it drops.
+
+| Element | Nearest rule | Precedent | Verdict |
+|---|---|---|---|
+| "World 420: not a pumping world" on the badge, one alert when you start pumping off the list | None: the player's own world number against their own list | World Hopper and the world list show the world; nothing about other players | Allowed |
+| "Stove: no one stoking": your own Strength XP stopped while you animate | None: own stats and animation | Idle Notifier, the plugin's stopped alerts | Allowed |
+| "Coke runs out in 1:30": the stove's visible look over time, an alert a little before | No crowdsourcing or other players' data; no input | The stove's look is what the player sees; base Blast Furnace plugin overlays the same room's state (coffer); Timers counts down durations | Allowed |
+| Other players' refuel animations | "No player group summaries" is about players, not the stove | Not built: no confirmed id, and the own-XP signal is enough | Not done |
+| New additive keys (`alertWrongWorld`, `alertNoStoking`, `alertCokeLow`, `pumpWorlds`, sound/volume/repeat each), appended to `published-config-keys.txt` | Config keys freeze at publish | Every earlier row | Allowed |
+
+Nothing is sent anywhere, no input is made, and nothing reads another
+player.
+
 ---
 
 ## Phase 0.5, Measure before building

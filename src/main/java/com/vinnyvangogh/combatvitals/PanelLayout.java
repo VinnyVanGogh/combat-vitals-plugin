@@ -127,7 +127,11 @@ final class PanelLayout
 		row(ActivityAlerts.Type.FORESTRY_EVENT, "Forestry event", "ForestryEvent", "alertForestryEvent", null),
 		row(ActivityAlerts.Type.PET, "Pet", "Pet", "alertPet", null),
 		row(ActivityAlerts.Type.LEVEL_UP, "Level up", "LevelUp", "alertLevelUp", "alertLevelUpSkills"),
-		row(ActivityAlerts.Type.RANDOM_EVENT, "Random event", "RandomEvent", "alertRandomEvent", null)));
+		row(ActivityAlerts.Type.RANDOM_EVENT, "Random event", "RandomEvent", "alertRandomEvent", null),
+		// The pump checks last: RuneLite's list puts them after Random event (same position, later names).
+		row(ActivityAlerts.Type.COKE_LOW, "Stove: coke runs low", "CokeLow", "alertCokeLow", null),
+		row(ActivityAlerts.Type.NO_STOKING, "Stove: no one stoking", "NoStoking", "alertNoStoking", null),
+		row(ActivityAlerts.Type.WRONG_WORLD, "Wrong world", "WrongWorld", "alertWrongWorld", "pumpWorlds")));
 
 	/** In the settings list only: the panel says where to find them. */
 	static final List<String> ADVANCED = Collections.unmodifiableList(Arrays.asList(

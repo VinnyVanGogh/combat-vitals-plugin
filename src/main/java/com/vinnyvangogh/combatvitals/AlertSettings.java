@@ -71,7 +71,7 @@ final class AlertSettings
 		}
 	}
 
-	/** The training method alerts: the Blast Furnace pump's stopped, idle logout and auto stop. */
+	/** The training method alerts: the Blast Furnace pump's stopped, idle logout, auto stop, world, stove and coke. */
 	private static AlertSettings ofMethod(CombatVitalsConfig config, ActivityAlerts.Type type)
 	{
 		switch (type)
@@ -82,6 +82,15 @@ final class AlertSettings
 			case AUTO_STOP_SOON:
 				return new AlertSettings(config.alertAutoStopSoon(), config.soundAutoStopSoon(),
 					config.volumeAutoStopSoon(), config.repeatAutoStopSoon());
+			case WRONG_WORLD:
+				return new AlertSettings(config.alertWrongWorld(), config.soundWrongWorld(),
+					config.volumeWrongWorld(), config.repeatWrongWorld());
+			case NO_STOKING:
+				return new AlertSettings(config.alertNoStoking(), config.soundNoStoking(),
+					config.volumeNoStoking(), config.repeatNoStoking());
+			case COKE_LOW:
+				return new AlertSettings(config.alertCokeLow(), config.soundCokeLow(),
+					config.volumeCokeLow(), config.repeatCokeLow());
 			case METHOD_STOPPED:
 			default:
 				return new AlertSettings(config.alertMethodStopped(), config.soundMethodStopped(),

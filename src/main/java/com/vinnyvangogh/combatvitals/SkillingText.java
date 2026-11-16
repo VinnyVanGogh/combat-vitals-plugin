@@ -69,6 +69,26 @@ final class SkillingText
 	 */
 	static String methodTimers(long reclickMillis, boolean active, String thing, int stopTicks)
 	{
+		return methodTimers(reclickMillis, active, thing, stopTicks, null);
+	}
+
+	/**
+	 * The training method's line with one more chip on the end, the pump's
+	 * "Coke runs out in 1:30" ({@link PumpChecks#cokeText}), or as above
+	 * without it when null.
+	 */
+	static String methodTimers(long reclickMillis, boolean active, String thing, int stopTicks, String extra)
+	{
+		final String timers = timers(reclickMillis, active, thing, stopTicks);
+		if (extra == null)
+		{
+			return timers;
+		}
+		return timers == null ? extra : timers + " | " + extra;
+	}
+
+	private static String timers(long reclickMillis, boolean active, String thing, int stopTicks)
+	{
 		final String reclick = reclickMillis < 0 ? null : active ? "Active" : "AFK logout in " + clock(reclickMillis);
 		final String stops = stopTicks < 0 ? null
 			: (thing == null ? "Stops in " : thing + " stops in ") + clock(stopTicks * (long) Constants.GAME_TICK_LENGTH);

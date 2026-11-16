@@ -64,6 +64,12 @@ final class ActivityAlerts
 		RECLICK_SOON,
 		/** The game is about to stop the method by itself: the pump's 100 minutes. */
 		AUTO_STOP_SOON,
+		/** Pumping on a world not on the user's pumping list ({@link PumpChecks}). */
+		WRONG_WORLD,
+		/** Pumping without Strength experience: the stove is out and nobody is refuelling it. */
+		NO_STOKING,
+		/** The stove's coke runs out soon, from its measured burn rate. */
+		COKE_LOW,
 		/** The rest are {@link SkillingEvents}': news while skilling, not stopping. */
 		BIRD_NEST,
 		CLUE_DROP,
@@ -434,6 +440,12 @@ final class ActivityAlerts
 				return "Click soon or you will be logged out for being idle";
 			case AUTO_STOP_SOON:
 				return "You will stop " + verb + " soon: click again to keep going";
+			case WRONG_WORLD:
+				return "This is not one of your pumping worlds";
+			case NO_STOKING:
+				return "No one is stoking the stove: pumping gives no experience";
+			case COKE_LOW:
+				return "The stove's coke runs out soon";
 			case METHOD_STOPPED:
 			default:
 				return "You have stopped " + verb;

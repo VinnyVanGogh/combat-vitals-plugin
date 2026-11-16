@@ -186,3 +186,16 @@ repeatLevelUp boolean
 soundRandomEvent AlertSound
 volumeRandomEvent int
 repeatRandomEvent boolean
+alertCokeLow Notification
+alertNoStoking Notification
+alertWrongWorld Notification
+pumpWorlds String
+soundCokeLow AlertSound
+volumeCokeLow int
+repeatCokeLow boolean
+soundNoStoking AlertSound
+volumeNoStoking int
+repeatNoStoking boolean
+soundWrongWorld AlertSound
+volumeWrongWorld int
+repeatWrongWorld boolean
