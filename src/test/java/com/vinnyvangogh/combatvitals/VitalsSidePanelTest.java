@@ -61,6 +61,12 @@ public class VitalsSidePanelTest
 		return ui.find(JCheckBox.class, b -> name.equals(SwingDriver.plain(b.getText())), "checkbox " + name);
 	}
 
+	/** Each alert is its own card, folded until opened: opens {@code type}'s. Call on the EDT. */
+	private void openAlert(String type)
+	{
+		ui.find(FoldCard.class, c -> ("alert-" + type).equals(c.getName()), "alert card " + type).setOpen(true);
+	}
+
 	@Test
 	public void buildingAndRedrawingWritesNothing()
 	{
@@ -130,6 +136,7 @@ public class VitalsSidePanelTest
 	public void anAlertsSwitchKeepsTheRestOfItsNotification()
 	{
 		onEdt(() -> panel.show(PanelLayout.Tab.ALERTS));
+		onEdt(() -> openAlert("INVENTORY_FULL"));
 		onEdt(() -> ui.click(checkbox("Inventory full")));
 		final Notification n = (Notification) store.values.get("alertInventoryFull");
 		assertFalse(n.isEnabled());
@@ -139,6 +146,8 @@ public class VitalsSidePanelTest
 	public void sameForEveryAlertHidesEachAlertsOwnSound()
 	{
 		onEdt(() -> panel.show(PanelLayout.Tab.ALERTS));
+		ui.assertHides("Full inv sound");
+		onEdt(() -> openAlert("INVENTORY_FULL"));
 		ui.assertShows("Full inv sound");
 		ui.assertHides("Sound for all");
 
@@ -155,6 +164,7 @@ public class VitalsSidePanelTest
 	public void testPlaysThatAlert()
 	{
 		onEdt(() -> panel.show(PanelLayout.Tab.ALERTS));
+		onEdt(() -> openAlert("STUNNED"));
 		onEdt(() -> ui.click(ui.find(AbstractButton.class, b -> "test-STUNNED".equals(b.getName()), "Test")));
 		assertEquals("[STUNNED]", tested.toString());
 		assertTrue("testing writes nothing", store.writes.isEmpty());

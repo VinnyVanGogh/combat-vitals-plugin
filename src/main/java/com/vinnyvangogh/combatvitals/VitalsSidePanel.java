@@ -531,24 +531,19 @@ final class VitalsSidePanel extends PluginPanel
 		});
 	}
 
+	/**
+	 * One alert as its own folded card (Board 2026-11-15: 22 alerts at four rows each made the tab a scroll, and
+	 * the Test button beside the switch cut its name short). The title is the alert's full name; inside are its
+	 * switch, its own setting, sound, volume, repeat and Test.
+	 */
 	private JComponent alertRow(PanelLayout.AlertRow r, List<JComponent> own)
 	{
-		final Card box = new Card(PanelStyle.INSET, null, PanelStyle.S, PanelStyle.S);
-		final JPanel top = new JPanel(new BorderLayout(PanelStyle.S, 0));
-		top.setOpaque(false);
-		final JComponent toggle = controls.control(r.toggle);
-		if (toggle != null)
-		{
-			top.add(toggle, BorderLayout.CENTER);
-		}
-		final JButton test = button("Test", "Play the " + r.label.toLowerCase() + " alert as it is set up now.",
-			() -> actions.testAlert(r.type));
-		test.setName("test-" + r.type.name());
-		top.add(test, BorderLayout.EAST);
-		box.add(settingRow(top));
+		final FoldCard box = new FoldCard(r.label, null, null, false);
+		box.setName("alert-" + r.type.name());
+		addControl(box.body, r.toggle);
 		if (r.extra != null)
 		{
-			addControl(box, r.extra);
+			addControl(box.body, r.extra);
 		}
 		final Column mine = new Column();
 		for (String key : new String[]{r.sound, r.volume, r.repeat})
@@ -556,7 +551,11 @@ final class VitalsSidePanel extends PluginPanel
 			addControl(mine, key);
 		}
 		own.add(mine);
-		box.add(mine);
+		box.body.add(mine);
+		final JButton test = button("Test", "Play the " + r.label.toLowerCase() + " alert as it is set up now.",
+			() -> actions.testAlert(r.type));
+		test.setName("test-" + r.type.name());
+		box.body.add(settingRow(test));
 		return box;
 	}
 

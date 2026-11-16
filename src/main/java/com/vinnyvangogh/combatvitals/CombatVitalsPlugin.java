@@ -335,6 +335,8 @@ public class CombatVitalsPlugin extends Plugin
 	 * swing starts, instead of flickering off for the walk.
 	 */
 	private boolean objectBadge;
+	/** A gain in the clicked object's skill counts as working, like its animation. */
+	private final RecentGain recentGain = new RecentGain();
 
 	/** The training method the clicked object starts (the Blast Furnace pump), or null for a tree or rock. */
 	private TrainingMethod objectMethod;
@@ -823,6 +825,7 @@ public class CombatVitalsPlugin extends Plugin
 		objectMethod = null;
 		objectClickTick = -1;
 		trainingSession.clear();
+		recentGain.clear();
 		pumpChecks.clear();
 		xpSkilling.clear();
 		xpBadge = false;
@@ -1045,6 +1048,7 @@ public class CombatVitalsPlugin extends Plugin
 		session.xp(skill, xp, System.currentTimeMillis());
 		xpSkilling.xp(skill, xp);
 		trainingSession.xp(skill, xp);
+		recentGain.xp(skill, xp, tick);
 	}
 
 	/**
@@ -2030,8 +2034,10 @@ public class CombatVitalsPlugin extends Plugin
 		}
 
 		final WorldPoint at = self.getWorldLocation();
-		// -1 is the idle animation.
-		final boolean animating = self.getAnimation() != -1;
+		// -1 is the idle animation. A drop in the object's skill counts too: spam-clicking the pump cuts the
+		// animation short while Strength keeps coming in.
+		final boolean animating = self.getAnimation() != -1
+			|| recentGain.gained(objectSkilling.skill(), client.getTickCount());
 		final Instant now = Instant.now();
 		switch (objectSkilling.tick(client.getTickCount(), at.getX(), at.getY(), at.getPlane(), animating))
 		{
