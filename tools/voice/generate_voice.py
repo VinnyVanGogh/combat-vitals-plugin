@@ -35,6 +35,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 VOICE_DIR = ROOT / "src/main/resources/com/vinnyvangogh/combatvitals/voice"
 LIST = VOICE_DIR / "lines.tsv"
+# The plugin joins clips by hand and takes this one format only
+# (AlertSounds.Wav.VOICE; AlertSoundsTest checks every bundled clip).
+# Change both together, and re-render every clip.
 RATE = 16000
 SILENCE = 0.02  # below this (of full scale) counts as silence when trimming
 PAD = 0.04  # seconds of silence kept after each clip, so joined parts breathe

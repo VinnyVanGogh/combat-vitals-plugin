@@ -29,6 +29,8 @@ final class VoiceLines
 {
 	/** The word list, a class resource beside this class. */
 	static final String LIST = "voice/lines.tsv";
+	/** Every clip's resource path starts with this. */
+	static final String FOLDER = "voice/";
 
 	static final String STOPPED = "stopped";
 	static final String STOPPED_GATHERING = "stopped-gathering";
@@ -121,7 +123,7 @@ final class VoiceLines
 	/** The class resource path of a clip id. */
 	static String path(String clip)
 	{
-		return "voice/" + clip + ".wav";
+		return FOLDER + clip + ".wav";
 	}
 
 	/**

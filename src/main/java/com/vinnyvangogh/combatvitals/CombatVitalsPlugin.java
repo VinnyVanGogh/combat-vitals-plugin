@@ -21,8 +21,6 @@ import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.BooleanSupplier;
 import javax.inject.Inject;
-import javax.sound.sampled.LineUnavailableException;
-import javax.sound.sampled.UnsupportedAudioFileException;
 import javax.swing.SwingUtilities;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -2777,7 +2775,7 @@ public class CombatVitalsPlugin extends Plugin
 	private AlertSounds.Plan soundPlan(AlertSettings settings, ActivityAlerts.Alert alert)
 	{
 		return AlertSounds.plan(settings.sound, alert, lastGainedItem, voiceLines,
-			CombatVitalsPlugin::bundled, name -> userSound(name) != null);
+			BUNDLED, name -> userSound(name) != null);
 	}
 
 	/** {@code name} in the user's sounds folder through the Filepath API, or null when it is not a file there. */
@@ -2795,18 +2793,12 @@ public class CombatVitalsPlugin extends Plugin
 		}
 	}
 
-	/** A sound bundled in the jar: opened the jar-safe way and closed again. */
-	private static boolean bundled(String path)
-	{
-		try (java.io.InputStream in = AlertSounds.class.getResourceAsStream(path))
-		{
-			return in != null;
-		}
-		catch (java.io.IOException e)
-		{
-			return false;
-		}
-	}
+	/**
+	 * A sound bundled in the jar, opened the jar-safe way and closed again;
+	 * a voice clip must also be in the one format the joiner takes.
+	 */
+	private static final java.util.function.Predicate<String> BUNDLED =
+		AlertSounds.playable(AlertSounds.class::getResourceAsStream);
 
 	/** Plays the plugin's own sound off the client thread; RuneLite's own is the Notifier's to play. */
 	private void play(AlertSounds.Plan plan, int volume)
@@ -2843,7 +2835,9 @@ public class CombatVitalsPlugin extends Plugin
 					audioPlayer.play(new ByteArrayInputStream(joined), gain);
 				}
 			}
-			catch (IOException | UnsupportedAudioFileException | LineUnavailableException e)
+			// Exception, not the player's own exception types: those are Java
+			// sound API classes, which the Plugin Hub refuses in a plugin's source.
+			catch (Exception e)
 			{
 				log.warn("Could not play the alert sound", e);
 			}
