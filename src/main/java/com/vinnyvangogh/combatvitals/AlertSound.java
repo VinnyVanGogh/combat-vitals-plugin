@@ -7,7 +7,7 @@ import lombok.Getter;
  * The sound one activity alert makes. {@link #RUNELITE} is RuneLite's own
  * notification sound, as before this setting existed; the packs are bundled
  * clips, {@link #VOICE} says what happened, and {@link #MY_SOUNDS} plays the
- * user's own file from {@code ~/.runelite/combat-vitals/sounds/}.
+ * user's own file from {@code ~/.runelite/plugin-data/combat-vitals/sounds/}.
  */
 @AllArgsConstructor
 public enum AlertSound

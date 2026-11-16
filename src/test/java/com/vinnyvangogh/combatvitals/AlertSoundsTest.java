@@ -7,7 +7,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Collections;
@@ -29,7 +28,6 @@ import org.junit.Test;
  */
 public class AlertSoundsTest
 {
-	private static final File DIR = new File("no-such-runelite/combat-vitals/sounds");
 	private static final Predicate<String> BUNDLED = p -> AlertSounds.class.getResource(p) != null;
 	private static final ActivityAlerts.Alert STOPPED =
 		new ActivityAlerts.Alert(ActivityAlerts.Type.GATHERING_STOPPED, Skill.WOODCUTTING);
@@ -43,7 +41,7 @@ public class AlertSoundsTest
 		final AlertSounds.Plan plan = plan(AlertSound.MY_SOUNDS, f -> false);
 		assertTrue(plan.runelite);
 		assertTrue(plan.missingFile);
-		assertEquals(new File(DIR, "gathering-stopped.wav"), plan.file);
+		assertEquals("gathering-stopped.wav", plan.file);
 
 		assertTrue("first time: hint", sounds.shouldHint(plan, STOPPED.type));
 		assertFalse("then quiet", sounds.shouldHint(plan, STOPPED.type));
@@ -64,7 +62,7 @@ public class AlertSoundsTest
 	{
 		final AlertSounds.Plan plan = plan(AlertSound.MY_SOUNDS, f -> true);
 		assertFalse(plan.runelite);
-		assertEquals(new File(DIR, "gathering-stopped.wav"), plan.file);
+		assertEquals("gathering-stopped.wav", plan.file);
 	}
 
 	@Test
@@ -81,7 +79,7 @@ public class AlertSoundsTest
 	public void missingPackClipFallsBackToRuneLite()
 	{
 		final AlertSounds.Plan plan = AlertSounds.plan(AlertSound.SOFT_CHIME, STOPPED, null, voice,
-			p -> false, DIR, f -> true);
+			p -> false, f -> true);
 		assertTrue(plan.runelite);
 		assertFalse(plan.missingFile);
 	}
@@ -90,7 +88,7 @@ public class AlertSoundsTest
 	public void unrenderedVoiceFallsBackToRuneLite()
 	{
 		final AlertSounds.Plan plan = AlertSounds.plan(AlertSound.VOICE, STOPPED, "Yew logs", voice,
-			p -> false, DIR, f -> true);
+			p -> false, f -> true);
 		assertTrue(plan.runelite);
 	}
 
@@ -121,7 +119,7 @@ public class AlertSoundsTest
 				}
 			}
 
-			final AlertSounds.Plan plan = AlertSounds.plan(sound, STOPPED, null, voice, BUNDLED, DIR, f -> false);
+			final AlertSounds.Plan plan = AlertSounds.plan(sound, STOPPED, null, voice, BUNDLED, f -> false);
 			assertFalse(plan.runelite);
 			assertEquals(Collections.singletonList(sound.getResource()), plan.resources);
 		}
@@ -131,7 +129,7 @@ public class AlertSoundsTest
 	public void voiceLinePlansTheComposedClips()
 	{
 		final AlertSounds.Plan plan = AlertSounds.plan(AlertSound.VOICE, STOPPED, "Yew logs", voice,
-			p -> true, DIR, f -> false);
+			p -> true, f -> false);
 		assertFalse(plan.runelite);
 		assertEquals(Arrays.asList("voice/stopped.wav", "voice/verb-chopping.wav", "voice/res-yew-logs.wav"),
 			plan.resources);
@@ -180,9 +178,9 @@ public class AlertSoundsTest
 		assertEquals(0f, AlertSounds.gain(150), 0.001f);
 	}
 
-	private AlertSounds.Plan plan(AlertSound sound, Predicate<File> fileExists)
+	private AlertSounds.Plan plan(AlertSound sound, Predicate<String> fileExists)
 	{
-		return AlertSounds.plan(sound, STOPPED, null, voice, BUNDLED, DIR, fileExists);
+		return AlertSounds.plan(sound, STOPPED, null, voice, BUNDLED, fileExists);
 	}
 
 	private static byte[] wav(AudioFormat format, int frames) throws Exception

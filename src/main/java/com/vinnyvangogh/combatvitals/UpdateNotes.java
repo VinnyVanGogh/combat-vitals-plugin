@@ -18,7 +18,7 @@ import java.util.List;
 final class UpdateNotes
 {
 	/** Must match {@code version} in runelite-plugin.properties (UpdateNotesTest). */
-	static final String VERSION = "1.1.0";
+	static final String VERSION = "1.2.0";
 
 	/** Says the old name too, so a player who knew "Combat Vitals" knows what this is. */
 	static final String TITLE = PluginName.FORMER_NAME + " is now " + PluginName.NAME
@@ -27,14 +27,14 @@ final class UpdateNotes
 	/** Where the skilling settings are, as the settings panel titles it. */
 	static final String CONFIGURE = "Configure " + PluginName.NAME + " > Skilling badge";
 
-	/** Written for 1.0.0 users: everything here is new to them, so nothing is a "fix". */
+	/** What 1.2.0 adds over 1.1.0, written for the players updating from it. */
 	static final List<String> NOTES = Collections.unmodifiableList(Arrays.asList(
-		"New skilling badge over your head: fishing, woodcutting, mining, thieving, hunter, runecraft.",
-		"It shows level and boost, XP to next level, session rates and inventory fill.",
-		"New next fishing spot mark and path, and a warning when you are missing gear.",
-		"New activity alerts (inventory full, stopped gathering) and side pillars (off by default).",
-		"Bosses can show health differently; Hide game health bar is back, opt-in.",
-		"Turn things on in " + CONFIGURE + "."
+		"New sidebar panel: presets, a tab per area with a short guide, and your live vitals.",
+		"The skilling badge now covers every skill, plus the Blast Furnace pump with its own checks.",
+		"More alerts: bird nests, clues, pets, level-ups, Forestry and random events.",
+		"Each alert can play its own sound or a voice line; every sound starts as RuneLite's own.",
+		"Log basket, fish barrel and other containers count toward your inventory.",
+		"Set it up in the new sidebar panel, or in " + CONFIGURE + "."
 	));
 
 	static final String WELCOME = PluginName.NAME + " " + VERSION

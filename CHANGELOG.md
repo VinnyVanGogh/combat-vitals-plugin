@@ -4,9 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [1.2.0] - 2026-11-15
 
 ### Changed
+- My sounds now live in `.runelite/plugin-data/combat-vitals/sounds/` through RuneLite's Filepath API (`internalName` and `getPluginDirectory()`); RuneLite moves an existing `.runelite/combat-vitals` folder there on first start (`legacyDataDirectory`). User files are read with `Filepath.openInputStream`, bundled sounds checked with `getResourceAsStream`. Version 1.2.0 with new update notes.
 - Sidebar redesign (Board, 2026-11-14: "make the guides more obvious ... it's still a lot ... make it nice and pretty"). One visual system (`PanelStyle`: a four-step spacing scale, the RuneScape small and bold fonts only, RuneLite's `ColorScheme` greys with its orange as the one accent, skill colours from the Look tab), rounded cards (`Card`, `FoldCard`) after GIM Utilities' `GroupIronmanPanel.section` and `GroupSettingsTab.collapsible`.
   - Guides open by default as boxed cards (`GuideCard`): orange accent bar, bold title with an info icon, two short paragraphs and the walkthrough as a numbered list, wrapped at the card's width. Folding one is remembered per tab in the new hidden key `sidebarGuidesClosed`; **Hide guides** in the panel header hides them all (`sidebarGuidesHidden`).
   - Live as cards: Combat (thick rounded Hitpoints and Prayer bars with the numbers inside, Run and Spec as chips, the target in its own box or a muted "Not in combat"), Skilling (skill icon, name and level, XP bar, a 2x2 grid of XP/hour, actions/hour, time to level and done count, a training method's timers such as "Active" and "Pump stops in 97:30" as chips), each card folding on its own. This session shows the three skills with the most XP gained, with small bars, the rest behind **Show all**; a skill with no XP gained (the login baseline) is never listed.

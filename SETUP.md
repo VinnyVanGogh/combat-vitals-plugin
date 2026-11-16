@@ -181,7 +181,9 @@ Closed by default. Every activity alert has its own settings here:
 again, logging out or hopping. The plugin only listens for those; it never
 presses, clicks or types anything.
 
-**My sounds** plays your own WAV from `.runelite/combat-vitals/sounds/`, one
+**My sounds** plays your own WAV from `.runelite/plugin-data/combat-vitals/sounds/`
+(1.2.0 moved it there from `.runelite/combat-vitals/sounds/`; RuneLite moves an
+existing folder for you), one
 file per alert: `inventory-full.wav`, `gathering-stopped.wav`, `spot-moved.wav`,
 `thieving-stopped.wav`, `stunned.wav`, `coin-pouch-cap.wav`,
 `necklace-broke.wav`, `production-finished.wav`, `low-run-energy.wav`. If the
