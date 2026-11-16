@@ -73,12 +73,12 @@ final class PanelGuide
 				return new Page(
 					"A notification when something needs you: inventory full, you stopped gathering or thieving, "
 						+ "the fishing spot moved, and more.",
-					"Each alert is a row: tick it on or off, and Test plays it. 'Same for every alert' gives "
-						+ "them all one sound; untick it to set each alert's own.",
+					"Each alert is a card: open it to tick it on or off, and Test plays it. 'Same for every "
+						+ "alert' gives them all one sound; untick it to set each alert's own.",
 					"Tick Same for every alert.",
 					"Pick Voice line as the sound and set the volume, e.g. 40.",
 					"Tick Repeat every alert if you want it again until you are back.",
-					"Click Test on Inventory full to hear it.");
+					"Open Inventory full and click Test to hear it.");
 			case LOOK:
 			default:
 				return new Page(
