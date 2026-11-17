@@ -275,6 +275,17 @@ public class CombatVitalsPlugin extends Plugin
 	@Inject
 	private NextSpotOverlay nextSpotOverlay;
 
+	@Inject
+	private AggressionOverlay aggressionOverlay;
+
+	@Inject
+	private AggressionAreaOverlay aggressionAreaOverlay;
+
+	/** When nearby NPCs stop being aggressive: this plugin's own timer, not the base plugin's. */
+	private final AggressionTimer aggression = new AggressionTimer();
+	/** The gathering activity of the session, for "Auto-reset on a new activity". */
+	private final SessionActivity sessionActivity = new SessionActivity();
+
 	/** Draws back every bar "Hide game health bar" takes off the game. */
 	@Inject
 	private GameHealthBarOverlay gameHealthBarOverlay;
@@ -472,6 +483,8 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.add(skillingBadgeOverlay);
 		overlayManager.add(pillarOverlay);
 		overlayManager.add(nextSpotOverlay);
+		overlayManager.add(aggressionOverlay);
+		overlayManager.add(aggressionAreaOverlay);
 		overlayManager.add(gameHealthBarOverlay);
 
 		knownSpots = KnownFishingSpots.load();
@@ -600,6 +613,8 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.remove(skillingBadgeOverlay);
 		overlayManager.remove(pillarOverlay);
 		overlayManager.remove(nextSpotOverlay);
+		overlayManager.remove(aggressionOverlay);
+		overlayManager.remove(aggressionAreaOverlay);
 		overlayManager.remove(gameHealthBarOverlay);
 		mouseManager.unregisterMouseListener(backOnClick);
 		keyManager.unregisterKeyListener(backOnKey);
@@ -762,6 +777,7 @@ public class CombatVitalsPlugin extends Plugin
 			case LOGIN_SCREEN:
 				// Logging out ends the session's counts; a hop does not.
 				session.clear();
+				sessionActivity.clear();
 				// No more ticks come to redraw the Live section, so it says so now.
 				publishLive();
 				// Another account may log in next: its own counts are restored from its profile.
@@ -773,6 +789,7 @@ public class CombatVitalsPlugin extends Plugin
 				// fall through
 			case HOPPING:
 				loginSync.loggingIn();
+				aggression.clear();
 				opponent = null;
 				combat.clear();
 				readout = null;
@@ -861,6 +878,7 @@ public class CombatVitalsPlugin extends Plugin
 	public void onInteractingChanged(InteractingChanged event)
 	{
 		randomEventTurnedTo(event.getSource(), event.getTarget());
+		npcTurnedOnPlayer(event.getSource(), event.getTarget());
 
 		// The single gate the whole compliance argument rests on: this plugin
 		// only ever tracks the target the user themselves engaged.
@@ -916,6 +934,101 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			skillingEvents.randomEvent(source.getName(), client.getTickCount());
 		}
+	}
+
+	/**
+	 * An attackable NPC turned on the player who is not fighting it: it is
+	 * aggressive, so the tolerance timer starts (unverified rule, see
+	 * {@link AggressionTimer}). Reads only what the client reports; nothing is sent.
+	 */
+	private void npcTurnedOnPlayer(Actor source, Actor target)
+	{
+		final Player self = client.getLocalPlayer();
+		if (self == null || target != self || !(source instanceof NPC) || self.getInteracting() == source
+			|| ((NPC) source).getCombatLevel() <= 0 || SkillingEvents.isRandomEventNpc(((NPC) source).getId()))
+		{
+			return;
+		}
+		final WorldPoint at = self.getWorldLocation();
+		if (at != null)
+		{
+			aggression.aggressed(at.getX(), at.getY(), at.getPlane(), client.getWorld(), client.getTickCount());
+		}
+	}
+
+	private void tickAggression()
+	{
+		final Player self = client.getLocalPlayer();
+		final WorldPoint at = self == null ? null : self.getWorldLocation();
+		if (at != null)
+		{
+			aggression.tick(at.getX(), at.getY(), at.getPlane(), client.getWorld());
+		}
+	}
+
+	/** The countdown text, or null while the timer is idle. */
+	String aggressionText()
+	{
+		return aggression.text(client.getTickCount());
+	}
+
+	boolean aggressionCalm()
+	{
+		return aggression.state(client.getTickCount()) == AggressionTimer.State.CALM;
+	}
+
+	/** The timer while it runs (for the area lines), else null. */
+	AggressionTimer aggressionArea()
+	{
+		return aggression.state(client.getTickCount()) == AggressionTimer.State.RUNNING ? aggression : null;
+	}
+
+	/** A finished skilling event's line in the chat, when Forestry event alerts are on. */
+	private void tickSkillingEventSummaries()
+	{
+		for (String summary : skillingEvents.takeSummaries())
+		{
+			if (AlertSettings.of(config, ActivityAlerts.Type.FORESTRY_EVENT).enabled())
+			{
+				consoleLine(ChatColorType.NORMAL, "Forestry event over - " + summary);
+			}
+		}
+	}
+
+	/**
+	 * A gathering chat line: when it is a different activity from the session's
+	 * and "Auto-reset on a new activity" is on, the session starts over and the
+	 * finished one's summary goes to the chat.
+	 */
+	private void observeActivity(String message)
+	{
+		final Skill skill = SessionActivity.skillOf(message);
+		if (skill == null || !VitalsHalves.skilling(config))
+		{
+			return;
+		}
+		final String before = sessionSummary(sessionActivity.skill(), sessionActivity.resource());
+		if (sessionActivity.observe(skill, SessionActivity.resourceOf(message), config.autoResetSession()))
+		{
+			sessionActivity.keepSummary(before, System.currentTimeMillis());
+			session.reset();
+			agilityLaps.clear();
+			if (before != null)
+			{
+				consoleLine(ChatColorType.NORMAL, "New activity, session reset. Before: " + before);
+			}
+		}
+	}
+
+	/** "yew logs: 120 gathered, 40000 xp" for the session so far, or null with no gains. */
+	private String sessionSummary(Skill skill, String resource)
+	{
+		if (skill == null || session.actions(skill) == 0)
+		{
+			return null;
+		}
+		return (resource == null ? skill.getName() : resource) + ": " + session.actions(skill) + " gathered, "
+			+ session.xpGained(skill) + " xp";
 	}
 
 	/**
@@ -1314,6 +1427,7 @@ public class CombatVitalsPlugin extends Plugin
 			activityAlerts.necklaceBroke();
 		}
 		skillingEvents.chat(message);
+		observeActivity(message);
 
 		containerContents.message(message, client.getTickCount());
 		agilityLaps.message(message, System.currentTimeMillis());
@@ -1796,6 +1910,8 @@ public class CombatVitalsPlugin extends Plugin
 	@Subscribe
 	public void onGameTick(GameTick tick)
 	{
+		tickAggression();
+		tickSkillingEventSummaries();
 		loginSync.tick();
 		expireOpponent();
 		stepSkillingObject();
@@ -2404,9 +2520,14 @@ public class CombatVitalsPlugin extends Plugin
 			capacities.put(SkillingContainer.ESSENCE_POUCHES, pouchCapacity);
 		}
 		final int pouches = pouchHeld;
-		return ContainerRow.rows(skill, capacities, kind ->
+		final List<ContainerRow> rows = new ArrayList<>();
+		for (ContainerRow row : ContainerRow.rows(skill, capacities, kind ->
 			kind == SkillingContainer.ESSENCE_POUCHES ? pouches : containerContents.contents(kind),
-			containerContents::isOpen);
+			containerContents::isOpen))
+		{
+			rows.add(row.withDetail(containerContents.itemsLabel(row.getKind())));
+		}
+		return rows;
 	}
 
 	private int pouchDegradation(EssencePouch pouch)

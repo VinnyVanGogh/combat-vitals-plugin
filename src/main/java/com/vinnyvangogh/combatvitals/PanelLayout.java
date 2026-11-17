@@ -131,7 +131,9 @@ final class PanelLayout
 		// The pump checks last: RuneLite's list puts them after Random event (same position, later names).
 		row(ActivityAlerts.Type.COKE_LOW, "Stove: coke runs low", "CokeLow", "alertCokeLow", null),
 		row(ActivityAlerts.Type.NO_STOKING, "Stove: no one stoking", "NoStoking", "alertNoStoking", null),
-		row(ActivityAlerts.Type.WRONG_WORLD, "Wrong world", "WrongWorld", "alertWrongWorld", "pumpWorlds")));
+		row(ActivityAlerts.Type.WRONG_WORLD, "Wrong world", "WrongWorld", "alertWrongWorld", "pumpWorlds"),
+		row(ActivityAlerts.Type.SKILLING_EVENT, "Mining and fishing events", "SkillingEvent", "alertSkillingEvent",
+			null)));
 
 	/** In the settings list only: the panel says where to find them. */
 	static final List<String> ADVANCED = Collections.unmodifiableList(Arrays.asList(
@@ -151,7 +153,8 @@ final class PanelLayout
 				return Arrays.asList(
 					new Group("What shows", "showPanel", "showOverhead", "displayMode", "percentageDecimals"),
 					new Group("Your own health", "showOwnHealth"),
-					new Group("The game's own", "hideGameHealthBar", "hideGameOverheadChat"));
+					new Group("The game's own", "hideGameHealthBar", "hideGameOverheadChat"),
+					new Group("NPC aggression", "aggressionTimer", "aggressionAreaLines"));
 			case TARGETS:
 				return Arrays.asList(
 					new Group("Who gets a readout", "showForNpcs", "showForPlayers", "overheadForPlayers",
@@ -185,7 +188,8 @@ final class PanelLayout
 			Group.more("Next fishing spot", "fishingSpotPath", "fishingSpotShortestPath"),
 			Group.more("More skills", "skillingHerblore", "skillingCooking", "skillingFletching", "skillingCrafting",
 				"skillingSmithing", "skillingFiremaking", "skillingPrayer", "skillingMagic", "skillingAgility",
-				"skillingConstruction", "skillingSailing"));
+				"skillingConstruction", "skillingSailing"),
+			new Group("New activity", "autoResetSession"));
 	}
 
 	private static List<Group> lookGroups()

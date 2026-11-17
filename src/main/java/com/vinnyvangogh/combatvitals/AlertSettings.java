@@ -118,6 +118,9 @@ final class AlertSettings
 			case LEVEL_UP:
 				return new AlertSettings(config.alertLevelUp(), config.soundLevelUp(),
 					config.volumeLevelUp(), config.repeatLevelUp());
+			case SKILLING_EVENT:
+				return new AlertSettings(config.alertSkillingEvent(), config.soundSkillingEvent(),
+					config.volumeSkillingEvent(), config.repeatSkillingEvent());
 			case RANDOM_EVENT:
 			default:
 				return new AlertSettings(config.alertRandomEvent(), config.soundRandomEvent(),

@@ -34,6 +34,7 @@ alert	FORESTRY_EVENT	forestry-event	A Forestry event started!
 alert	PET	pet	You have a funny feeling you're being followed!
 alert	LEVEL_UP	level-up	Level up!
 alert	RANDOM_EVENT	random-event	A random event is here for you.
+alert	SKILLING_EVENT	skilling-event	Something turned up while you were skilling!
 detail	BIRD_NEST|clue	clue-nest-fell	A clue nest fell!
 detail	CLUE_DROP|beginner	clue-beginner	You got a beginner clue!
 detail	CLUE_DROP|easy	clue-easy	You got an easy clue!

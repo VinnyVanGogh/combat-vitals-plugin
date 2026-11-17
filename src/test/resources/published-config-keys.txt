@@ -199,3 +199,11 @@ repeatNoStoking boolean
 soundWrongWorld AlertSound
 volumeWrongWorld int
 repeatWrongWorld boolean
+# 2026-11-16: Combat Vitals 1.3 (task-200059fb): NPC aggression timer, mining/fishing events alert, auto-reset.
+aggressionTimer boolean
+aggressionAreaLines boolean
+alertSkillingEvent Notification
+soundSkillingEvent AlertSound
+volumeSkillingEvent int
+repeatSkillingEvent boolean
+autoResetSession boolean

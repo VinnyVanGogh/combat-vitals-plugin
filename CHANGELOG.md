@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.3.0] - 2026-11-17
+
+Board, 2026-11-16 (Tuesday plan). Every new key is additive; nothing is renamed (`ConfigKeyFreezeTest`).
+
+### Added
+- **NPC aggression timer** (`aggressionTimer`, default on; `aggressionAreaLines`, default off). Our own reimplementation of the idea behind the base client's NPC Aggression Timer plugin, which is the precedent; nothing is read from that plugin. An attackable NPC turning on you while you are not fighting it starts a ten minute countdown (`AggressionTimer`, 1000 ticks) shown as a small corner panel (`AggressionOverlay`): `Aggressive for 9:54`, then `NPCs are no longer aggressive here`. Leaving the 21x21 area, a world hop, a floor change or a logout resets it. The area's edge on the ground (`AggressionAreaOverlay`) is an option, off by default, since the core plugin already draws it. **Unverified in game**: the start trigger and the area's centre are our reading of the tolerance rule, not captured.
+- **Log basket contents** item by item on the basket's line (`Log basket 12/28 free: 9 Yew logs, 3 Oak logs`), from the Check text and the gathering lines (`ContainerItems`, `ContainerContents.itemsLabel`); the kinds are dropped when they could no longer add up to the count. **Forestry kit leaves** gathered since login follow (`kit 24 Maple leaves`); the leaf line's wording is **unverified**, an unmatched line simply shows nothing.
+- **Skilling events**: a Forestry event is tracked from start to end (`EventLog`): the experience you earned chopping while it ran and the rewards that came in, said in the chat when it ends (`Forestry event over - Pheasant Control: 340 xp, 1 x Anima-infused bark`) while the Forestry event alert is on. Reward names are from memory of the wiki and **unverified**. New alert **Mining and fishing events** (`alertSkillingEvent`, off by default, with `soundSkillingEvent`, `volumeSkillingEvent`, `repeatSkillingEvent`): a gem found while mining, a clue bottle while fishing. Its voice clip `skilling-event` is listed in `voice/lines.tsv` but not rendered yet, so Voice line falls back to RuneLite's sound. Not done: depleted rock and Motherlode sack events, a big-catch event.
+- **Auto-reset on a new activity** (`autoResetSession`, default off): when the gathered resource or skill changes (yew logs to maple logs, mining to fishing) the session resets and the finished one's summary goes to the chat (`SessionActivity`).
+- **Sidebar**: an **Overlays** card with a switch per overlay and Show all / Hide all (`OverlayToggles`), each the setting of the same name so the list and the panel agree; a **Reset session** button in the Skilling tab's Session card (it ticks the existing `skillingSessionReset`).
+
+### Already there
+- "You've stopped chopping/mining/fishing" with the delay `alertStopSeconds` (5 s) and voice lines was in 1.2.0; it already stays quiet on a full inventory, at the bank, and after walking away (`ActivityAlerts.tick`).
+
 ## [1.2.0] - 2026-11-15
 
 ### Changed
