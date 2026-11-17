@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- Muting group in the Alerts tab, both keys new and additive: `alertMuteSounds` (`Mute alert sounds`, default off) silences the plugin's own alert sounds and RuneLite's notification sound; `alertFollowGameVolume` (`Follow game volume`, default on) scales the plugin's own sounds by the game's sound effects volume, and at 0 plays nothing (`AlertSounds`, `AlertSoundsTest`, `ConfigKeyFreezeTest`).
+
 ## [1.2.0] - 2026-11-15
 
 ### Changed
