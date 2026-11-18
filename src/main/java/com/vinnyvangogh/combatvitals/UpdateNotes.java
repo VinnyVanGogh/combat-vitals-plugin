@@ -18,7 +18,7 @@ import java.util.List;
 final class UpdateNotes
 {
 	/** Must match {@code version} in runelite-plugin.properties (UpdateNotesTest). */
-	static final String VERSION = "1.2.0";
+	static final String VERSION = "1.3.0";
 
 	/** Says the old name too, so a player who knew "Combat Vitals" knows what this is. */
 	static final String TITLE = PluginName.FORMER_NAME + " is now " + PluginName.NAME
@@ -27,14 +27,14 @@ final class UpdateNotes
 	/** Where the skilling settings are, as the settings panel titles it. */
 	static final String CONFIGURE = "Configure " + PluginName.NAME + " > Skilling badge";
 
-	/** What 1.2.0 adds over 1.1.0, written for the players updating from it. */
+	/** What 1.3.0 adds over 1.2.0, written for the players updating from it. */
 	static final List<String> NOTES = Collections.unmodifiableList(Arrays.asList(
-		"New sidebar panel: presets, a tab per area with a short guide, and your live vitals.",
-		"The skilling badge now covers every skill, plus the Blast Furnace pump with its own checks.",
-		"More alerts: bird nests, clues, pets, level-ups, Forestry and random events.",
-		"Each alert can play its own sound or a voice line; every sound starts as RuneLite's own.",
-		"Log basket, fish barrel and other containers count toward your inventory.",
-		"Set it up in the new sidebar panel, or in " + CONFIGURE + "."
+		"NPC aggression timer: a ten minute countdown for when nearby NPCs stop being aggressive.",
+		"The log basket now shows what is inside it, and forestry kit leaves are counted.",
+		"Forestry events are named and tracked: your experience and rewards, in the chat when one ends.",
+		"New alert for gems found while mining and clue bottles while fishing (off by default).",
+		"The sidebar can hide each overlay and reset the session, or do it on a new activity (off by default).",
+		"Set it up in the sidebar panel, or in " + CONFIGURE + "."
 	));
 
 	static final String WELCOME = PluginName.NAME + " " + VERSION

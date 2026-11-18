@@ -3,6 +3,7 @@ package com.vinnyvangogh.combatvitals;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -52,6 +53,12 @@ final class ContainerContents
 	private final Map<SkillingContainer, Integer> contents = new EnumMap<>(SkillingContainer.class);
 	private Set<SkillingContainer> open = Collections.emptySet();
 	private Map<SkillingContainer, Integer> capacities = Collections.emptyMap();
+
+	/** The basket's kinds from its last Check, kept up as logs go in; null while unknown. */
+	private Map<String, Integer> basketItems;
+	private String lastLog;
+	/** Forestry kit leaves collected since login, by kind. */
+	private final Map<String, Integer> kitLeaves = new LinkedHashMap<>();
 
 	private SkillingContainer clicked;
 	private boolean clickedFill;
@@ -213,6 +220,7 @@ final class ContainerContents
 			return false;
 		}
 		clicked = null;
+		basketItems = null;
 		contents.put(container, clickedFill ? Math.min(capacity(container), now + moved) : Math.max(0, now - moved));
 		return true;
 	}
@@ -220,6 +228,9 @@ final class ContainerContents
 	void clear()
 	{
 		contents.clear();
+		basketItems = null;
+		lastLog = null;
+		kitLeaves.clear();
 		open = Collections.emptySet();
 		capacities = Collections.emptyMap();
 		clicked = null;
@@ -251,10 +262,72 @@ final class ContainerContents
 
 	private boolean basket(String message)
 	{
-		return check(SkillingContainer.LOG_BASKET, BASKET_CHECK, message)
-			|| empty(SkillingContainer.LOG_BASKET, BASKET_EMPTY, message)
-			|| ((BASKET_ADD.matcher(message).matches() || BASKET_EXTRA.matcher(message).matches())
-				&& addOne(SkillingContainer.LOG_BASKET));
+		final String leaf = ContainerItems.leaf(message);
+		if (leaf != null)
+		{
+			ContainerItems.add(kitLeaves, leaf);
+			return false;
+		}
+		final Matcher checked = BASKET_CHECK.matcher(message);
+		if (checked.matches())
+		{
+			basketItems = ContainerItems.parse(checked.group(1));
+		}
+		if (check(SkillingContainer.LOG_BASKET, BASKET_CHECK, message)
+			|| empty(SkillingContainer.LOG_BASKET, BASKET_EMPTY, message))
+		{
+			if (BASKET_EMPTY.matcher(message).matches())
+			{
+				basketItems = new LinkedHashMap<>();
+			}
+			return true;
+		}
+		return basketLogAdded(message);
+	}
+
+	private boolean basketLogAdded(String message)
+	{
+		final boolean added = BASKET_ADD.matcher(message).matches();
+		if (!added && !BASKET_EXTRA.matcher(message).matches())
+		{
+			return false;
+		}
+		final String name = added ? ContainerItems.gathered(message) : lastLog;
+		lastLog = name;
+		final boolean counted = addOne(SkillingContainer.LOG_BASKET);
+		if (counted && basketItems != null && name != null)
+		{
+			ContainerItems.add(basketItems, name);
+		}
+		else if (counted)
+		{
+			basketItems = null;
+		}
+		return counted;
+	}
+
+	/**
+	 * What the open log basket holds, item by item ("14 Yew logs, 3 Oak logs"),
+	 * with the forestry kit's leaves gathered since login after it; null when
+	 * neither is known. The kinds are dropped whenever they could no longer
+	 * add up to the count (a Fill, an Empty, a log of unknown name).
+	 */
+	String itemsLabel(SkillingContainer container)
+	{
+		if (container != SkillingContainer.LOG_BASKET)
+		{
+			return null;
+		}
+		final StringBuilder out = new StringBuilder();
+		if (basketItems != null && ContainerItems.total(basketItems) == contents(container))
+		{
+			out.append(ContainerItems.label(basketItems, 3));
+		}
+		if (!kitLeaves.isEmpty())
+		{
+			out.append(out.length() == 0 ? "" : "; ").append("kit ").append(ContainerItems.label(kitLeaves, 2));
+		}
+		return out.length() == 0 ? null : out.toString();
 	}
 
 	private boolean barrel(String message)

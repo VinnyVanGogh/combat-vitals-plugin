@@ -56,7 +56,17 @@ final class SkillingEvents
 	/** The alerts this class sends; the rest are {@link ActivityAlerts}'. */
 	static final Set<ActivityAlerts.Type> TYPES = Collections.unmodifiableSet(EnumSet.of(
 		ActivityAlerts.Type.BIRD_NEST, ActivityAlerts.Type.CLUE_DROP, ActivityAlerts.Type.FORESTRY_EVENT,
-		ActivityAlerts.Type.PET, ActivityAlerts.Type.LEVEL_UP, ActivityAlerts.Type.RANDOM_EVENT));
+		ActivityAlerts.Type.PET, ActivityAlerts.Type.LEVEL_UP, ActivityAlerts.Type.RANDOM_EVENT,
+		ActivityAlerts.Type.SKILLING_EVENT));
+
+	/** A Forestry event whose parts have all been gone this many ticks is over. */
+	static final int EVENT_END_TICKS = 10;
+	/** "You just found a Sapphire!": the mining gem line (unverified wording). */
+	private static final Pattern GEM_LINE = Pattern.compile("^You just found (?:an? )?([\\w' -]+)!$");
+
+	private final EventLog eventLog = new EventLog();
+	private Forestry openEvent;
+	private final List<String> summaries = new ArrayList<>();
 
 	/** The base Random Events plugin's {@code RANDOM_EVENT_TIMEOUT}. */
 	static final int RANDOM_EVENT_COOLDOWN = 150;
@@ -189,25 +199,37 @@ final class SkillingEvents
 		return alert;
 	}
 
+	private static String nestMessage(String detail)
+	{
+		return detail == null ? "A bird's nest fell" : "A " + lower(detail) + " fell";
+	}
+
+	private static String petMessage(String detail)
+	{
+		return DUPLICATE.equals(detail)
+			? "You would have got a pet, but you already have it"
+			: PET_FOLLOWED;
+	}
+
 	/** The notification text for one of these alerts, or null for any other. */
 	static String message(ActivityAlerts.Alert alert)
 	{
 		switch (alert.type)
 		{
 			case BIRD_NEST:
-				return alert.detail == null ? "A bird's nest fell" : "A " + lower(alert.detail) + " fell";
+				return nestMessage(alert.detail);
 			case CLUE_DROP:
 				return "Clue drop: " + alert.detail;
 			case FORESTRY_EVENT:
 				return "A Forestry event started: " + alert.detail;
 			case PET:
-				return DUPLICATE.equals(alert.detail)
-					? "You would have got a pet, but you already have it"
-					: PET_FOLLOWED;
+				return petMessage(alert.detail);
 			case LEVEL_UP:
 				return alert.skill.getName() + " level " + alert.detail;
 			case RANDOM_EVENT:
 				return "A random event is here for you: " + alert.detail;
+			case SKILLING_EVENT:
+				return alert.detail;
 			default:
 				return null;
 		}
@@ -270,6 +292,7 @@ final class SkillingEvents
 		if (skill == Skill.WOODCUTTING && xps[i] >= 0 && xp > xps[i])
 		{
 			lastWoodcuttingTick = tick;
+			eventLog.xp(xp - xps[i]);
 		}
 		levels[i] = level;
 		xps[i] = xp;
@@ -304,6 +327,10 @@ final class SkillingEvents
 		{
 			petOnce(null);
 		}
+		else
+		{
+			gatheringEvent(message);
+		}
 	}
 
 	/** One pet alert per tick, however many chat types carry the line. */
@@ -319,6 +346,33 @@ final class SkillingEvents
 		pending.add(new ActivityAlerts.Alert(ActivityAlerts.Type.PET, null, detail));
 	}
 
+	/** Mining gems and fishing clue bottles, as one alert each (Board, 2026-11-16). */
+	private void gatheringEvent(String message)
+	{
+		final Matcher gem = GEM_LINE.matcher(message);
+		if (gem.matches())
+		{
+			pending.add(new ActivityAlerts.Alert(ActivityAlerts.Type.SKILLING_EVENT, Skill.MINING,
+				"Gem found: " + gem.group(1)));
+		}
+		else if (message.startsWith("You catch") && message.toLowerCase(Locale.ROOT).contains("clue bottle"))
+		{
+			pending.add(new ActivityAlerts.Alert(ActivityAlerts.Type.SKILLING_EVENT, Skill.FISHING, "Clue bottle caught"));
+		}
+	}
+
+	/** Finished event lines for the chat, taken once. */
+	List<String> takeSummaries()
+	{
+		if (summaries.isEmpty())
+		{
+			return Collections.emptyList();
+		}
+		final List<String> out = new ArrayList<>(summaries);
+		summaries.clear();
+		return out;
+	}
+
 	/**
 	 * An item landed in the player's own inventory.
 	 *
@@ -326,6 +380,7 @@ final class SkillingEvents
 	 */
 	void inventoryGained(String name, boolean skilling)
 	{
+		eventLog.reward(name);
 		// A clue nest alerted when it fell; picking it up is not news.
 		if (skilling && clueTier(name) != null && !isClueNest(name))
 		{
@@ -350,6 +405,12 @@ final class SkillingEvents
 		if (fresh && rearmed && near && !loading && choppedRecently(tick))
 		{
 			pending.add(new ActivityAlerts.Alert(ActivityAlerts.Type.FORESTRY_EVENT, Skill.WOODCUTTING, kind.title));
+			final String previous = eventLog.started(kind.title, tick);
+			if (previous != null)
+			{
+				summaries.add(previous);
+			}
+			openEvent = kind;
 		}
 	}
 
@@ -399,6 +460,7 @@ final class SkillingEvents
 				forestryLastLive.put(entry.getKey(), tick);
 			}
 		}
+		endEventIfGone(tick);
 		if (nestFell)
 		{
 			// The clue nest's ground item arrives just before the chat line.
@@ -418,9 +480,32 @@ final class SkillingEvents
 		return out;
 	}
 
+	/** The open Forestry event is over once all its parts have been gone {@link #EVENT_END_TICKS} ticks. */
+	private void endEventIfGone(int tick)
+	{
+		if (openEvent == null)
+		{
+			return;
+		}
+		final Set<Object> live = forestryLive.get(openEvent);
+		final Integer last = forestryLastLive.get(openEvent);
+		if ((live == null || live.isEmpty()) && last != null && tick - last >= EVENT_END_TICKS)
+		{
+			final String summary = eventLog.finish();
+			if (summary != null)
+			{
+				summaries.add(summary);
+			}
+			openEvent = null;
+		}
+	}
+
 	/** Logged out or hopped: everything is a baseline again. */
 	void clear()
 	{
+		eventLog.clear();
+		openEvent = null;
+		summaries.clear();
 		Arrays.fill(levels, -1);
 		Arrays.fill(xps, -1);
 		lastWoodcuttingTick = -1;

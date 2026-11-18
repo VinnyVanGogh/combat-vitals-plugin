@@ -38,6 +38,16 @@ less are exact; players are within one or two hitpoints, and the bar lags a
 couple of ticks after they eat. Your own health is always exact.
 The measurements: [docs/accuracy.md](docs/accuracy.md).
 
+### NPC aggression timer
+
+When an NPC attacks you without you fighting it, a small corner panel counts down
+ten minutes (`Aggressive for 9:54`), then says `NPCs are no longer aggressive
+here`. Leaving the 21x21 area, hopping worlds or changing floors resets it. The
+area's edge on the ground is an option (`Aggression area lines`, off by default;
+RuneLite's own NPC Aggression Timer plugin draws the same lines). This is the
+plugin's own timer; it reads nothing from that plugin. The start trigger and the
+area's centre are our reading of the rule and have not been checked in game.
+
 ### Splashing mode
 
 For AFK Magic training (off by default, Targets tab). While you cast a combat
@@ -91,7 +101,20 @@ Fish above your level are dimmed with the level they need.
 `Inv 26/28 free` on a bar that runs green to red as you fill it. Tools, bait
 and stackables do not count as space you can fill. A carried log basket, fish
 barrel, coal bag or essence pouches gets its own line, and can count as free
-space so *Inventory full* waits for it too.
+space so *Inventory full* waits for it too. An open log basket also says what
+is inside it (`9 Yew logs, 3 Oak logs`, from its Check text), and forestry kit
+leaves gathered since login are counted after it.
+
+### Sessions and events
+
+*Reset session* in the sidebar's Skilling tab zeroes the count and rates now;
+*Auto-reset on new activity* (off by default) does it when you move from yew
+logs to maple logs, or to another skill, and puts the finished session's summary
+in the chat. A Forestry event is named when it starts and, when it ends, the
+chat says what you earned in it (experience and known rewards). *Mining and
+fishing events* (off by default) alerts on a gem found while mining and a clue
+bottle while fishing. The sidebar's *Overlays* card switches each overlay, or all
+of them, on and off; it is the same setting as in RuneLite's list.
 
 <p align="center">
   <img src="docs/images/inventory-fill-full.png" alt="Inventory line full and red" width="300">

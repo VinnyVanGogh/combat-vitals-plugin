@@ -299,6 +299,34 @@ public interface CombatVitalsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "aggressionTimer",
+		name = "NPC aggression timer",
+		description = "Count down the ten minutes after which nearby NPCs stop being aggressive, in the panel "
+			+ "and the skilling badge's corner. Starts when an NPC attacks you; resets when you leave the "
+			+ "21x21 area, hop worlds or change floors. This plugin's own timer: it does not read the "
+			+ "base NPC Aggression Timer plugin.",
+		section = displaySection,
+		position = 7
+	)
+	default boolean aggressionTimer()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "aggressionAreaLines",
+		name = "Aggression area lines",
+		description = "Draw the 21x21 area on the ground while the timer runs. Off by default: RuneLite's "
+			+ "NPC Aggression Timer plugin draws the same lines.",
+		section = displaySection,
+		position = 8
+	)
+	default boolean aggressionAreaLines()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "showOwnHealth",
 		name = "Show your own health",
 		description =
@@ -1609,6 +1637,32 @@ public interface CombatVitalsConfig extends Config
 		return PumpChecks.DEFAULT_WORLDS;
 	}
 
+	@ConfigItem(
+		keyName = "alertSkillingEvent",
+		name = "Mining and fishing events",
+		description = "Notify on a gem found while mining, or a clue bottle or big catch while fishing. "
+			+ "Off by default; the voice line is not bundled yet, so it falls back to RuneLite's sound.",
+		section = alertsSection,
+		position = 23
+	)
+	default Notification alertSkillingEvent()
+	{
+		return Notification.OFF;
+	}
+
+	@ConfigItem(
+		keyName = "autoResetSession",
+		name = "Auto-reset on new activity",
+		description = "Reset the session when the activity changes (yew logs to maple logs, or another skill or "
+			+ "resource). The previous session's summary stays on the badge for two minutes.",
+		section = skillingSection,
+		position = 41
+	)
+	default boolean autoResetSession()
+	{
+		return false;
+	}
+
 	String SOUND_HELP = " RuneLite: your RuneLite notification sound, as before. Soft chime, Music box, Retro blip: "
 		+ "bundled sounds. Voice line: says what happened. My sounds: your own WAV in "
 		+ ".runelite/plugin-data/combat-vitals/sounds/";
@@ -2472,6 +2526,43 @@ public interface CombatVitalsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "soundSkillingEvent",
+		name = "Gem/bottle sound",
+		description = "What the mining and fishing events alert sounds like." + SOUND_HELP + "skilling-event.wav",
+		section = alertsSection,
+		position = 92
+	)
+	default AlertSound soundSkillingEvent()
+	{
+		return AlertSound.RUNELITE;
+	}
+
+	@Range(min = 1, max = 100)
+	@ConfigItem(
+		keyName = "volumeSkillingEvent",
+		name = "Gem/bottle volume",
+		description = VOLUME_HELP,
+		section = alertsSection,
+		position = 93
+	)
+	default int volumeSkillingEvent()
+	{
+		return 40;
+	}
+
+	@ConfigItem(
+		keyName = "repeatSkillingEvent",
+		name = "Repeat gem/bottle",
+		description = "Sound the mining and fishing events alert" + REPEAT_HELP,
+		section = alertsSection,
+		position = 94
+	)
+	default boolean repeatSkillingEvent()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "alertMuteSounds",
 		name = "Mute alert sounds",
 		description = "No sound from any alert: not the plugin's own, and not RuneLite's notification sound "
@@ -2479,7 +2570,7 @@ public interface CombatVitalsConfig extends Config
 			+ "process, so muting one app in your system's volume mixer may not silence it: use this "
 			+ "instead.",
 		section = alertsSection,
-		position = 92
+		position = 95
 	)
 	default boolean alertMuteSounds()
 	{
@@ -2492,7 +2583,7 @@ public interface CombatVitalsConfig extends Config
 		description = "Scale the plugin's own alert sounds by the game's sound effects volume, and play nothing "
 			+ "while that is muted. RuneLite's sound keeps RuneLite's notification volume.",
 		section = alertsSection,
-		position = 93
+		position = 96
 	)
 	default boolean alertFollowGameVolume()
 	{

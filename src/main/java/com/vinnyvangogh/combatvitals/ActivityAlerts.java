@@ -76,7 +76,9 @@ final class ActivityAlerts
 		FORESTRY_EVENT,
 		PET,
 		LEVEL_UP,
-		RANDOM_EVENT
+		RANDOM_EVENT,
+		/** A gem found while mining, a clue bottle while fishing. */
+		SKILLING_EVENT
 	}
 
 	/** One alert to send, with the skill it is about when there is one, and the training method. */

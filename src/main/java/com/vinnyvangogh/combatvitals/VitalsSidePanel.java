@@ -20,6 +20,7 @@ import javax.swing.AbstractButton;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -61,6 +62,11 @@ final class VitalsSidePanel extends PluginPanel
 		void testAlert(ActivityAlerts.Type type);
 	}
 
+	static final String OVERLAYS = "Overlays";
+	static final String SHOW_ALL = "Show every overlay";
+	static final String HIDE_ALL = "Hide every overlay";
+	static final String SESSION = "Session";
+	static final String RESET_SESSION = "Reset session";
 	static final String TITLE = "Combat & Skilling Vitals";
 	static final String ADVANCED_NOTE = "Timeouts and update notes are in RuneLite's settings list for this "
 		+ "plugin, under Advanced.";
@@ -118,6 +124,7 @@ final class VitalsSidePanel extends PluginPanel
 		root.add(header());
 		live = new LiveSection(store);
 		root.add(live);
+		root.add(overlays());
 		root.add(presets());
 		root.add(tabBar());
 		cardPanel.setOpaque(false);
@@ -279,6 +286,43 @@ final class VitalsSidePanel extends PluginPanel
 	}
 
 	// ---- Presets ----
+
+	/** One switch per overlay, and for all of them; each is the setting of the same name, so both views agree. */
+	private JComponent overlays()
+	{
+		final FoldCard card = new FoldCard(OVERLAYS, null, null, true);
+		for (OverlayToggles.Toggle t : OverlayToggles.TOGGLES)
+		{
+			final JCheckBox box = new JCheckBox(t.label);
+			box.setName("overlay-" + t.key);
+			box.setFont(PanelStyle.body());
+			box.setForeground(Color.WHITE);
+			box.setOpaque(false);
+			box.setFocusable(false);
+			box.addActionListener(e -> OverlayToggles.set(store, t, box.isSelected()));
+			controls.track(new SettingControls.Bound()
+			{
+				@Override
+				public JComponent view()
+				{
+					return box;
+				}
+
+				@Override
+				public void load()
+				{
+					box.setSelected(OverlayToggles.isOn(store, t));
+				}
+			});
+			card.body.add(settingRow(box));
+		}
+		final JPanel all = new JPanel(new GridLayout(1, 2, PanelStyle.S, PanelStyle.S));
+		all.setOpaque(false);
+		all.add(button(SHOW_ALL, "Show every overlay.", () -> OverlayToggles.setAll(store, true)));
+		all.add(button(HIDE_ALL, "Hide every overlay.", () -> OverlayToggles.setAll(store, false)));
+		card.body.add(all);
+		return card;
+	}
 
 	private JComponent presets()
 	{
@@ -478,6 +522,13 @@ final class VitalsSidePanel extends PluginPanel
 			for (String key : g.keys)
 			{
 				addControl(card.body, key);
+			}
+			if (tab == PanelLayout.Tab.SKILLING && SESSION.equals(g.title))
+			{
+				final JButton reset = button(RESET_SESSION, "Zero the session count and rates now.",
+					() -> store.set("skillingSessionReset", true));
+				reset.setName("reset-session");
+				card.body.add(reset);
 			}
 			(g.more ? more : c).add(card);
 		}

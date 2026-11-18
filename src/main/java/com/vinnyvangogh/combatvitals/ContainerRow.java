@@ -28,11 +28,24 @@ class ContainerRow
 	int capacity;
 	/** Carried open: what the skill gathers goes straight in. */
 	boolean open;
+	/** What is inside, item by item ("14 Yew logs, 3 Oak logs"), or null while not known. */
+	String detail;
 
 	/** A row whose open state does not matter: shown as closed. */
 	ContainerRow(SkillingContainer kind, int contents, int capacity)
 	{
-		this(kind, contents, capacity, false);
+		this(kind, contents, capacity, false, null);
+	}
+
+	ContainerRow(SkillingContainer kind, int contents, int capacity, boolean open)
+	{
+		this(kind, contents, capacity, open, null);
+	}
+
+	/** The same row with what is inside it spelled out. */
+	ContainerRow withDetail(String items)
+	{
+		return new ContainerRow(kind, contents, capacity, open, items == null || items.isEmpty() ? null : items);
 	}
 
 	/**
@@ -68,9 +81,10 @@ class ContainerRow
 		{
 			return name + "?/" + capacity + " (check the " + kind.getNoun() + " once)";
 		}
-		return count == InventoryCount.USED
+		final String base = count == InventoryCount.USED
 			? name + Math.min(contents, capacity) + "/" + capacity + " used"
 			: name + free() + "/" + capacity + " free";
+		return detail == null ? base : base + ": " + detail;
 	}
 
 	/**
