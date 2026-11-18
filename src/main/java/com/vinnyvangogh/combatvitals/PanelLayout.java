@@ -101,6 +101,9 @@ final class PanelLayout
 	static final Group SHARED_SOUND = new Group("Sound for every alert", SOUND_SHARED, "alertSoundAll",
 		"alertVolumeAll", "alertRepeatAll");
 
+	/** Silencing every alert, at the top of the Alerts tab; last in RuneLite's list. */
+	static final Group MUTING = new Group("Muting", "alertMuteSounds", "alertFollowGameVolume");
+
 	static final Group REPEATS = new Group("Repeats", "repeatEverySeconds", "repeatMaxMinutes");
 
 	static final List<AlertRow> ALERTS = Collections.unmodifiableList(Arrays.asList(
@@ -232,6 +235,7 @@ final class PanelLayout
 		{
 			out.addAll(Arrays.asList(r.sound, r.volume, r.repeat));
 		}
+		out.addAll(MUTING.keys);
 		return out;
 	}
 }

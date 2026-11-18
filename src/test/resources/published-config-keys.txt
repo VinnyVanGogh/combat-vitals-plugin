@@ -199,6 +199,8 @@ repeatNoStoking boolean
 soundWrongWorld AlertSound
 volumeWrongWorld int
 repeatWrongWorld boolean
+alertMuteSounds boolean
+alertFollowGameVolume boolean
 splashMode boolean
 splashMaxChance int
 splashAlertBroke Notification

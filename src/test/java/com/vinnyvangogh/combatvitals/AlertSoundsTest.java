@@ -29,6 +29,27 @@ import org.junit.Test;
  */
 public class AlertSoundsTest
 {
+	@Test
+	public void gameVolumeMuteSilencesOwnSounds()
+	{
+		assertEquals(0, AlertSounds.effectiveVolume(40, true, 0));
+		assertEquals(0, AlertSounds.effectiveVolume(40, true, -5));
+	}
+
+	@Test
+	public void gameVolumeScalesAndClamps()
+	{
+		assertEquals(40, AlertSounds.effectiveVolume(40, true, 127));
+		assertEquals(40, AlertSounds.effectiveVolume(40, true, 500));
+		assertEquals(20, AlertSounds.effectiveVolume(40, true, 64));
+	}
+
+	@Test
+	public void notFollowingKeepsOwnVolume()
+	{
+		assertEquals(40, AlertSounds.effectiveVolume(40, false, 0));
+	}
+
 	private static final Predicate<String> BUNDLED = p -> AlertSounds.class.getResource(p) != null;
 	/** tools/voice/generate_voice.py: RATE = 16000, setnchannels(1), setsampwidth(2); little-endian signed. */
 	private static final AudioFormat VOICE = new AudioFormat(16000f, 16, 1, true, false);
