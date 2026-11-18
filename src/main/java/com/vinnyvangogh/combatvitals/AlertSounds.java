@@ -118,6 +118,23 @@ final class AlertSounds
 		return plan.missingFile && hinted.add(type);
 	}
 
+	/** The game's sound effects volume runs 0 to 127. */
+	static final int GAME_VOLUME_MAX = 127;
+
+	/**
+	 * The volume to play at: the alert's own, scaled by the game's sound
+	 * effects volume when following it. 0 means play nothing.
+	 */
+	static int effectiveVolume(int volume, boolean followGame, int gameVolume)
+	{
+		if (!followGame)
+		{
+			return volume;
+		}
+		final int game = Math.max(0, Math.min(GAME_VOLUME_MAX, gameVolume));
+		return Math.round(volume * game / (float) GAME_VOLUME_MAX);
+	}
+
 	/** Volume 0 to 100 as the gain RuneLite's player takes, in dB, as {@code Notifier} converts it. */
 	static float gain(int volume)
 	{

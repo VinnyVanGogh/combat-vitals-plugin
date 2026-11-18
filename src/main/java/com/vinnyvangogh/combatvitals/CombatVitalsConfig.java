@@ -2431,6 +2431,34 @@ public interface CombatVitalsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "alertMuteSounds",
+		name = "Mute alert sounds",
+		description = "No sound from any alert: not the plugin's own, and not RuneLite's notification sound "
+			+ "(the tray notification and chat message still come). RuneLite plays sound inside its own "
+			+ "process, so muting one app in your system's volume mixer may not silence it: use this "
+			+ "instead.",
+		section = alertsSection,
+		position = 92
+	)
+	default boolean alertMuteSounds()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "alertFollowGameVolume",
+		name = "Follow game volume",
+		description = "Scale the plugin's own alert sounds by the game's sound effects volume, and play nothing "
+			+ "while that is muted. RuneLite's sound keeps RuneLite's notification volume.",
+		section = alertsSection,
+		position = 93
+	)
+	default boolean alertFollowGameVolume()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 		keyName = "opponentTimeout",
 		name = "Timeout (s)",
 		description = "How long, in seconds, the readout stays up after combat ends. The stock plugin fixes this at 5.",

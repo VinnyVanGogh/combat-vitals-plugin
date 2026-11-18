@@ -497,6 +497,12 @@ final class VitalsSidePanel extends PluginPanel
 	/** The shared sound, the repeat timing, then a box per alert; per-alert sounds only while not shared. */
 	private void alerts(Column c)
 	{
+		final FoldCard muting = new FoldCard(PanelLayout.MUTING.title, null, null, true);
+		for (String key : PanelLayout.MUTING.keys)
+		{
+			addControl(muting.body, key);
+		}
+		c.add(muting);
 		final FoldCard sound = new FoldCard(PanelLayout.SHARED_SOUND.title, null, null, true);
 		final List<String> sharedKeys = PanelLayout.SHARED_SOUND.keys;
 		addControl(sound.body, sharedKeys.get(0));
