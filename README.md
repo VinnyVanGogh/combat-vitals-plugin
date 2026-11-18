@@ -38,6 +38,15 @@ less are exact; players are within one or two hitpoints, and the bar lags a
 couple of ticks after they eat. Your own health is always exact.
 The measurements: [docs/accuracy.md](docs/accuracy.md).
 
+### Splashing mode
+
+For AFK Magic training (off by default, Targets tab). While you cast a combat
+spell at an NPC, a small overlay shows your Magic attack bonus and your chance to
+hit that NPC, from the wiki's accuracy formula: green at -64 or lower (a
+guaranteed splash), red above the chance you set. It can notify when you change
+gear, spell or target. Information only. How it works:
+[docs/splashing.md](docs/splashing.md).
+
 ### Side pillars
 
 Optional bars beside the inventory, where RuneLite's Status Bars draws: your

@@ -438,6 +438,47 @@ public interface CombatVitalsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "splashMode",
+		name = "Splashing mode",
+		description = "For AFK Magic training: when you attack an NPC with a combat spell, show your Magic "
+			+ "attack bonus and your chance to hit it, from the OSRS wiki's accuracy formula, and warn when "
+			+ "the bonus is too high to splash. Information only: nothing is cast, clicked or changed for you.",
+		section = targetSection,
+		position = 9
+	)
+	default boolean splashMode()
+	{
+		return false;
+	}
+
+	@Range(min = 0, max = 100)
+	@ConfigItem(
+		keyName = "splashMaxChance",
+		name = "Splash: warn at %",
+		description = "Splashing mode warns in red while your chance to hit the target is above this. At 0 any "
+			+ "chance to hit warns; a Magic attack bonus of -64 or lower is a 0% chance against anything.",
+		section = targetSection,
+		position = 10
+	)
+	default int splashMaxChance()
+	{
+		return 0;
+	}
+
+	@ConfigItem(
+		keyName = "splashAlertBroke",
+		name = "Splash: setup broke",
+		description = "Splashing mode: notify when you change your gear (anything worn), your spell, or the "
+			+ "NPC you are casting at while splashing.",
+		section = targetSection,
+		position = 11
+	)
+	default Notification splashAlertBroke()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
 		keyName = "skillingEnabled",
 		name = "Skilling badge",
 		description =

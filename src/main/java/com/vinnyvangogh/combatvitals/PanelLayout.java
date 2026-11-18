@@ -157,7 +157,8 @@ final class PanelLayout
 					new Group("Who gets a readout", "showForNpcs", "showForPlayers", "overheadForPlayers",
 						"showPlayerHitpoints", "showStatComparison"),
 					new Group("Big targets", "bigTargetDisplay", "otherTargetDisplay", "bigTargetRule",
-						"bigTargetMaxHp"));
+						"bigTargetMaxHp"),
+					new Group("Splashing (AFK Magic)", "splashMode", "splashMaxChance", "splashAlertBroke"));
 			case SKILLING:
 				return skillingGroups();
 			case LOOK:

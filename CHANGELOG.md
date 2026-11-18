@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+- Splashing mode for AFK Magic training (Board idea, 2026-11-18; task-56b61cd3). Off by default (`splashMode`, Targets tab). While you cast a combat spell at an NPC (autocast on, or a spell you click on it) a small overlay shows your Magic attack bonus (the sum over what you wear, from RuneLite's item stats) and your chance to hit that NPC, from the OSRS wiki's accuracy formula and the NPC's Magic level and Magic defence in a bundled wiki table (`monster_magic.tsv`, built offline by `tools/splash/fetch_monsters.py`). Green at -64 or lower (the wiki's splash bonus: a 0% chance to hit anything, no monster data needed), amber for a small chance, red above `splashMaxChance` (default 0%). `splashAlertBroke` (on, inside the mode) notifies when you change your gear, spell or target while casting. Information only. New keys `splashMode`, `splashMaxChance`, `splashAlertBroke`, appended to the frozen list. Formula, sources and what is not modelled: `docs/splashing.md` (`SplashMath`, `SplashTracker`, `SplashWatcher`, `SplashOverlay`, `MonsterMagic`).
+
 ## [1.2.0] - 2026-11-15
 
 ### Changed
