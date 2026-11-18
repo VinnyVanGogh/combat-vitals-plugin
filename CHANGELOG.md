@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - Muting group in the Alerts tab, both keys new and additive: `alertMuteSounds` (`Mute alert sounds`, default off) silences the plugin's own alert sounds and RuneLite's notification sound; `alertFollowGameVolume` (`Follow game volume`, default on) scales the plugin's own sounds by the game's sound effects volume, and at 0 plays nothing (`AlertSounds`, `AlertSoundsTest`, `ConfigKeyFreezeTest`).
+- Sidebar mute under the title: `Mute alerts` / `Unmute alerts` plus `15 min`, `30 min`, `60 min` buttons and a `Muted until hh:mm` line. It silences every alert, sound and on-screen (the notifier, repeats, the boost warning and the Test buttons), a timed mute ends by itself, and no setting is added: the state lives in the plugin (`AlertMute`, `MuteBar`) so a rebuilt panel shows it, and is not kept across a restart (`AlertMuteTest`, `MuteBarTest`).
 
 ## [1.2.0] - 2026-11-15
 
