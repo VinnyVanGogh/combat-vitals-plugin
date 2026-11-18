@@ -79,6 +79,7 @@ import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.config.ConfigItemDescriptor;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.config.Notification;
 import net.runelite.client.config.RuneLiteConfig;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
@@ -228,6 +229,9 @@ public class CombatVitalsPlugin extends Plugin
 	/** Alert sound choices and the one-time "file missing" hints. */
 	private final AlertSounds alertSounds = new AlertSounds();
 
+	/** The sidebar's mute: every alert, sound and on-screen, off. Kept here so a rebuilt panel shows it. */
+	private final AlertMute alertMute = new AlertMute();
+
 	/** The item that last landed in the inventory, for voice lines ("yew logs"). */
 	private final GainedItems gainedItems = new GainedItems();
 	private String lastGainedItem;
@@ -289,6 +293,13 @@ public class CombatVitalsPlugin extends Plugin
 	/** Draws back every bar "Hide game health bar" takes off the game. */
 	@Inject
 	private GameHealthBarOverlay gameHealthBarOverlay;
+
+	/** Splashing mode: the Magic bonus and hit chance read-out, and its setup-changed alert. */
+	@Inject
+	private SplashOverlay splashOverlay;
+
+	@Inject
+	private SplashWatcher splashWatcher;
 
 	/** Finds the next fishing spot and paths to or highlights it. Client thread only; null until started. */
 	private SpotPathing spotPathing;
@@ -486,6 +497,7 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.add(aggressionOverlay);
 		overlayManager.add(aggressionAreaOverlay);
 		overlayManager.add(gameHealthBarOverlay);
+		overlayManager.add(splashOverlay);
 
 		knownSpots = KnownFishingSpots.load();
 		voiceLines = VoiceLines.load();
@@ -545,7 +557,7 @@ public class CombatVitalsPlugin extends Plugin
 			items.put(d.key(), d);
 		}
 		sidePanel = new VitalsSidePanel(ConfigStore.of(configManager, executor), items, colorPickerManager,
-			type -> clientThread.invoke(() -> testAlert(type)));
+			type -> clientThread.invoke(() -> testAlert(type)), alertMute);
 		navButton = NavigationButton.builder()
 			.tooltip(VitalsSidePanel.TITLE)
 			.icon(VitalsSidePanel.icon())
@@ -563,10 +575,14 @@ public class CombatVitalsPlugin extends Plugin
 	{
 		final AlertSettings settings = AlertSettings.of(config, type);
 		final ActivityAlerts.Alert alert = new ActivityAlerts.Alert(type, null);
+		if (alertMute.muted())
+		{
+			return;
+		}
 		final AlertSounds.Plan plan = soundPlan(settings, alert);
 		if (plan.runelite)
 		{
-			notifier.notify(settings.notification.withEnabled(true),
+			notifier.notify(muted(settings.notification.withEnabled(true)),
 				"Test: " + ActivityAlerts.message(alert, config.alertCoinPouchCap()));
 		}
 		play(plan, settings.volume);
@@ -616,6 +632,8 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.remove(aggressionOverlay);
 		overlayManager.remove(aggressionAreaOverlay);
 		overlayManager.remove(gameHealthBarOverlay);
+		overlayManager.remove(splashOverlay);
+		splashWatcher.reset();
 		mouseManager.unregisterMouseListener(backOnClick);
 		keyManager.unregisterKeyListener(backOnKey);
 		alertRepeat.stop();
@@ -1146,7 +1164,7 @@ public class CombatVitalsPlugin extends Plugin
 		}
 
 		final SkillingState.Warning warning = skilling.boostChanged(skill, change, tick);
-		if (warning != SkillingState.Warning.NONE && VitalsHalves.skilling(config))
+		if (warning != SkillingState.Warning.NONE && VitalsHalves.skilling(config) && !alertMute.muted())
 		{
 			final String message = warning == SkillingState.Warning.EXPIRED
 				? skill.getName() + " boost has worn off"
@@ -1177,6 +1195,7 @@ public class CombatVitalsPlugin extends Plugin
 	@Subscribe
 	public void onMenuOptionClicked(MenuOptionClicked event)
 	{
+		splashWatcher.onMenuOptionClicked(event);
 		final String option = event.getMenuOption();
 
 		// Fill, Empty or Empty to bank on a basket, barrel or coal bag, in the
@@ -1920,6 +1939,11 @@ public class CombatVitalsPlugin extends Plugin
 		seedBoosts();
 		tickBoostTimer();
 		tickAlerts();
+		final String splashBroke = splashWatcher.tick();
+		if (splashBroke != null && !alertMute.muted())
+		{
+			notifier.notify(muted(config.splashAlertBroke()), splashBroke);
+		}
 		readStatusBars();
 		tickSpotPathing();
 		readContainerDialog();
@@ -2850,13 +2874,14 @@ public class CombatVitalsPlugin extends Plugin
 	private void sendAlert(ActivityAlerts.Alert alert, int pouchCap, long nowMs)
 	{
 		final AlertSettings settings = AlertSettings.of(config, alert.type);
-		if (!settings.enabled())
+		if (!settings.enabled() || alertMute.muted())
 		{
 			return;
 		}
 
 		final AlertSounds.Plan plan = soundPlan(settings, alert);
-		notifier.notify(plan.runelite ? settings.notification : AlertSettings.quiet(settings.notification, runeLiteConfig),
+		notifier.notify(plan.runelite ? muted(settings.notification)
+				: AlertSettings.quiet(settings.notification, runeLiteConfig),
 			ActivityAlerts.message(alert, pouchCap));
 		play(plan, settings.volume);
 		if (alertSounds.shouldHint(plan, alert.type))
@@ -2883,6 +2908,10 @@ public class CombatVitalsPlugin extends Plugin
 		}
 
 		final AlertSounds.Plan plan = soundPlan(settings, alert);
+		if (config.alertMuteSounds() || alertMute.muted())
+		{
+			return;
+		}
 		if (plan.runelite)
 		{
 			notifier.notify(settings.notification, ActivityAlerts.message(alert, pouchCap));
@@ -2891,6 +2920,12 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			play(plan, settings.volume);
 		}
+	}
+
+	/** The notification with RuneLite's own sound off while the plugin's alerts are muted. */
+	private Notification muted(Notification notification)
+	{
+		return config.alertMuteSounds() ? AlertSettings.quiet(notification, runeLiteConfig) : notification;
 	}
 
 	private AlertSounds.Plan soundPlan(AlertSettings settings, ActivityAlerts.Alert alert)
@@ -2924,11 +2959,18 @@ public class CombatVitalsPlugin extends Plugin
 	/** Plays the plugin's own sound off the client thread; RuneLite's own is the Notifier's to play. */
 	private void play(AlertSounds.Plan plan, int volume)
 	{
-		if (plan.runelite)
+		if (plan.runelite || config.alertMuteSounds() || alertMute.muted())
 		{
 			return;
 		}
-		final float gain = AlertSounds.gain(volume);
+		// Read here, on the client thread: preferences are the game's own.
+		final int effective = AlertSounds.effectiveVolume(volume, config.alertFollowGameVolume(),
+			client.getPreferences().getSoundEffectVolume());
+		if (effective <= 0)
+		{
+			return;
+		}
+		final float gain = AlertSounds.gain(effective);
 		executor.execute(() ->
 		{
 			try

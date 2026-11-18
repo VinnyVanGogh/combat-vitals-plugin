@@ -1,0 +1,10 @@
+# Combat Vitals deploy definition (RUNELITE-35; format: StayPoint docs/deploys.md).
+#
+# This repo never deploys. It is a RuneLite Plugin Hub plugin: a merge to main
+# changes nothing that runs anywhere. Users get a build only when the
+# runelite/plugin-hub manifest pins a commit of this repo and the Hub's own CI
+# builds it (runelite-hub-submit). There is no host, no service to restart and
+# no loopback health URL that could prove a commit is running, so neither
+# verify kind (health_commit, dev_deploy_verify) applies.
+deploy = "none"
+reason = "RuneLite Plugin Hub plugin: nothing runs from a merge to main. Distribution is a separate runelite/plugin-hub manifest PR that pins a commit; the Hub builds and ships it. No host, no service, no health URL to verify."

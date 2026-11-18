@@ -514,6 +514,36 @@ looks "Lots" until it drops.
 Nothing is sent anywhere, no input is made, and nothing reads another
 player.
 
+### Splashing mode (AFK Magic), compliance (added 2026-11-18, task-56b61cd3)
+
+Board idea, 2026-11-18: when you attack a monster with a combat spell, show
+your hit chance against it from your Magic attack bonus and the monster's
+Magic defence, warn when the bonus is too high to splash, and optionally
+alert when the setup breaks. Run through `runelite-compliance` first.
+
+The feature as information given to the player: "your own Magic attack bonus,
+and how likely your own cast is to land on the monster you chose to attack".
+Own-account gear maths against public wiki data; nothing about other players,
+no input, no menu change, no network at runtime.
+
+| Element | Nearest rule | Precedent | Verdict |
+|---|---|---|---|
+| Own Magic attack bonus: sum of `ItemEquipmentStats.getAmagic` over `InventoryID.WORN` | None: own equipment | Base client Equipment Inspector and Item Stats plugins show the same item stats; this plugin's gear check reads `WORN` | Allowed |
+| Hit chance on the NPC you attack, from the wiki's accuracy formula and a bundled wiki table of NPC Magic level and defence | Boss & Combat: "no content simulation", "no next-attack prediction". Not a boss mechanic or a prediction: a probability from your own gear against a public stat, for any NPC | Plugin Hub `dps-calculator` (LlemonDuck/dps-calculator; `plugins/dps-calculator` read 2026-11-18, commit `5b9e18c`): a side-panel plugin showing "your current gear's damage per second against NPC targets", with NPC stats chosen from presets or by right-clicking an NPC. It is now marked `unavailable` ("Very outdated"), archived 2025-02-01 because an API change broke it, not for a rule: no rejection was found. The base client's `NPCManager` also ships NPC stats for Opponent Information | Allowed, with precedent (the Hub entry is retired for age, not for compliance; say so in the PR) |
+| Warning when the bonus is above -64 or the chance above a threshold | None | Same | Allowed |
+| Alert when gear, spell or target changes while casting, through `Notifier` | Input Restrictions: a notification only, nothing is changed back | Base client `idlenotifier` notifies on state changes; this plugin's other alerts | Allowed |
+| Casting detected from varbits `AUTOCAST_SET` / `AUTOCAST_SPELL` and a read-only `MenuOptionClicked` of `WIDGET_TARGET_ON_NPC` | Menu Restrictions: the event is read, never consumed or changed | Same read-only use as the rows above | Allowed |
+| Monster table bundled as a TSV, built offline from the wiki's `infobox_monster` bucket | Plugin Hub: no dynamic code, no runtime HTTP added | Bundled wiki tables are already used here (fishing spots, Forestry ids); `getResourceAsStream` only | Allowed |
+
+PvP: the hit chance is shown only for an NPC. A player target gets nothing
+(no Magic defence is read from another player, which would be PvP scouting).
+
+Formula source: OSRS Wiki, Damage per second/Magic, steps two to five, and
+Splashing (the -64 bonus); both read 2026-11-18, quoted in `docs/splashing.md`.
+
+Not done, deliberately: no auto-recast, no gear swapping, no clicking, nothing
+that keeps you logged in or casting; no hit chance against players.
+
 ---
 
 ## Phase 0.5, Measure before building

@@ -48,6 +48,15 @@ RuneLite's own NPC Aggression Timer plugin draws the same lines). This is the
 plugin's own timer; it reads nothing from that plugin. The start trigger and the
 area's centre are our reading of the rule and have not been checked in game.
 
+### Splashing mode
+
+For AFK Magic training (off by default, Targets tab). While you cast a combat
+spell at an NPC, a small overlay shows your Magic attack bonus and your chance to
+hit that NPC, from the wiki's accuracy formula: green at -64 or lower (a
+guaranteed splash), red above the chance you set. It can notify when you change
+gear, spell or target. Information only. How it works:
+[docs/splashing.md](docs/splashing.md).
+
 ### Side pillars
 
 Optional bars beside the inventory, where RuneLite's Status Bars draws: your

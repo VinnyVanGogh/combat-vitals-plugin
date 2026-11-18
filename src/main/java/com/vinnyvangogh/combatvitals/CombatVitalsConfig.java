@@ -466,6 +466,47 @@ public interface CombatVitalsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "splashMode",
+		name = "Splashing mode",
+		description = "For AFK Magic training: when you attack an NPC with a combat spell, show your Magic "
+			+ "attack bonus and your chance to hit it, from the OSRS wiki's accuracy formula, and warn when "
+			+ "the bonus is too high to splash. Information only: nothing is cast, clicked or changed for you.",
+		section = targetSection,
+		position = 9
+	)
+	default boolean splashMode()
+	{
+		return false;
+	}
+
+	@Range(min = 0, max = 100)
+	@ConfigItem(
+		keyName = "splashMaxChance",
+		name = "Splash: warn at %",
+		description = "Splashing mode warns in red while your chance to hit the target is above this. At 0 any "
+			+ "chance to hit warns; a Magic attack bonus of -64 or lower is a 0% chance against anything.",
+		section = targetSection,
+		position = 10
+	)
+	default int splashMaxChance()
+	{
+		return 0;
+	}
+
+	@ConfigItem(
+		keyName = "splashAlertBroke",
+		name = "Splash: setup broke",
+		description = "Splashing mode: notify when you change your gear (anything worn), your spell, or the "
+			+ "NPC you are casting at while splashing.",
+		section = targetSection,
+		position = 11
+	)
+	default Notification splashAlertBroke()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
 		keyName = "skillingEnabled",
 		name = "Skilling badge",
 		description =
@@ -2517,6 +2558,34 @@ public interface CombatVitalsConfig extends Config
 		position = 94
 	)
 	default boolean repeatSkillingEvent()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "alertMuteSounds",
+		name = "Mute alert sounds",
+		description = "No sound from any alert: not the plugin's own, and not RuneLite's notification sound "
+			+ "(the tray notification and chat message still come). RuneLite plays sound inside its own "
+			+ "process, so muting one app in your system's volume mixer may not silence it: use this "
+			+ "instead.",
+		section = alertsSection,
+		position = 95
+	)
+	default boolean alertMuteSounds()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "alertFollowGameVolume",
+		name = "Follow game volume",
+		description = "Scale the plugin's own alert sounds by the game's sound effects volume, and play nothing "
+			+ "while that is muted. RuneLite's sound keeps RuneLite's notification volume.",
+		section = alertsSection,
+		position = 96
+	)
+	default boolean alertFollowGameVolume()
 	{
 		return false;
 	}
