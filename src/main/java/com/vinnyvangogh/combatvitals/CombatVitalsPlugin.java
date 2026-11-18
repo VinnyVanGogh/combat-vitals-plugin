@@ -1823,7 +1823,11 @@ public class CombatVitalsPlugin extends Plugin
 		seedBoosts();
 		tickBoostTimer();
 		tickAlerts();
-		splashWatcher.tick();
+		final String splashBroke = splashWatcher.tick();
+		if (splashBroke != null && !alertMute.muted())
+		{
+			notifier.notify(muted(config.splashAlertBroke()), splashBroke);
+		}
 		readStatusBars();
 		tickSpotPathing();
 		readContainerDialog();

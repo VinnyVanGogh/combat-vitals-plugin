@@ -15,7 +15,6 @@ import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
-import net.runelite.client.Notifier;
 import net.runelite.client.game.ItemEquipmentStats;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.ItemStats;
@@ -44,7 +43,6 @@ class SplashWatcher
 
 	private final Client client;
 	private final ItemManager itemManager;
-	private final Notifier notifier;
 	private final CombatVitalsConfig config;
 	private final SplashTracker tracker = new SplashTracker(MonsterMagic.load());
 
@@ -54,11 +52,10 @@ class SplashWatcher
 	private int manualTicks;
 
 	@Inject
-	SplashWatcher(Client client, ItemManager itemManager, Notifier notifier, CombatVitalsConfig config)
+	SplashWatcher(Client client, ItemManager itemManager, CombatVitalsConfig config)
 	{
 		this.client = client;
 		this.itemManager = itemManager;
-		this.notifier = notifier;
 		this.config = config;
 	}
 
@@ -92,12 +89,16 @@ class SplashWatcher
 		manualTicks = MANUAL_TICKS;
 	}
 
-	void tick()
+	/**
+	 * Reads this tick. Returns the setup-changed alert text, or null; the
+	 * plugin sends it, so the sidebar mute and "Mute alert sounds" apply.
+	 */
+	String tick()
 	{
 		if (!config.splashMode())
 		{
 			reset();
-			return;
+			return null;
 		}
 		if (manualTicks > 0)
 		{
@@ -108,14 +109,11 @@ class SplashWatcher
 		{
 			result = null;
 			tracker.idle();
-			return;
+			return null;
 		}
 		final SplashTracker.Result now = tracker.step(in, config.splashMaxChance());
 		result = now;
-		if (now.changed != null)
-		{
-			notifier.notify(config.splashAlertBroke(), now.changed);
-		}
+		return now.changed;
 	}
 
 	private SplashTracker.Input read()
