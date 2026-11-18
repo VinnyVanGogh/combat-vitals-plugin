@@ -283,6 +283,13 @@ public class CombatVitalsPlugin extends Plugin
 	@Inject
 	private GameHealthBarOverlay gameHealthBarOverlay;
 
+	/** Splashing mode: the Magic bonus and hit chance read-out, and its setup-changed alert. */
+	@Inject
+	private SplashOverlay splashOverlay;
+
+	@Inject
+	private SplashWatcher splashWatcher;
+
 	/** Finds the next fishing spot and paths to or highlights it. Client thread only; null until started. */
 	private SpotPathing spotPathing;
 
@@ -477,6 +484,7 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.add(pillarOverlay);
 		overlayManager.add(nextSpotOverlay);
 		overlayManager.add(gameHealthBarOverlay);
+		overlayManager.add(splashOverlay);
 
 		knownSpots = KnownFishingSpots.load();
 		voiceLines = VoiceLines.load();
@@ -609,6 +617,8 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.remove(pillarOverlay);
 		overlayManager.remove(nextSpotOverlay);
 		overlayManager.remove(gameHealthBarOverlay);
+		overlayManager.remove(splashOverlay);
+		splashWatcher.reset();
 		mouseManager.unregisterMouseListener(backOnClick);
 		keyManager.unregisterKeyListener(backOnKey);
 		alertRepeat.stop();
@@ -1072,6 +1082,7 @@ public class CombatVitalsPlugin extends Plugin
 	@Subscribe
 	public void onMenuOptionClicked(MenuOptionClicked event)
 	{
+		splashWatcher.onMenuOptionClicked(event);
 		final String option = event.getMenuOption();
 
 		// Fill, Empty or Empty to bank on a basket, barrel or coal bag, in the
@@ -1812,6 +1823,11 @@ public class CombatVitalsPlugin extends Plugin
 		seedBoosts();
 		tickBoostTimer();
 		tickAlerts();
+		final String splashBroke = splashWatcher.tick();
+		if (splashBroke != null && !alertMute.muted())
+		{
+			notifier.notify(muted(config.splashAlertBroke()), splashBroke);
+		}
 		readStatusBars();
 		tickSpotPathing();
 		readContainerDialog();
