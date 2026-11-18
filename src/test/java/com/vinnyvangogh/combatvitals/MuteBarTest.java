@@ -5,6 +5,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import com.vinnyvangogh.testkit.ui.RuneLiteLook;
 import com.vinnyvangogh.testkit.ui.SwingDriver;
+import java.awt.Component;
+import java.awt.Container;
 import java.time.ZoneOffset;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.swing.JButton;
@@ -48,7 +50,33 @@ public class MuteBarTest
 
 	private JLabel status()
 	{
-		return ui.find(JLabel.class, l -> "mute-status".equals(l.getName()), "mute status");
+		// The finder only sees visible components, and this label is hidden while not muted.
+		final JLabel found = findNamed(ui.root(), "mute-status");
+		if (found == null)
+		{
+			throw new AssertionError("No mute status label in the panel");
+		}
+		return found;
+	}
+
+	private static JLabel findNamed(Container c, String name)
+	{
+		for (Component child : c.getComponents())
+		{
+			if (child instanceof JLabel && name.equals(child.getName()))
+			{
+				return (JLabel) child;
+			}
+			if (child instanceof Container)
+			{
+				final JLabel inner = findNamed((Container) child, name);
+				if (inner != null)
+				{
+					return inner;
+				}
+			}
+		}
+		return null;
 	}
 
 	private void click(String name)
