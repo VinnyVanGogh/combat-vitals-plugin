@@ -33,7 +33,7 @@ final class UpdateNotes
 		"The log basket now shows what is inside it, and forestry kit leaves are counted.",
 		"Forestry events are named and tracked: your experience and rewards, in the chat when one ends.",
 		"New alert for gems found while mining and clue bottles while fishing (off by default).",
-		"The sidebar can show or hide each overlay, has a Reset session button, and can reset on a new activity (off by default).",
+		"The sidebar can hide each overlay and reset the session, or do it on a new activity (off by default).",
 		"Set it up in the sidebar panel, or in " + CONFIGURE + "."
 	));
 

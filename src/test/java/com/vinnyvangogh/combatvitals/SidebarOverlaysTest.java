@@ -85,6 +85,9 @@ public class SidebarOverlaysTest
 	{
 		SwingDriver.onEdt(() -> ui.find(AbstractButton.class, b -> "Skilling".equals(b.getText()),
 			"skilling tab").doClick());
+		// The Session card is folded shut until its header is clicked.
+		SwingDriver.onEdt(() -> ui.find(AbstractButton.class, b -> "Session".equals(b.getText()),
+			"session card header").doClick());
 		SwingDriver.onEdt(() -> ui.find(AbstractButton.class, b -> "reset-session".equals(b.getName()),
 			"reset session").doClick());
 		assertEquals(Boolean.TRUE, store.get("skillingSessionReset", Boolean.class));
