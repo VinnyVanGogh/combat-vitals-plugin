@@ -273,7 +273,6 @@ final class ContainerContents
 		{
 			basketItems = ContainerItems.parse(checked.group(1));
 		}
-		final boolean added = BASKET_ADD.matcher(message).matches();
 		if (check(SkillingContainer.LOG_BASKET, BASKET_CHECK, message)
 			|| empty(SkillingContainer.LOG_BASKET, BASKET_EMPTY, message))
 		{
@@ -283,6 +282,12 @@ final class ContainerContents
 			}
 			return true;
 		}
+		return basketLogAdded(message);
+	}
+
+	private boolean basketLogAdded(String message)
+	{
+		final boolean added = BASKET_ADD.matcher(message).matches();
 		if (!added && !BASKET_EXTRA.matcher(message).matches())
 		{
 			return false;

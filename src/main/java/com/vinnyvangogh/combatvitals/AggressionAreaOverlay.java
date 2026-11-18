@@ -40,8 +40,7 @@ class AggressionAreaOverlay extends Overlay
 	public Dimension render(Graphics2D graphics)
 	{
 		final AggressionTimer timer = plugin.aggressionArea();
-		if (timer == null || !config.aggressionTimer() || !config.aggressionAreaLines()
-			|| !VitalsHalves.combat(config))
+		if (timer == null || !linesEnabled())
 		{
 			return null;
 		}
@@ -51,14 +50,23 @@ class AggressionAreaOverlay extends Overlay
 		{
 			for (int y = timer.minY(); y <= timer.maxY(); y++)
 			{
-				final boolean edge = x == timer.minX() || x == timer.maxX() || y == timer.minY() || y == timer.maxY();
-				if (edge)
+				if (onEdge(timer, x, y))
 				{
 					outline(graphics, x, y, timer.plane());
 				}
 			}
 		}
 		return null;
+	}
+
+	private boolean linesEnabled()
+	{
+		return config.aggressionTimer() && config.aggressionAreaLines() && VitalsHalves.combat(config);
+	}
+
+	private static boolean onEdge(AggressionTimer timer, int x, int y)
+	{
+		return x == timer.minX() || x == timer.maxX() || y == timer.minY() || y == timer.maxY();
 	}
 
 	private void outline(Graphics2D graphics, int x, int y, int plane)

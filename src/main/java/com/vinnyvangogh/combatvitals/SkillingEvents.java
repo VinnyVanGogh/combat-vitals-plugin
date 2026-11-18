@@ -199,21 +199,31 @@ final class SkillingEvents
 		return alert;
 	}
 
+	private static String nestMessage(String detail)
+	{
+		return detail == null ? "A bird's nest fell" : "A " + lower(detail) + " fell";
+	}
+
+	private static String petMessage(String detail)
+	{
+		return DUPLICATE.equals(detail)
+			? "You would have got a pet, but you already have it"
+			: PET_FOLLOWED;
+	}
+
 	/** The notification text for one of these alerts, or null for any other. */
 	static String message(ActivityAlerts.Alert alert)
 	{
 		switch (alert.type)
 		{
 			case BIRD_NEST:
-				return alert.detail == null ? "A bird's nest fell" : "A " + lower(alert.detail) + " fell";
+				return nestMessage(alert.detail);
 			case CLUE_DROP:
 				return "Clue drop: " + alert.detail;
 			case FORESTRY_EVENT:
 				return "A Forestry event started: " + alert.detail;
 			case PET:
-				return DUPLICATE.equals(alert.detail)
-					? "You would have got a pet, but you already have it"
-					: PET_FOLLOWED;
+				return petMessage(alert.detail);
 			case LEVEL_UP:
 				return alert.skill.getName() + " level " + alert.detail;
 			case RANDOM_EVENT:
