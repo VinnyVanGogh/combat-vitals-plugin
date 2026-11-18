@@ -99,7 +99,7 @@ leaves gathered since login are counted after it.
 ### Sessions and events
 
 *Reset session* in the sidebar's Skilling tab zeroes the count and rates now;
-*Auto-reset on a new activity* (off by default) does it when you move from yew
+*Auto-reset on new activity* (off by default) does it when you move from yew
 logs to maple logs, or to another skill, and puts the finished session's summary
 in the chat. A Forestry event is named when it starts and, when it ends, the
 chat says what you earned in it (experience and known rewards). *Mining and

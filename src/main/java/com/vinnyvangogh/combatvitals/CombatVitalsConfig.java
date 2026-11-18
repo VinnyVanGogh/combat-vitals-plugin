@@ -1611,11 +1611,11 @@ public interface CombatVitalsConfig extends Config
 
 	@ConfigItem(
 		keyName = "autoResetSession",
-		name = "Auto-reset on a new activity",
+		name = "Auto-reset on new activity",
 		description = "Reset the session when the activity changes (yew logs to maple logs, or another skill or "
 			+ "resource). The previous session's summary stays on the badge for two minutes.",
 		section = skillingSection,
-		position = 40
+		position = 41
 	)
 	default boolean autoResetSession()
 	{
@@ -2486,7 +2486,7 @@ public interface CombatVitalsConfig extends Config
 
 	@ConfigItem(
 		keyName = "soundSkillingEvent",
-		name = "Mining and fishing events sound",
+		name = "Gem/bottle sound",
 		description = "What the mining and fishing events alert sounds like." + SOUND_HELP + "skilling-event.wav",
 		section = alertsSection,
 		position = 92
@@ -2499,7 +2499,7 @@ public interface CombatVitalsConfig extends Config
 	@Range(min = 1, max = 100)
 	@ConfigItem(
 		keyName = "volumeSkillingEvent",
-		name = "Mining and fishing events volume",
+		name = "Gem/bottle volume",
 		description = VOLUME_HELP,
 		section = alertsSection,
 		position = 93
@@ -2511,7 +2511,7 @@ public interface CombatVitalsConfig extends Config
 
 	@ConfigItem(
 		keyName = "repeatSkillingEvent",
-		name = "Repeat mining and fishing events",
+		name = "Repeat gem/bottle",
 		description = "Sound the mining and fishing events alert" + REPEAT_HELP,
 		section = alertsSection,
 		position = 94

@@ -83,6 +83,8 @@ public class SidebarOverlaysTest
 	@Test
 	public void resetSessionButtonTicksTheResetKey()
 	{
+		SwingDriver.onEdt(() -> ui.find(AbstractButton.class, b -> "Skilling".equals(b.getText()),
+			"skilling tab").doClick());
 		SwingDriver.onEdt(() -> ui.find(AbstractButton.class, b -> "reset-session".equals(b.getName()),
 			"reset session").doClick());
 		assertEquals(Boolean.TRUE, store.get("skillingSessionReset", Boolean.class));
