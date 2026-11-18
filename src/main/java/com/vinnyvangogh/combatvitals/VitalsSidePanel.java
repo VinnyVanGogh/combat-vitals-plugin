@@ -90,6 +90,7 @@ final class VitalsSidePanel extends PluginPanel
 	private final Set<String> closedGuides = new LinkedHashSet<>();
 	private final JButton hideGuides = linkButton(HIDE_GUIDES, "Hide or show the guide at the top of each tab.");
 	private final LiveSection live;
+	private final MuteBar muteBar;
 	/** The sidebar has this panel open; set on the Swing thread, read on the client thread. */
 	private volatile boolean shown;
 	private Presets.Preset previewing;
@@ -99,6 +100,14 @@ final class VitalsSidePanel extends PluginPanel
 	VitalsSidePanel(ConfigStore store, Map<String, ConfigItemDescriptor> items, ColorPickerManager pickers,
 		Actions actions)
 	{
+		this(store, items, pickers, actions, new AlertMute());
+	}
+
+	/** {@code mute} is the plugin's, so a panel built again shows the mute as it stands. */
+	VitalsSidePanel(ConfigStore store, Map<String, ConfigItemDescriptor> items, ColorPickerManager pickers,
+		Actions actions, AlertMute mute)
+	{
+		this.muteBar = new MuteBar(mute);
 		this.store = store;
 		this.controls = new SettingControls(store, items, pickers);
 		this.actions = actions;
@@ -131,6 +140,7 @@ final class VitalsSidePanel extends PluginPanel
 	void refresh()
 	{
 		live.refresh();
+		muteBar.refresh();
 		controls.loadAll();
 		for (Runnable r : visibility)
 		{
@@ -161,12 +171,14 @@ final class VitalsSidePanel extends PluginPanel
 	public void onActivate()
 	{
 		shown = true;
+		muteBar.start();
 	}
 
 	@Override
 	public void onDeactivate()
 	{
 		shown = false;
+		muteBar.stop();
 	}
 
 	void show(PanelLayout.Tab tab)
@@ -199,6 +211,7 @@ final class VitalsSidePanel extends PluginPanel
 		});
 		row.add(hideGuides, BorderLayout.EAST);
 		c.add(row);
+		c.add(muteBar);
 		return c;
 	}
 

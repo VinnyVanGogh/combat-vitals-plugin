@@ -229,6 +229,9 @@ public class CombatVitalsPlugin extends Plugin
 	/** Alert sound choices and the one-time "file missing" hints. */
 	private final AlertSounds alertSounds = new AlertSounds();
 
+	/** The sidebar's mute: every alert, sound and on-screen, off. Kept here so a rebuilt panel shows it. */
+	private final AlertMute alertMute = new AlertMute();
+
 	/** The item that last landed in the inventory, for voice lines ("yew logs"). */
 	private final GainedItems gainedItems = new GainedItems();
 	private String lastGainedItem;
@@ -533,7 +536,7 @@ public class CombatVitalsPlugin extends Plugin
 			items.put(d.key(), d);
 		}
 		sidePanel = new VitalsSidePanel(ConfigStore.of(configManager, executor), items, colorPickerManager,
-			type -> clientThread.invoke(() -> testAlert(type)));
+			type -> clientThread.invoke(() -> testAlert(type)), alertMute);
 		navButton = NavigationButton.builder()
 			.tooltip(VitalsSidePanel.TITLE)
 			.icon(VitalsSidePanel.icon())
@@ -551,6 +554,10 @@ public class CombatVitalsPlugin extends Plugin
 	{
 		final AlertSettings settings = AlertSettings.of(config, type);
 		final ActivityAlerts.Alert alert = new ActivityAlerts.Alert(type, null);
+		if (alertMute.muted())
+		{
+			return;
+		}
 		final AlertSounds.Plan plan = soundPlan(settings, alert);
 		if (plan.runelite)
 		{
@@ -1034,7 +1041,7 @@ public class CombatVitalsPlugin extends Plugin
 		}
 
 		final SkillingState.Warning warning = skilling.boostChanged(skill, change, tick);
-		if (warning != SkillingState.Warning.NONE && VitalsHalves.skilling(config))
+		if (warning != SkillingState.Warning.NONE && VitalsHalves.skilling(config) && !alertMute.muted())
 		{
 			final String message = warning == SkillingState.Warning.EXPIRED
 				? skill.getName() + " boost has worn off"
@@ -2730,7 +2737,7 @@ public class CombatVitalsPlugin extends Plugin
 	private void sendAlert(ActivityAlerts.Alert alert, int pouchCap, long nowMs)
 	{
 		final AlertSettings settings = AlertSettings.of(config, alert.type);
-		if (!settings.enabled())
+		if (!settings.enabled() || alertMute.muted())
 		{
 			return;
 		}
@@ -2764,7 +2771,7 @@ public class CombatVitalsPlugin extends Plugin
 		}
 
 		final AlertSounds.Plan plan = soundPlan(settings, alert);
-		if (config.alertMuteSounds())
+		if (config.alertMuteSounds() || alertMute.muted())
 		{
 			return;
 		}
@@ -2815,7 +2822,7 @@ public class CombatVitalsPlugin extends Plugin
 	/** Plays the plugin's own sound off the client thread; RuneLite's own is the Notifier's to play. */
 	private void play(AlertSounds.Plan plan, int volume)
 	{
-		if (plan.runelite || config.alertMuteSounds())
+		if (plan.runelite || config.alertMuteSounds() || alertMute.muted())
 		{
 			return;
 		}
