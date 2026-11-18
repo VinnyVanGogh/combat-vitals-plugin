@@ -2496,7 +2496,7 @@ public interface CombatVitalsConfig extends Config
 	)
 	default boolean alertFollowGameVolume()
 	{
-		return true;
+		return false;
 	}
 
 	@ConfigItem(
