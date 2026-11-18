@@ -124,7 +124,9 @@ back.
 ## Sidebar panel
 
 The plugin has its own button in RuneLite's sidebar (a small health bar over
-a skilling bar). It holds every setting from RuneLite's settings list, the
+a skilling bar). Under the title, **Mute alerts** (plus **15 min**, **30 min**
+and **60 min**) silences every alert at once or for a set time. Below that, the
+panel holds every setting from RuneLite's settings list, the
 same settings with the same values, laid out to be easier to find: presets at
 the top, then five tabs. Change something in either place and the other shows
 it. Timeouts and update notes stay in the settings list, under Advanced.
@@ -191,6 +193,9 @@ vitals at the top turns this whole half on or off.
 
 A notification when something needs you: inventory full, you stopped
 gathering or thieving, the fishing spot moved, the Blast Furnace pump and more.
+At the top, **Muting** holds **Mute alert sounds** (silences every alert sound
+while keeping tray and chat notifications) and **Follow game volume** (scales
+the plugin's own sounds by the game's sound effects volume).
 Each alert is a card, folded to its name: open it to tick it on or off, and
 **Test** plays it as it is set up now. **Same for every alert** gives them all
 one sound, volume and repeat (sound packs included); untick it and each alert's

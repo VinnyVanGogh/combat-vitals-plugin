@@ -2,6 +2,91 @@
 
 Merged bug fixes in reverse chronological order (newest first). Pre-PR bootstrap commits on `main` are cited by short commit hash.
 
+## 2026-11-18 — Splash setup-changed alert bypassed sidebar mute and Mute alert sounds (#52)
+- **What broke:** `SplashWatcher` called `Notifier.notify` directly when the splashing setup changed, so muting alerts from the sidebar (`AlertMute`, #51) or enabling `Mute alert sounds` (`alertMuteSounds`, #50) never silenced the splashing setup-broke notification.
+- **How it was found:** Merging `origin/main` (#50, #51) into the splashing mode branch (#52).
+- **Fix:** Changed `SplashWatcher.tick()` to return the setup-changed alert text and dispatched it from `CombatVitalsPlugin` through `alertMute.muted()` and `muted(config.splashAlertBroke())` (#52).
+
+## 2026-11-18 — Plugin alert sounds ignored in-game sound effects mute and had no mute-all toggle (#50)
+- **What broke:** Custom and bundled alert sounds played through `AudioPlayer` at the plugin's configured volume without checking the game's sound effects volume (`Preferences#getSoundEffectVolume`), and there was no single setting to silence all alert audio (both plugin sounds and RuneLite's notification sound) while keeping tray and chat notifications.
+- **How it was found:** In-game testing reported by the Board.
+- **Fix:** Added `alertFollowGameVolume` (`Follow game volume`, default on) to scale the plugin's own alert sounds by the game's 0–127 sound effects volume (playing nothing at 0) and `alertMuteSounds` (`Mute alert sounds`, default off) to silence both plugin sounds and RuneLite's notification sound in a new `Muting` card on the Alerts tab (#50).
+
+## 2026-11-16 — Voice-line concatenation imported `javax.sound.sampled` prohibited by Plugin Hub (#49)
+- **What broke:** `AlertSounds` used `javax.sound.sampled.AudioSystem` and `AudioInputStream` to decode and concatenate voice-line WAV clips in memory before handing the combined stream to RuneLite's `AudioPlayer`.
+- **How it was found:** Automated and reviewer check on Plugin Hub PR (`runelite/plugin-hub#20795`).
+- **Fix:** Replaced `javax.sound.sampled` with a pure-Java 16 kHz mono 16-bit PCM RIFF/WAVE reader and 44-byte header writer (`AlertSounds.Wav`) that plays through `AudioPlayer.play(InputStream, gain)`, and added `HubRulesTest` to fail the build if `javax.sound` appears in `src/main` (#49).
+
+## 2026-11-15 — Strength XP drops on the Blast Furnace pump replaced the pump badge with an XP-drop badge (#47)
+- **What broke:** Earning Strength XP while operating the Blast Furnace pump triggered `XpSkilling`, which overwrote the active `Pumping (Blast Furnace)` training-method badge.
+- **How it was found:** In-game testing of the Blast Furnace pump checks.
+- **Fix:** Kept the active training-method session (`TrainingSession`) ahead of `XpSkilling` on Strength XP drops and folded each alert row in the sidebar Alerts tab into its own card (#47).
+
+## 2026-11-14 — False "stopped" alerts and XP drops fired on login and after connection-lost reconnects (#46)
+- **What broke:** Logging in near the Blast Furnace pump or reconnecting after `CONNECTION_LOST` (which does not fire a logout or world-hop reset) left stop detectors and repeating alerts armed and treated the login XP sync as freshly gained XP, firing `"You've stopped pumping"` immediately on login.
+- **How it was found:** In-game testing reported by the Board at the Blast Furnace.
+- **Fix:** Added `LoginSync` so XP reported until the second game tick after login, hop, or reconnect is recorded as baseline only, armed stopped-activity alerts only after the activity is observed in the current login session, and reset `TrainingSession` and `ActivityAlerts` across `CONNECTION_LOST` reconnects (#46).
+
+## 2026-11-14 — Sidebar guide and setting labels ran past the panel's right edge (#45)
+- **What broke:** Guide paragraphs and long labels used a fixed CSS `width:170px` hint that did not match the sidebar panel's actual width, clipping text against the right border.
+- **How it was found:** Review and testing of the sidebar panel reported by the Board.
+- **Fix:** Added `WrapLabel` to wrap text dynamically at the container's allocated width as part of the card-based sidebar redesign (#45).
+
+## 2026-11-14 — Pump badge and Live section showed raw idle counter instead of status and countdowns (#44)
+- **What broke:** While actively pumping at the Blast Furnace, the timer row showed a raw `Re-click in` countdown even on the tick of input instead of an `Active` status chip and clear `AFK logout in` / `Pump stops in` labels.
+- **How it was found:** Review of the sidebar Live section and Blast Furnace pump badge.
+- **Fix:** Updated the pump timer chips and badge readout to show `Active` while input is fresh, `AFK logout in <m:ss>`, and `Pump stops in <mm:ss>` (#44).
+
+## 2026-11-14 — Sidebar tab bar scrolled away and setting rows stretched vertically (#42)
+- **What broke:** Putting the sidebar tab bar inside the scrollable column let the tabs scroll out of view on long tabs, and `BoxLayout` stretched individual setting rows vertically when a tab had few items.
+- **How it was found:** Visual review of the sidebar panel (#37).
+- **Fix:** Pinned the tab bar above the scroll pane and constrained setting row maximum heights in `Column` so rows keep their natural height (#42).
+
+## 2026-11-14 — Emptying a log basket or fish barrel failed to zero the tracked count when chat differed or bank was open (#36)
+- **What broke:** `ContainerContents` missed the period-terminated `"You empty your basket."` message and did not zero the container when `Empty` was clicked with the bank open if the chat line was filtered or varied.
+- **How it was found:** In-game testing of log basket and fish barrel emptying.
+- **Fix:** Matched both `"You empty your basket"` chat variants and zeroed the tracked container when `Empty` is clicked with the bank open and the bank item container changes on the following tick (#36).
+
+## 2026-11-14 — Moving the skilling badge to fixed or over-spot still hid it during combat (#32, #36)
+- **What broke:** `skillingHideInCombat` hid the skilling badge and cleared its `Not <activity>` idle state whenever combat started, even when the badge was positioned at `OVER_SPOT` or `FIXED` where it never collides with the player's overhead health bar.
+- **How it was found:** In-game testing of fixed and over-spot badge positions during combat.
+- **Fix:** Added `BadgeCombat` so `skillingHideInCombat` (`Hide in combat (over head)`) only hides the badge when positioned over the player's head, while fixed and over-spot badges stay visible and show `| under attack` or `| in combat` in the header (#32, #36).
+
+## 2026-11-14 — Log basket `Check` dialog and fill-on-catch states were lost across ticks (#31)
+- **What broke:** Checking a log basket or fish barrel reports its count in a sprite dialog widget rather than a `GAMEMESSAGE` chat event, and filling the final slot on a catch did not mark the container full or retain known counts across skill switches.
+- **How it was found:** In-game testing with the log basket.
+- **Fix:** Read container `Check` text from the sprite dialog widget each tick, marked open containers full when a catch lands directly into them at capacity, and preserved known counts until logout (#31).
+
+## 2026-11-06 — Pickpocket stun and target hits hid the Thieving badge as combat (#26)
+- **What broke:** Being stunned or taking a hit from the NPC being pickpocketed triggered `CombatState` hitsplat combat detection, hiding the Thieving skilling badge when `Hide during combat` was enabled.
+- **How it was found:** In-game Thieving testing reported by the Board.
+- **Fix:** Added `ThievingHits` so a hit on the local player while thieving counts as combat only when an attackable NPC other than the pickpocket target (such as a guard) or another player is interacting with the player (#26).
+
+## 2026-11-06 — Slow `Not fishing` transition, overlapping catch icons, and dark Thieving session icon (#22)
+- **What broke:** Walking away from a fishing spot waited out the full 5-second linger timeout before switching to `Not fishing`; catch icons overlapped the word `free` on the inventory bar at certain slot counts; and the dark Thieving skill icon disappeared against the session row's dark background.
+- **How it was found:** In-game testing and screenshots from the Board.
+- **Fix:** Added `SkillingStop` to switch to idle on the first tick the player's tile changes after the interaction ends (or after 2 stationary non-animating ticks off a fishing spot), reserved the widest-digit label width in `InventoryLine` before right-aligning catch icons, and drew a subtle light backing behind every skill's session icon in `SkillingBadgeRenderer.drawSessionIcon` (#22).
+
+## 2026-11-06 — `Next spot path: On spot move` never fired when a fishing spot relocated in place (#20)
+- **What broke:** Fishing spots in Old School RuneScape move by changing the existing NPC's world location without firing `NpcDespawned` or `NpcChanged`, so `SpotPathing` never triggered automatic pathing when the active spot moved and Shortest Path cleared paths within its default 5-tile `finishDistance`.
+- **How it was found:** In-game testing reported by the Board where only right-click paths appeared in the log.
+- **Fix:** Tracked the fished spot's `WorldPoint` each tick via `SpotPathing.Locator` so a tile change while fishing (or within 2 ticks of the interaction ending) triggers pathing, and added `NextSpotOverlay` (`EdgeArrow`) to draw the plugin's own tile outline, line, and off-screen edge arrow until fishing resumes (#20).
+
+## 2026-11-05 — Missing health bar sprite retries caused per-tick cache decode lag spikes and despawned NPCs threw in overlay rendering (#19)
+- **What broke:** With `Hide game health bar` enabled, any uncached health bar sprite was re-read from the game cache on every client tick (up to 22 decodes per frame); separately, calling `getCanvasTextLocation` on an NPC in the middle of despawning after death threw an exception during overlay rendering.
+- **How it was found:** Frame-path benchmarking (`FramePathBenchmarkTest`) and client log inspection after combat kills.
+- **Fix:** Rate-limited missing sprite retries in `NativeHealthBarHider` to once per `RETRY_CALLS` (~1 second), cleared the tracked opponent on `NpcDespawned`, and guarded `CombatVitalsOverheadOverlay.onScreen` against client lookup exceptions (#19).
+
+## 2026-11-04 — Opening plugin settings caused a black screen because `FishingSpotPath` enum was package-private (#18)
+- **What broke:** RuneLite's config panel requires `@ConfigItem` return-type enums to be `public`; `FishingSpotPath` was declared package-private in #16, throwing an access error when opening the settings panel.
+- **How it was found:** Opening the plugin configuration panel in the developer client after #16 merged.
+- **Fix:** Declared `public enum FishingSpotPath` (#18).
+
+## 2026-11-04 — Overhead chat rendered twice when `Chat above readout` was off or on the first frame of a message (#14)
+- **What broke:** When `Chat above readout` (`hideGameOverheadChat`) was turned off, the overlay still drew its own lifted copy above the readout while the game drew the original line; when turned on, blanking waited until the tick after render so the game's line flashed for a frame under the readout.
+- **How it was found:** In-game testing reported by the Board.
+- **Fix:** Stopped drawing the overlay's lifted chat copy when `Chat above readout` is off, and blanked covered messages immediately inside `onOverheadTextChanged` via `OverheadChatHolder.hold` before the first frame renders (#14).
+
 ## 2026-11-03 — Pickpocketing an attackable NPC skipped the Thieving badge (#12)
 - **What broke:** NPCs that offer both `Attack` and a skilling option such as `Pickpocket` (for example, a Man) were classified by `CombatState.isAttackable` before checking the clicked menu option, so pickpocketing them never showed the Thieving skilling badge.
 - **How it was found:** Review of RUNELITE-40 (#7).
