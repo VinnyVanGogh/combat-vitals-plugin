@@ -350,6 +350,15 @@ public class CombatVitalsPlugin extends Plugin
 	 */
 	private final CombatState combat = new CombatState();
 
+	/** Last hitsplat per actor, for "Only after damage". */
+	private final RecentHits<Actor> recentHits = new RecentHits<>();
+
+	/** Whether the actor took a hit within the game's health-bar window. */
+	boolean tookDamageRecently(Actor actor)
+	{
+		return recentHits.recent(actor, System.currentTimeMillis());
+	}
+
 	/** The skilling NPC being worked, when the interaction is not a fight. */
 	private NPC skillingTarget;
 
@@ -1830,6 +1839,7 @@ public class CombatVitalsPlugin extends Plugin
 		}
 
 		final Actor actor = event.getActor();
+		recentHits.hit(actor, System.currentTimeMillis());
 		final boolean onMe = actor == self;
 		if (!CombatState.evidence(onMe, event.getHitsplat()))
 		{

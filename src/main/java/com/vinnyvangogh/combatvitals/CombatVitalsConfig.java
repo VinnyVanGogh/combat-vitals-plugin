@@ -129,6 +129,19 @@ public interface CombatVitalsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "overheadOnlyAfterDamage",
+		name = "Only after damage",
+		description = "Show the readout over a target (or over you) only for a few seconds after it takes a hit, "
+			+ "like the game's own health bar. Off: it stays up for as long as it is shown today.",
+		section = displaySection,
+		position = 9
+	)
+	default boolean overheadOnlyAfterDamage()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "displayMode",
 		name = "Display",
 		description = "Show hitpoints, a percentage, or both.",
