@@ -1983,6 +1983,11 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			notifier.notify(muted(config.splashAlertBroke()), splashBroke);
 		}
+		final String castsLow = splashWatcher.takeLowCastsAlert();
+		if (castsLow != null && !alertMute.muted())
+		{
+			notifier.notify(muted(config.castsAlertLow()), castsLow);
+		}
 		readStatusBars();
 		tickSpotPathing();
 		readContainerDialog();
