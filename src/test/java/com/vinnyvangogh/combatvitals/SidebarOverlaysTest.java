@@ -27,6 +27,7 @@ public class SidebarOverlaysTest
 			panel = new VitalsSidePanel(store, PanelFixture.descriptors(), null, t ->
 			{
 			});
+			panel.display(VitalsSidePanel.Main.OVERLAYS);
 			ui = new SwingDriver(panel);
 			ui.layout(VitalsSidePanelShots.WIDTH);
 		});
@@ -83,8 +84,11 @@ public class SidebarOverlaysTest
 	@Test
 	public void resetSessionButtonTicksTheResetKey()
 	{
-		SwingDriver.onEdt(() -> ui.find(AbstractButton.class, b -> "Skilling".equals(b.getText()),
-			"skilling tab").doClick());
+		SwingDriver.onEdt(() ->
+		{
+			panel.show(PanelLayout.Tab.SKILLING);
+			ui.layout(VitalsSidePanelShots.WIDTH);
+		});
 		// The Session card is folded shut until its header is clicked.
 		SwingDriver.onEdt(() -> ui.find(AbstractButton.class, b -> "Session".equals(b.getText()),
 			"session card header").doClick());

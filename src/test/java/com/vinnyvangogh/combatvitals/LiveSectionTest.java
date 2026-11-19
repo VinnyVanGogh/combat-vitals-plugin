@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
 import org.junit.Before;
@@ -56,6 +57,17 @@ public class LiveSectionTest
 		SwingDriver.onEdt(() ->
 		{
 			panel.live(v);
+			ui.layout(WIDTH);
+		});
+	}
+
+	/** Clicks the Live tab's Combat / Skilling / Overall toggle, as a user does. */
+	private void view(LiveSection.View v)
+	{
+		SwingDriver.onEdt(() ->
+		{
+			ui.find(javax.swing.JToggleButton.class, b -> ("live-view-" + v.name()).equals(b.getName()),
+				"view " + v).doClick();
 			ui.layout(WIDTH);
 		});
 	}
@@ -132,11 +144,40 @@ public class LiveSectionTest
 		ui.assertShows("466/750");
 		ui.assertShows("Ranged: Lv 92 -> 93");
 		ui.assertShows("152k xp/h | lvl 93 in 12m");
-		ui.assertShows(LiveSection.NOT_SKILLING);
 		ui.assertHides(LiveSection.NOT_IN_COMBAT);
+		shot("panel-live-combat.png");
+		view(LiveSection.View.SKILLING);
+		ui.assertShows(LiveSection.NOT_SKILLING);
+		view(LiveSection.View.OVERALL);
 		ui.assertShows("Ranged: +412k xp, +2 lvls in 2h 10m");
 		ui.assertHides(LiveSection.NOTHING_YET);
-		shot("panel-live-combat.png");
+	}
+
+	@Test
+	public void theToggleShowsOneCardAtATimeAndRemembersIt()
+	{
+		live(new LiveVitals(true, fighting(), chopping(), SESSION));
+		assertEquals(LiveSection.View.COMBAT, SwingDriver.onEdt(() -> section().view()));
+		ui.assertShows("Hitpoints 72/99");
+		ui.assertHides("Woodcutting 72 (+3) 41s");
+		view(LiveSection.View.SKILLING);
+		ui.assertShows("Woodcutting 72 (+3) 41s");
+		ui.assertHides("Hitpoints 72/99");
+		assertEquals("SKILLING", store.values.get(LiveSection.VIEW_KEY));
+		view(LiveSection.View.OVERALL);
+		ui.assertShows("Ranged: +412k xp, +2 lvls in 2h 10m");
+		ui.assertHides("Woodcutting 72 (+3) 41s");
+
+		final VitalsSidePanel again = SwingDriver.onEdt(() -> new VitalsSidePanel(store, PanelFixture.descriptors(),
+			null, t ->
+			{
+			}));
+		assertEquals(LiveSection.View.OVERALL, SwingDriver.onEdt(() -> ui2(again).view()));
+	}
+
+	private static LiveSection ui2(VitalsSidePanel p)
+	{
+		return new SwingDriver(p).find(LiveSection.class, s -> true, "the Live section");
 	}
 
 	@Test
@@ -144,6 +185,7 @@ public class LiveSectionTest
 	{
 		live(new LiveVitals(true, idleCombat(), chopping(), SESSION.subList(1, 2)));
 		ui.assertShows(LiveSection.NOT_IN_COMBAT);
+		view(LiveSection.View.SKILLING);
 		ui.assertShows("Woodcutting 72 (+3) 41s");
 		ui.assertShows("Lv 72 -> 73: 64%");
 		ui.assertShows("XP / hour");
@@ -160,6 +202,7 @@ public class LiveSectionTest
 	public void showsAMethodsTimersAsChips()
 	{
 		live(new LiveVitals(true, idleCombat(), pumping(), SESSION.subList(1, 2)));
+		view(LiveSection.View.SKILLING);
 		ui.assertShows("Pumping (Blast Furnace) | Strength 85");
 		ui.assertShows("Active");
 		ui.assertShows("Pump stops in 97:30");
@@ -175,8 +218,9 @@ public class LiveSectionTest
 	{
 		live(new LiveVitals(true, idleCombat(), LiveVitals.skilling(null), SESSION));
 		ui.assertShows(LiveSection.NOT_IN_COMBAT);
-		ui.assertShows(LiveSection.NOT_SKILLING);
 		ui.assertShows("Hitpoints 99/99");
+		view(LiveSection.View.SKILLING);
+		ui.assertShows(LiveSection.NOT_SKILLING);
 		ui.assertHides("XP / hour");
 		shot("panel-live-idle.png");
 	}
@@ -187,6 +231,7 @@ public class LiveSectionTest
 		final List<LiveVitals.Gain> ranked = new ArrayList<>(LONG_SESSION);
 		ranked.sort((a, b) -> Integer.compare(b.xp, a.xp));
 		live(new LiveVitals(true, idleCombat(), LiveVitals.skilling(null), ranked));
+		view(LiveSection.View.OVERALL);
 		final LiveSection section = section();
 		assertEquals(Arrays.asList("Ranged: +412k xp, +2 lvls in 2h 10m", "Hitpoints: +137k xp in 2h 10m",
 			"Woodcutting: +86.2k xp in 1h 05m"), SwingDriver.onEdt(section::sessionShown));
@@ -213,13 +258,17 @@ public class LiveSectionTest
 	{
 		live(new LiveVitals(true, idleCombat(), LiveVitals.skilling(null), Collections.emptyList()));
 		ui.assertShows(LiveSection.NOT_IN_COMBAT);
+		view(LiveSection.View.SKILLING);
 		ui.assertShows(LiveSection.NOT_SKILLING);
+		view(LiveSection.View.OVERALL);
 		ui.assertShows(LiveSection.NOTHING_YET);
 		shot("panel-live-empty.png");
 
 		live(new LiveVitals(true, null, null, Collections.emptyList()));
-		ui.assertShows(LiveSection.COMBAT_OFF);
+		view(LiveSection.View.SKILLING);
 		ui.assertShows(LiveSection.SKILLING_OFF);
+		view(LiveSection.View.COMBAT);
+		ui.assertShows(LiveSection.COMBAT_OFF);
 		ui.assertHides("Hitpoints 99/99");
 
 		live(LiveVitals.LOGGED_OUT);
@@ -274,7 +323,7 @@ public class LiveSectionTest
 		assertTrue(SwingDriver.onEdt(panel::wantsLive));
 		SwingDriver.onEdt(() ->
 		{
-			ui.click(LiveSection.TITLE);
+			ui.click(liveToggle(ui));
 			ui.layout(WIDTH);
 		});
 		assertEquals(Boolean.FALSE, store.values.get(LiveSection.OPEN_KEY));
@@ -292,8 +341,7 @@ public class LiveSectionTest
 			d.layout(WIDTH);
 			return d;
 		});
-		ui2.assertShows(LiveSection.TITLE);
-		assertFalse(SwingDriver.onEdt(() -> ((FoldCard.Header) ui2.button(LiveSection.TITLE)).isOpen()));
+		assertFalse(SwingDriver.onEdt(() -> ((FoldCard.Header) liveToggle(ui2)).isOpen()));
 		ui2.assertHides(LiveSection.LOGGED_OUT);
 
 		// Opened from the list (or another panel): the refresh that follows opens it.
@@ -307,17 +355,19 @@ public class LiveSectionTest
 	}
 
 	@Test
-	public void theLiveSectionSitsAboveThePresets()
+	public void theLiveTabOpensFirstAndTheMainTabsSitBelowTheMuteBar()
 	{
+		assertEquals(VitalsSidePanel.Main.LIVE, SwingDriver.onEdt(panel::main));
+		final int muteY = SwingDriver.onEdt(() -> ui.yOf(ui.button(MuteBar.MUTE)));
 		final int liveY = SwingDriver.onEdt(() -> ui.yOf(ui.button(LiveSection.TITLE)));
-		final int presetsY = SwingDriver.onEdt(() -> ui.yOf(ui.label("Presets")));
-		assertTrue(liveY < presetsY);
+		assertTrue(muteY < liveY);
 	}
 
 	@Test
 	public void noTextRunsPastThePanelsRightEdge()
 	{
 		live(new LiveVitals(true, fighting(), chopping(), LONG_SESSION));
+		view(LiveSection.View.OVERALL);
 		SwingDriver.onEdt(() ->
 		{
 			ui.click("Show all 5");
@@ -375,12 +425,22 @@ public class LiveSectionTest
 		return out;
 	}
 
+	private static JButton liveToggle(SwingDriver d)
+	{
+		return d.find(JButton.class, b -> "live-toggle".equals(b.getName()), "the Live fold header");
+	}
+
 	private void shot(String name)
 	{
 		final BufferedImage full = SwingDriver.onEdt(() -> ui.render(WIDTH, 0, 2.0));
-		final int presets = SwingDriver.onEdt(() -> ui.yOf(ui.find(GuideCard.class,
-			g -> VitalsSidePanel.PRESETS_GUIDE.equals(g.id), "the presets guide")));
-		final BufferedImage image = full.getSubimage(0, 0, full.getWidth(), presets * 2);
+		final int bottom = SwingDriver.onEdt(() ->
+		{
+			final Component section = ui.find(LiveSection.class, s -> true, "the live section");
+			return SwingUtilities.convertPoint(section.getParent(), section.getLocation(), panel).y
+				+ section.getHeight();
+		});
+		final BufferedImage image = full.getSubimage(0, 0, full.getWidth(),
+			Math.min(full.getHeight(), bottom * 2));
 		assertTrue(name + " is empty", image.getHeight() > 100);
 		SwingDriver.writePng(image, new File(System.getProperty("screenshots.dir", "build/screenshots"), name));
 	}
