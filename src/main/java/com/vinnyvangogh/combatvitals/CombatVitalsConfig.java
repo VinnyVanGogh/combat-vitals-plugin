@@ -564,7 +564,7 @@ public interface CombatVitalsConfig extends Config
 	@Range(min = 0, max = 300)
 	@ConfigItem(
 		keyName = "splashLingerSeconds",
-		name = "Splash card stays (s)",
+		name = "Card stays (s)",
 		description = "How many seconds the splashing card stays up, dimmed with 'Stopped Xs ago', after you stop "
 			+ "casting. 0 hides it at once.",
 		section = targetSection,

@@ -1,6 +1,7 @@
 package com.vinnyvangogh.combatvitals;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -71,6 +72,8 @@ class SplashWatcher
 
 	private volatile SplashReadout readout;
 	private int manualNpcIndex = -1;
+	/** The NPC the player last clicked Attack on; autocast only counts as casting at that NPC. */
+	private int attackNpcIndex = -1;
 	private int manualSpell;
 	private String manualSpellName;
 	private int manualTicks;
@@ -86,6 +89,25 @@ class SplashWatcher
 		this.client = client;
 		this.itemManager = itemManager;
 		this.config = config;
+	}
+
+	/**
+	 * Runs the first-cast work once at start-up (class loading, the spell tables, the regexes, String.format)
+	 * so the first attack does it off the hot path instead of on the client thread. Touches no client state.
+	 */
+	void warm()
+	{
+		final SplashTracker.Input in = new SplashTracker.Input(1, 1, 1, 1, "warm", 0, 1, 1.0);
+		new SplashTracker(Collections.emptyMap()).step(in, 0);
+		final int[] cost = SpellCasts.cost("Fire Strike");
+		if (cost != null)
+		{
+			final SpellCasts.Supply supply = new SpellCasts.Supply();
+			supply.item("staff of fire");
+			SplashReadout.castsText(SpellCasts.casts(cost, supply));
+		}
+		SplashTracker.percent(0.5);
+		SplashTimer.clock(1000);
 	}
 
 	/** The latest read-out for the overlay, or null when nothing is being cast at an NPC. */
@@ -113,6 +135,7 @@ class SplashWatcher
 	{
 		readout = null;
 		manualNpcIndex = -1;
+		attackNpcIndex = -1;
 		lowArmed = true;
 		lowAlert = null;
 		stopSoonAlert = null;
@@ -131,7 +154,20 @@ class SplashWatcher
 
 	void onMenuOptionClicked(MenuOptionClicked event)
 	{
-		if (!on() || event.getMenuAction() != MenuAction.WIDGET_TARGET_ON_NPC)
+		if (!on())
+		{
+			return;
+		}
+		if (isNpcOption(event.getMenuAction()))
+		{
+			final NPC clicked = event.getMenuEntry().getNpc();
+			if (clicked != null)
+			{
+				attackNpcIndex = attackClick(event.getMenuOption(), clicked.getIndex(), attackNpcIndex);
+			}
+			return;
+		}
+		if (event.getMenuAction() != MenuAction.WIDGET_TARGET_ON_NPC)
 		{
 			return;
 		}
@@ -145,6 +181,34 @@ class SplashWatcher
 		manualSpell = spell == null ? 0 : spell.getId();
 		manualSpellName = spell == null || spell.getName() == null ? null : Text.removeTags(spell.getName());
 		manualTicks = MANUAL_TICKS;
+	}
+
+	private static boolean isNpcOption(MenuAction action)
+	{
+		switch (action)
+		{
+			case NPC_FIRST_OPTION:
+			case NPC_SECOND_OPTION:
+			case NPC_THIRD_OPTION:
+			case NPC_FOURTH_OPTION:
+			case NPC_FIFTH_OPTION:
+				return true;
+			default:
+				return false;
+		}
+	}
+
+	/**
+	 * The attack target after a click on an NPC option: that NPC for Attack; none if it was the target and
+	 * the click was Talk-to, Pickpocket, Trade or anything else; otherwise unchanged.
+	 */
+	static int attackClick(String option, int npcIndex, int current)
+	{
+		if ("Attack".equalsIgnoreCase(option))
+		{
+			return npcIndex;
+		}
+		return current == npcIndex ? -1 : current;
 	}
 
 	/**
@@ -289,7 +353,9 @@ class SplashWatcher
 		// The autocast flag can stay set while a melee weapon is wielded: only a staff makes it a cast.
 		final int weaponCategory = client.getVarbitValue(VarbitID.COMBAT_WEAPON_CATEGORY);
 		final boolean auto = client.getVarbitValue(VarbitID.AUTOCAST_SET) == 1
-			&& (weaponCategory == WEAPON_STAFF || weaponCategory == WEAPON_BLADED_STAFF);
+			&& (weaponCategory == WEAPON_STAFF || weaponCategory == WEAPON_BLADED_STAFF)
+			// Talking to or pickpocketing an NPC also sets the interacting target: only an attacked one counts.
+			&& attackNpcIndex == npc.getIndex();
 		final boolean manual = manualTicks > 0 && manualNpcIndex == npc.getIndex();
 		if (!auto && !manual)
 		{
