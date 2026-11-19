@@ -39,7 +39,8 @@ final class OverlayToggles
 		new Toggle("skillingEnabled", "Badge (skilling)", true, false),
 		new Toggle("pillarMode", "Side pillars", false, false),
 		new Toggle("aggressionTimer", "Aggression countdown", true, false),
-		new Toggle("aggressionAreaLines", "Aggression 21x21 lines", false, true)));
+		new Toggle("aggressionAreaLines", "Aggression 21x21 lines", false, true),
+		new Toggle("splashMode", "Splashing mode (AFK Magic)", false, true)));
 
 	private OverlayToggles()
 	{

@@ -60,7 +60,7 @@ public class SplashTrackerTest
 		final SplashTracker tracker = new SplashTracker(MONSTERS);
 		final SplashTracker.Result r = tracker.step(input(1, 1, 5, 99999, 20), 0);
 		assertEquals(SplashTracker.Status.UNKNOWN, r.status);
-		assertEquals("Hit chance: no wiki data for Rat", r.chanceLine);
+		assertNull("no wiki data: the line is hidden, not shown as 'no wiki data'", r.chanceLine);
 	}
 
 	@Test
