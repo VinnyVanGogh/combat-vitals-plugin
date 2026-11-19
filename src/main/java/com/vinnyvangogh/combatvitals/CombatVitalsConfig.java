@@ -507,6 +507,19 @@ public interface CombatVitalsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "goalAlert",
+		name = "Goal reached",
+		description = "Notify when a goal on the Goals page is reached (a level, experience, item, kill count, "
+			+ "daily or weekly goal). Obeys the sidebar mute.",
+		section = displaySection,
+		position = 60
+	)
+	default Notification goalAlert()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
 		keyName = "skillingEnabled",
 		name = "Skilling badge",
 		description =

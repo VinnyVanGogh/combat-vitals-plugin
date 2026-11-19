@@ -157,7 +157,8 @@ final class PanelLayout
 					new Group("What shows", "showPanel", "showOverhead", "displayMode", "percentageDecimals"),
 					new Group("Your own health", "showOwnHealth"),
 					new Group("The game's own", "hideGameHealthBar", "hideGameOverheadChat"),
-					new Group("NPC aggression", "aggressionTimer", "aggressionAreaLines"));
+					new Group("NPC aggression", "aggressionTimer", "aggressionAreaLines"),
+					new Group("Goals", "goalAlert"));
 			case TARGETS:
 				return Arrays.asList(
 					new Group("Who gets a readout", "showForNpcs", "showForPlayers", "overheadForPlayers",
