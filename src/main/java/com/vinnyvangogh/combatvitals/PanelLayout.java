@@ -166,7 +166,9 @@ final class PanelLayout
 					new Group("Big targets", "bigTargetDisplay", "otherTargetDisplay", "bigTargetRule",
 						"bigTargetMaxHp"),
 					new Group("Splashing (AFK Magic)", "splashMode", "splashMaxChance", "splashAlertBroke"),
-					new Group("Casts left", "castsLeft", "castsWarnAt", "castsAlertLow"));
+					new Group("Casts left", "castsLeft", "castsWarnAt", "castsAlertLow"),
+					new Group("Gemstone Crab", "gemstoneCrab", "gemstoneCrabWarnSeconds", "gemstoneCrabArrow",
+						"gemstoneCrabAlertSpawn", "gemstoneCrabAlertBurrow", "gemstoneCrabAlertGo"));
 			case SKILLING:
 				return skillingGroups();
 			case LOOK:

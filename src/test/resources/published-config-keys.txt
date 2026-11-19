@@ -217,3 +217,10 @@ castsWarnAt int
 castsAlertLow Notification
 # 2026-11-18: Goals page (task-0e75f0d0).
 goalAlert Notification
+# 2026-11-19: Gemstone Crab mode (RUNELITE-462).
+gemstoneCrab boolean
+gemstoneCrabWarnSeconds int
+gemstoneCrabArrow boolean
+gemstoneCrabAlertSpawn Notification
+gemstoneCrabAlertBurrow Notification
+gemstoneCrabAlertGo Notification
