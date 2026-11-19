@@ -1932,8 +1932,9 @@ public interface CombatVitalsConfig extends Config
 		keyName = "forestryHighlights",
 		name = "Highlight Forestry events",
 		description = "Outline the parts of a Forestry event in the game view (glowing roots, the sapling, the "
-			+ "flowering bush, the leprechaun and the rest), as RuneLite's Woodcutting plugin does. You can turn "
-			+ "RuneLite's Woodcutting plugin off; this covers its Forestry highlights.",
+			+ "flowering bush, the leprechaun and the rest), as RuneLite's Woodcutting plugin does. Not covered "
+			+ "yet: mulch ingredients, fox trap, pheasant nest, ritual circle and the leprechaun's rainbow, so keep "
+			+ "RuneLite's Woodcutting plugin on for those for now.",
 		section = skillingSection,
 		position = 42
 	)
@@ -2062,7 +2063,7 @@ public interface CombatVitalsConfig extends Config
 		return true;
 	}
 
-	String SOUND_HELP =" RuneLite: your RuneLite notification sound, as before. Soft chime, Music box, Retro blip: "
+	String SOUND_HELP = " RuneLite: your RuneLite notification sound, as before. Soft chime, Music box, Retro blip: "
 		+ "bundled sounds. Voice line: says what happened. My sounds: your own WAV in "
 		+ ".runelite/plugin-data/combat-vitals/sounds/";
 	String VOLUME_HELP = "Volume of this alert's own sounds. RuneLite's sound keeps RuneLite's volume.";
