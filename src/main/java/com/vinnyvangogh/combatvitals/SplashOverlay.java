@@ -28,10 +28,10 @@ import static net.runelite.client.ui.overlay.OverlayManager.OPTION_CONFIGURE;
  */
 class SplashOverlay extends Overlay
 {
-	private static final Color SAFE = new Color(0, 200, 83);
+	static final Color SAFE = new Color(0, 200, 83);
 	private static final Color LOW = new Color(255, 193, 7);
-	private static final Color WARN = new Color(220, 60, 60);
-	private static final Color PLAIN = new Color(235, 235, 235);
+	static final Color WARN = new Color(220, 60, 60);
+	static final Color PLAIN = new Color(235, 235, 235);
 	private static final Color MUTED = new Color(160, 160, 160);
 	private static final Color BACK = new Color(ColorScheme.DARKER_GRAY_COLOR.getRed(),
 		ColorScheme.DARKER_GRAY_COLOR.getGreen(), ColorScheme.DARKER_GRAY_COLOR.getBlue(), 225);
@@ -67,8 +67,12 @@ class SplashOverlay extends Overlay
 		}
 		final long now = System.currentTimeMillis();
 		final Color accent = accent(readout);
-		final List<Row> rows = rows(readout, now, accent);
+		return card(graphics, rows(readout, now, accent), accent);
+	}
 
+	/** Paints the rounded card with its accent bar around the rows, and returns its size. */
+	static Dimension card(Graphics2D graphics, List<Row> rows, Color accent)
+	{
 		final Font body = FontManager.getRunescapeSmallFont();
 		final Font bold = FontManager.getRunescapeBoldFont();
 		final FontMetrics bodyMetrics = graphics.getFontMetrics(body);
@@ -193,7 +197,7 @@ class SplashOverlay extends Overlay
 	}
 
 	/** One line of the card: text, the rune icons, or the logout bar. */
-	private static final class Row
+	static final class Row
 	{
 		private final String text;
 		private final Color colour;

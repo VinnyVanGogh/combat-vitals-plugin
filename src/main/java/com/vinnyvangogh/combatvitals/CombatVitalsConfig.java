@@ -509,14 +509,66 @@ public interface CombatVitalsConfig extends Config
 	@ConfigItem(
 		keyName = "castsLeft",
 		name = "Show casts left",
-		description = "While you cast a combat spell at an NPC (autocast, or a spell clicked on it), show how many "
-			+ "casts you have left from the runes in your inventory and rune pouch, counting combination runes "
-			+ "and a worn staff or charged tome of fire or water that stands in for a rune. Shown on the same "
-			+ "card as Splashing mode, with the idle logout and session clocks. Information only.",
+		description = "Show an overlay with the spell, the runes it costs and how many casts you have left, from "
+			+ "the runes in your inventory and rune pouch, counting combination runes and a worn staff or "
+			+ "charged tome of fire or water that stands in for a rune. By default it shows while you autocast "
+			+ "with a staff, or for a few seconds after you cast a spell by hand. Information only.",
 		section = targetSection,
 		position = 12
 	)
 	default boolean castsLeft()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "castsAlways",
+		name = "Always show",
+		description = "Keep the overlay up all the time instead of only while you cast, for the spell you pick "
+			+ "below, or the last spell you cast if none is picked. Replaces a separate casts plugin.",
+		section = targetSection,
+		position = 13
+	)
+	default boolean castsAlways()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "castsSpell",
+		name = "Always show: spell",
+		description = "The spell to count when Always show is on and you are not casting, by name, e.g. Fire "
+			+ "Surge or Ice Barrage. Leave empty for the last spell you cast.",
+		section = targetSection,
+		position = 14
+	)
+	default String castsSpell()
+	{
+		return "";
+	}
+
+	@Range(min = 0, max = 10000)
+	@ConfigItem(
+		keyName = "castsOnlyBelow",
+		name = "Show only below",
+		description = "Show the overlay only when you have fewer than this many casts left. 0 shows it always. "
+			+ "Unlimited casts never show while this is set. The low-casts alert is not affected.",
+		section = targetSection,
+		position = 15
+	)
+	default int castsOnlyBelow()
+	{
+		return 0;
+	}
+
+	@ConfigItem(
+		keyName = "castsMerge",
+		name = "Merge into splash card",
+		description = "While the Splashing mode card is showing, put the casts on it and hide this overlay.",
+		section = targetSection,
+		position = 16
+	)
+	default boolean castsMerge()
 	{
 		return true;
 	}
@@ -528,7 +580,7 @@ public interface CombatVitalsConfig extends Config
 		description = "Turn the casts red and send the alert below when you have this many casts or fewer left. "
 			+ "0 turns the warning off.",
 		section = targetSection,
-		position = 13
+		position = 17
 	)
 	default int castsWarnAt()
 	{
@@ -541,7 +593,7 @@ public interface CombatVitalsConfig extends Config
 		description = "Notify when your casts drop to the warn level. It fires once, and again after you restock "
 			+ "above it. Follows the sidebar mute and Mute alert sounds.",
 		section = targetSection,
-		position = 14
+		position = 18
 	)
 	default Notification castsAlertLow()
 	{

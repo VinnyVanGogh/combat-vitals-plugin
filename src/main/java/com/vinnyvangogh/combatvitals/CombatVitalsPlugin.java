@@ -298,6 +298,10 @@ public class CombatVitalsPlugin extends Plugin
 	@Inject
 	private SplashOverlay splashOverlay;
 
+	/** The standalone Casts left overlay, separate from Splashing mode. */
+	@Inject
+	private CastsOverlay castsOverlay;
+
 	@Inject
 	private SplashWatcher splashWatcher;
 
@@ -498,6 +502,7 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.add(aggressionAreaOverlay);
 		overlayManager.add(gameHealthBarOverlay);
 		overlayManager.add(splashOverlay);
+		overlayManager.add(castsOverlay);
 
 		knownSpots = KnownFishingSpots.load();
 		voiceLines = VoiceLines.load();
@@ -633,6 +638,7 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.remove(aggressionAreaOverlay);
 		overlayManager.remove(gameHealthBarOverlay);
 		overlayManager.remove(splashOverlay);
+		overlayManager.remove(castsOverlay);
 		splashWatcher.reset();
 		mouseManager.unregisterMouseListener(backOnClick);
 		keyManager.unregisterKeyListener(backOnKey);

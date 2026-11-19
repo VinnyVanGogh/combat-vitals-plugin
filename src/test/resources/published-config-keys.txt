@@ -215,3 +215,8 @@ autoResetSession boolean
 castsLeft boolean
 castsWarnAt int
 castsAlertLow Notification
+# 2026-11-19: standalone Casts left overlay (RUNELITE-436).
+castsAlways boolean
+castsSpell String
+castsOnlyBelow int
+castsMerge boolean
