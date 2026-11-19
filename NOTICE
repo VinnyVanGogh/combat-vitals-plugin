@@ -21,8 +21,101 @@ src/main/resources/com/vinnyvangogh/combatvitals/voice/*.wav
     https://github.com/thewh1teagle/kokoro-onnx
   The words spoken are listed in voice/lines.tsv.
 
-Code adapted from RuneLite
---------------------------
+Code and tables adapted from RuneLite
+-------------------------------------
 
-Volume to gain conversion in AlertSounds follows RuneLite's Notifier
-(BSD 2-Clause, Copyright (c) 2016-2017, Adam <Adam@sigterm.info>).
+Portions of the following classes are derived from or ported from RuneLite
+(https://github.com/runelite/runelite):
+
+- HealthRecovery.java and CombatVitalsPlugin.java: health-bar ratio inversion,
+  single-opponent tracking, player Hitpoints hiscores lookup, and boss HP HUD
+  suppression (hasHpHud) from OpponentInfoPlugin and OpponentInfoOverlay.
+- BoostTimer.java: Preserve stat-drain cycle calculation ported from
+  BoostsPlugin#getChangeDownTicks.
+- EssencePouch.java: degraded essence pouch capacity table ported from
+  EssencePouchOverlay.
+- SidePillars.java and PillarPainter.java: side-panel viewport offsets, bar
+  dimensions, and BarRenderer background, inset, and label-baseline constants
+  from StatusBarsOverlay and BarRenderer.
+- AlertSounds.java: volume-to-decibel gain conversion from Notifier.
+- SkillingEvents.java: Forestry object and NPC spawn IDs, pet chat lines, and
+  random-event NPC IDs and cooldown read from WoodcuttingPlugin,
+  ScreenshotPlugin, and RandomEventPlugin.
+- src/test/resources/logback-test.xml: test logger configuration from
+  RuneLite's example-plugin template.
+
+RuneLite is licensed under the BSD 2-Clause License:
+
+  Copyright (c) 2016-2022, Adam <Adam@sigterm.info>
+  Copyright (c) 2016-2018, Seth <Sethtroll3@gmail.com>
+  Copyright (c) 2018, Jordan Atwood <jordan.atwood423@gmail.com>
+  Copyright (c) 2018, Lotto <https://github.com/devLotto>
+  Copyright (c) 2019, Jos <Malevolentdev@gmail.com>
+  Copyright (c) 2019, Rheon <https://github.com/Rheon-D>
+  All rights reserved.
+
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are met:
+
+  1. Redistributions of source code must retain the above copyright notice, this
+     list of conditions and the following disclaimer.
+  2. Redistributions in binary form must reproduce the above copyright notice,
+     this list of conditions and the following disclaimer in the documentation
+     and/or other materials provided with the distribution.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+GP Per Hour (container check wording and delta rule)
+----------------------------------------------------
+
+ContainerContents.java follows the game chat-message wording for the log
+basket, fish barrel, and coal bag and the Fill/Empty inventory-difference
+tracking pattern documented in GP Per Hour
+(https://github.com/MosheBenZacharia/GP-Per-Hour, commit cce6706,
+itemcharges/items/U_LogBasket.java, U_FishBarrel.java, U_CoalBag.java),
+licensed under the BSD 2-Clause License (terms above):
+
+  Copyright (c) 2023, Moshe Ben-Zacharia
+  All rights reserved.
+
+Old School RuneScape Wiki (bundled game data)
+---------------------------------------------
+
+fishing_spots.tsv, monster_magic.tsv (generated offline by
+tools/splash/fetch_monsters.py), boss NPC IDs (BigTargets), fishing catch
+tables (FishingCatches), Blast Furnace pump and stove mechanics (PumpChecks),
+and magic splash accuracy formulas (SplashMath) use public game data from the
+Old School RuneScape Wiki (https://oldschool.runescape.wiki), available under
+the Creative Commons Attribution-NonCommercial-ShareAlike 3.0 License
+(https://creativecommons.org/licenses/by-nc-sa/3.0/).
+
+Independent re-implementations (inspired by, no code copied)
+------------------------------------------------------------
+
+Features overlapping with the following plugins were implemented from scratch
+for Combat & Skilling Vitals without copying their source code:
+
+- NPC Health Text (devrat0, BSD 2-Clause) and Monster HP Percentage
+  (Le Jeffe, https://github.com/lejeffe/MonsterHP, BSD 2-Clause): inspired
+  overhead health text placement and monster HP / percentage display rules.
+- NPC Aggression Timer (RuneLite built-in, BSD 2-Clause): inspired the
+  10-minute aggression countdown and optional 21x21 area lines.
+- Inventory Notifier (dandylyon), Fish Barrel (molo-pl,
+  https://github.com/molo-pl/runelite-plugins), Idle Alarm (observnad,
+  https://github.com/observnad/Idle-Alarm), Clue Scroll Notifier (SoaresPT,
+  https://github.com/SoaresPT/clue-scroll-notifier), and Sound Alerts
+  Expanded: inspired the combined inventory-full alerts, container rows,
+  gentle repeating alerts, clue-tier skilling notifications, and custom
+  per-alert WAV folder.
+- Shortest Path (Skretzo, https://github.com/Skretzo/shortest-path,
+  BSD 2-Clause): optional next-fishing-spot routing communicates solely over
+  RuneLite's public PluginMessage event bus; no Shortest Path code is bundled.
