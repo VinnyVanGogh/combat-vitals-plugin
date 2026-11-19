@@ -1,6 +1,5 @@
 package com.vinnyvangogh.combatvitals;
 
-import com.google.common.base.Charsets;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.EOFException;
@@ -8,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import com.google.common.base.Charsets;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -97,7 +97,7 @@ final class AlertSounds
 
 	private static List<String> packClip(AlertSound sound, Predicate<String> resourceExists)
 	{
-		final String resource = sound.getClip();
+		final String resource = sound.getClipPath();
 		return resource != null && resourceExists.test(resource)
 			? Collections.singletonList(resource)
 			: Collections.emptyList();
