@@ -147,10 +147,13 @@ back.
 ## Sidebar panel
 
 The plugin has its own button in RuneLite's sidebar (a small health bar over
-a skilling bar). It holds every setting from RuneLite's settings list, the
-same settings with the same values, laid out to be easier to find: presets at
-the top, then five tabs. Change something in either place and the other shows
-it. Timeouts and update notes stay in the settings list, under Advanced.
+a skilling bar). Under the title sit **Mute alerts** and **15 min**, **30 min**
+and **60 min** buttons that silence every alert (sound and on-screen) until you
+unmute or the timer runs out. Below that it holds every setting from RuneLite's
+settings list, the same settings with the same values, laid out to be easier to
+find: presets at the top, then five tabs. Change something in either place and
+the other shows it. Timeouts and update notes stay in the settings list, under
+Advanced.
 
 The screenshots are rendered from the real panel by `./gradlew screenshots`
 (`VitalsSidePanelShots`).
@@ -219,6 +222,10 @@ Each alert is a card, folded to its name: open it to tick it on or off, and
 one sound, volume and repeat (sound packs included); untick it and each alert's
 own sound, volume and Repeat show in its card. Every sound starts as
 RuneLite's own; voice lines play only for the alerts you set to Voice line.
+Under **Muting**, **Mute alert sounds** silences every alert's sound (the
+plugin's own and RuneLite's notification sound) while keeping the tray and chat
+notifications, and **Follow game volume** (off by default) scales the plugin's
+own sounds by the game's sound effects volume.
 
 1. Tick Same for every alert.
 2. Pick Voice line as the sound and set the volume, e.g. 40.
