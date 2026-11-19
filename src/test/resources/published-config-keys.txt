@@ -146,6 +146,9 @@ sidebarLiveOpen boolean
 # 2026-11-14: the sidebar's guides, folded per guide and hidden altogether (task-c9583931).
 sidebarGuidesClosed String
 sidebarGuidesHidden boolean
+# 2026-11-19: the sidebar's last open tab and the Live tab's Combat/Skilling/Overall choice (RUNELITE-450).
+sidebarTab String
+sidebarLiveView String
 # 2026-11-14: the Blast Furnace pump's alerts (task-20b05b6b).
 alertMethodStopped Notification
 alertReclickSoon Notification
@@ -215,6 +218,12 @@ autoResetSession boolean
 castsLeft boolean
 castsWarnAt int
 castsAlertLow Notification
+# 2026-11-19: standalone Casts left overlay (RUNELITE-436).
+castsAlways boolean
+castsSpell String
+castsOnlyBelow int
+castsMerge boolean
+
 # 2026-11-18: Goals page (task-0e75f0d0).
 goalAlert Notification
 # 2026-11-19: splash card linger and stop-by-itself alerts (task-a7fefc21).

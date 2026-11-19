@@ -42,6 +42,7 @@ public class VitalsSidePanelTest
 		{
 			RuneLiteLook.install();
 			panel = new VitalsSidePanel(store, PanelFixture.descriptors(), null, tested::add);
+			panel.show(PanelLayout.Tab.COMBAT);
 			ui = new SwingDriver(panel);
 			ui.layout(VitalsSidePanelShots.WIDTH);
 		});
@@ -173,7 +174,12 @@ public class VitalsSidePanelTest
 	@Test
 	public void aPresetShowsWhatChangesThenAppliesAndUndoes()
 	{
-		onEdt(() -> ui.click("Minimal"));
+		onEdt(() ->
+		{
+			panel.display(VitalsSidePanel.Main.PRESETS);
+			ui.layout(VitalsSidePanelShots.WIDTH);
+			ui.click("Minimal");
+		});
 		ui.assertShows("Minimal: what changes");
 		ui.assertShows("Show panel: on -> off");
 		assertTrue("previewing wrote " + store.writes, store.writes.isEmpty());
@@ -181,10 +187,20 @@ public class VitalsSidePanelTest
 		onEdt(() -> ui.click("Apply"));
 		assertEquals(Boolean.FALSE, store.values.get("showPanel"));
 		assertEquals(PillarMode.OFF, store.values.get("pillarMode"));
-		onEdt(panel::refresh);
+		onEdt(() ->
+		{
+			panel.refresh();
+			panel.show(PanelLayout.Tab.COMBAT);
+			ui.layout(VitalsSidePanelShots.WIDTH);
+		});
 		assertFalse(SwingDriver.onEdt(() -> checkbox("Show panel").isSelected()));
 
-		onEdt(() -> ui.click("Undo Minimal"));
+		onEdt(() ->
+		{
+			panel.display(VitalsSidePanel.Main.PRESETS);
+			ui.layout(VitalsSidePanelShots.WIDTH);
+			ui.click("Undo Minimal");
+		});
 		assertEquals(Boolean.TRUE, store.values.get("showPanel"));
 		ui.assertHides("Undo Minimal");
 	}
@@ -192,7 +208,12 @@ public class VitalsSidePanelTest
 	@Test
 	public void cancelLeavesEverything()
 	{
-		onEdt(() -> ui.click("PvM"));
+		onEdt(() ->
+		{
+			panel.display(VitalsSidePanel.Main.PRESETS);
+			ui.layout(VitalsSidePanelShots.WIDTH);
+			ui.click("PvM");
+		});
 		onEdt(() -> ui.click("Cancel"));
 		ui.assertHides("PvM: what changes");
 		assertTrue(store.writes.isEmpty());
@@ -201,6 +222,7 @@ public class VitalsSidePanelTest
 	@Test
 	public void everyGuideStartsOpenWithItsNumberedSteps()
 	{
+		onEdt(() -> panel.display(VitalsSidePanel.Main.PRESETS));
 		ui.assertShows(PanelGuide.PRESETS.how);
 		for (PanelLayout.Tab tab : PanelLayout.Tab.values())
 		{
@@ -234,8 +256,17 @@ public class VitalsSidePanelTest
 			{
 			}));
 		final SwingDriver ui2 = new SwingDriver(again);
-		SwingDriver.onEdt(() -> ui2.layout(VitalsSidePanelShots.WIDTH));
+		SwingDriver.onEdt(() ->
+		{
+			again.show(PanelLayout.Tab.COMBAT);
+			ui2.layout(VitalsSidePanelShots.WIDTH);
+		});
 		ui2.assertHides(PanelGuide.of(PanelLayout.Tab.COMBAT).how);
+		SwingDriver.onEdt(() ->
+		{
+			again.display(VitalsSidePanel.Main.PRESETS);
+			ui2.layout(VitalsSidePanelShots.WIDTH);
+		});
 		ui2.assertShows(PanelGuide.PRESETS.how);
 
 		onEdt(() -> ui.click("Guide: Combat"));

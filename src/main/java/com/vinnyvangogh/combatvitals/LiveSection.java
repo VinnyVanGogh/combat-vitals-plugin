@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Objects;
 import javax.swing.AbstractButton;
 import javax.swing.Box;
+import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -51,6 +52,33 @@ final class LiveSection extends VitalsSidePanel.Column
 	/** How many of the session's skills show before Show all. */
 	static final int TOP = 3;
 	static final String SHOW_TOP = "Show top " + TOP;
+	/** Hidden setting: which of the three cards the Live tab shows, a {@link View} name. */
+	static final String VIEW_KEY = "sidebarLiveView";
+
+	/** The secondary toggle under the Live tab: one card at a time, as in Group Ironman's live view. */
+	enum View
+	{
+		COMBAT("Combat"), SKILLING("Skilling"), OVERALL("Overall");
+
+		final String label;
+
+		View(String label)
+		{
+			this.label = label;
+		}
+
+		static View of(String name)
+		{
+			for (View v : values())
+			{
+				if (v.name().equals(name))
+				{
+					return v;
+				}
+			}
+			return COMBAT;
+		}
+	}
 
 	/** The 2x2 grid's tiles, in reading order, and their captions. */
 	private static final SessionRow.Kind[] STATS = {SessionRow.Kind.XP_RATE, SessionRow.Kind.ACTION_RATE,
@@ -106,6 +134,8 @@ final class LiveSection extends VitalsSidePanel.Column
 	private final JButton showAll = VitalsSidePanel.linkButton("", null);
 	private boolean allGains;
 
+	private final Map<View, VitalsSidePanel.Segment> viewButtons = new EnumMap<>(View.class);
+	private View view = View.COMBAT;
 	private LiveVitals last = LiveVitals.LOGGED_OUT;
 	private volatile boolean open = true;
 	/** Text, bar and visibility changes made, for the tests that check an update redraws only what changed. */
@@ -128,12 +158,54 @@ final class LiveSection extends VitalsSidePanel.Column
 		buildCombat();
 		buildSkilling();
 		buildSession();
+		live.add(viewBar());
 		live.add(combatCard);
 		live.add(skillingCard);
 		live.add(sessionCard);
+		applyView(View.of(store.get(VIEW_KEY, String.class)));
 
 		refresh();
 		show(LiveVitals.LOGGED_OUT);
+	}
+
+	/** Combat / Skilling / Overall as a small segmented row; the choice is remembered. */
+	private JComponent viewBar()
+	{
+		final JPanel bar = new JPanel(new GridLayout(1, 0, 0, 0));
+		bar.setOpaque(false);
+		bar.setBorder(new EmptyBorder(0, 0, PanelStyle.S, 0));
+		final ButtonGroup group = new ButtonGroup();
+		for (View v : View.values())
+		{
+			final VitalsSidePanel.Segment b = new VitalsSidePanel.Segment(v.label);
+			b.setName("live-view-" + v.name());
+			b.addActionListener(e ->
+			{
+				applyView(v);
+				store.set(VIEW_KEY, v.name());
+			});
+			group.add(b);
+			viewButtons.put(v, b);
+			bar.add(b);
+		}
+		return bar;
+	}
+
+	/** Shows only the chosen view's card. */
+	void applyView(View v)
+	{
+		view = v;
+		combatCard.setVisible(v == View.COMBAT);
+		skillingCard.setVisible(v == View.SKILLING);
+		sessionCard.setVisible(v == View.OVERALL);
+		viewButtons.get(v).setSelected(true);
+		revalidate();
+		repaint();
+	}
+
+	View view()
+	{
+		return view;
 	}
 
 	private void buildCombat()

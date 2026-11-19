@@ -301,6 +301,10 @@ public class CombatVitalsPlugin extends Plugin
 	@Inject
 	private SplashOverlay splashOverlay;
 
+	/** The standalone Casts left overlay, separate from Splashing mode. */
+	@Inject
+	private CastsOverlay castsOverlay;
+
 	@Inject
 	private SplashWatcher splashWatcher;
 
@@ -533,6 +537,7 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.add(aggressionAreaOverlay);
 		overlayManager.add(gameHealthBarOverlay);
 		overlayManager.add(splashOverlay);
+		overlayManager.add(castsOverlay);
 		splashOverlay.showMode(config.splashMode());
 		splashWatcher.warm();
 		overlayManager.add(gemstoneCrabOverlay);
@@ -716,6 +721,7 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.remove(aggressionAreaOverlay);
 		overlayManager.remove(gameHealthBarOverlay);
 		overlayManager.remove(splashOverlay);
+		overlayManager.remove(castsOverlay);
 		overlayManager.remove(gemstoneCrabOverlay);
 		overlayManager.remove(gemstoneCrabArrowOverlay);
 		gemstoneCrabWatcher.reset();
@@ -830,6 +836,12 @@ public class CombatVitalsPlugin extends Plugin
 			final boolean hidden = config.sidebarGuidesHidden();
 			final String closed = config.sidebarGuidesClosed();
 			SwingUtilities.invokeLater(() -> panel.guides(hidden, closed));
+			return;
+		}
+		if (VitalsSidePanel.TAB_KEY.equals(event.getKey()) || LiveSection.VIEW_KEY.equals(event.getKey()))
+		{
+			// The panel wrote its own tab choice; nothing to redraw.
+			log.debug("Sidebar tab {} view {}", config.sidebarTab(), config.sidebarLiveView());
 			return;
 		}
 		SwingUtilities.invokeLater(panel::refresh);

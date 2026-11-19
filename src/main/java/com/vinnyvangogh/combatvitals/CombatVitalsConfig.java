@@ -535,14 +535,66 @@ public interface CombatVitalsConfig extends Config
 	@ConfigItem(
 		keyName = "castsLeft",
 		name = "Show casts left",
-		description = "While you cast a combat spell at an NPC (autocast, or a spell clicked on it), show how many "
-			+ "casts you have left from the runes in your inventory and rune pouch, counting combination runes "
-			+ "and a worn staff or charged tome of fire or water that stands in for a rune. Shown on the same "
-			+ "card as Splashing mode, with the idle logout and session clocks. Information only.",
+		description = "Show an overlay with the spell, the runes it costs and how many casts you have left, from "
+			+ "the runes in your inventory and rune pouch, counting combination runes and a worn staff or "
+			+ "charged tome of fire or water that stands in for a rune. By default it shows while you autocast "
+			+ "with a staff, or for a few seconds after you cast a spell by hand. Information only.",
 		section = targetSection,
 		position = 12
 	)
 	default boolean castsLeft()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "castsAlways",
+		name = "Always show",
+		description = "Keep the overlay up all the time instead of only while you cast, for the spell you pick "
+			+ "below, or the last spell you cast if none is picked. Replaces a separate casts plugin.",
+		section = targetSection,
+		position = 13
+	)
+	default boolean castsAlways()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "castsSpell",
+		name = "Always show: spell",
+		description = "The spell to count when Always show is on and you are not casting, by name, e.g. Fire "
+			+ "Surge or Ice Barrage. Leave empty for the last spell you cast.",
+		section = targetSection,
+		position = 14
+	)
+	default String castsSpell()
+	{
+		return "";
+	}
+
+	@Range(min = 0, max = 10000)
+	@ConfigItem(
+		keyName = "castsOnlyBelow",
+		name = "Show only below",
+		description = "Show the overlay only when you have fewer than this many casts left. 0 shows it always. "
+			+ "Unlimited casts never show while this is set. The low-casts alert is not affected.",
+		section = targetSection,
+		position = 15
+	)
+	default int castsOnlyBelow()
+	{
+		return 0;
+	}
+
+	@ConfigItem(
+		keyName = "castsMerge",
+		name = "Merge into splash card",
+		description = "While the Splashing mode card is showing, put the casts on it and hide this overlay.",
+		section = targetSection,
+		position = 16
+	)
+	default boolean castsMerge()
 	{
 		return true;
 	}
@@ -554,7 +606,7 @@ public interface CombatVitalsConfig extends Config
 		description = "Turn the casts red and send the alert below when you have this many casts or fewer left. "
 			+ "0 turns the warning off.",
 		section = targetSection,
-		position = 13
+		position = 17
 	)
 	default int castsWarnAt()
 	{
@@ -567,7 +619,7 @@ public interface CombatVitalsConfig extends Config
 		description = "Notify when your casts drop to the warn level. It fires once, and again after you restock "
 			+ "above it. Follows the sidebar mute and Mute alert sounds.",
 		section = targetSection,
-		position = 14
+		position = 18
 	)
 	default Notification castsAlertLow()
 	{
@@ -581,7 +633,7 @@ public interface CombatVitalsConfig extends Config
 		description = "How many seconds the splashing card stays up, dimmed with 'Stopped Xs ago', after you stop "
 			+ "casting. 0 hides it at once.",
 		section = targetSection,
-		position = 15
+		position = 19
 	)
 	default int splashLingerSeconds()
 	{
@@ -594,7 +646,7 @@ public interface CombatVitalsConfig extends Config
 		description = "Keep the dimmed splashing card up after you stop until you start casting again, "
 			+ "instead of for the seconds above.",
 		section = targetSection,
-		position = 16
+		position = 20
 	)
 	default boolean splashLingerForever()
 	{
@@ -608,7 +660,7 @@ public interface CombatVitalsConfig extends Config
 			+ "attacking after 20 minutes without input. Any mouse or keyboard input restarts the count. "
 			+ "Information only: nothing is clicked for you.",
 		section = targetSection,
-		position = 17
+		position = 21
 	)
 	default Notification splashAlertStopSoon()
 	{
@@ -621,7 +673,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Splash: warn (s)",
 		description = "How long before splashing stops by itself the alert above fires.",
 		section = targetSection,
-		position = 18
+		position = 22
 	)
 	default int splashWarnSeconds()
 	{
@@ -633,7 +685,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Splash: stopped",
 		description = "Notify when the 20 minutes without input have passed and splashing has stopped.",
 		section = targetSection,
-		position = 19
+		position = 23
 	)
 	default Notification splashAlertStopped()
 	{
@@ -646,7 +698,7 @@ public interface CombatVitalsConfig extends Config
 		description = "At the Gemstone Crab: show its health and how long until it burrows (its health bar is a "
 			+ "timer of about ten minutes, not damage), then how long its shell stays. Information only.",
 		section = targetSection,
-		position = 20
+		position = 24
 	)
 	default boolean gemstoneCrab()
 	{
@@ -660,7 +712,7 @@ public interface CombatVitalsConfig extends Config
 		description = "The about-to-burrow alert and the cave arrow start this many seconds before the crab "
 			+ "burrows. At 0 the arrow and the alert wait for the burrow itself.",
 		section = targetSection,
-		position = 21
+		position = 25
 	)
 	default int gemstoneCrabWarnSeconds()
 	{
@@ -673,7 +725,7 @@ public interface CombatVitalsConfig extends Config
 		description = "Draw an arrow and an outline over the cave to crawl through, from the burrow warning until "
 			+ "the shell is gone. Drawing only: nothing is clicked for you.",
 		section = targetSection,
-		position = 22
+		position = 26
 	)
 	default boolean gemstoneCrabArrow()
 	{
@@ -686,7 +738,7 @@ public interface CombatVitalsConfig extends Config
 		description = "Notify when a Gemstone Crab appears, once per crab. Follows the sidebar mute and Mute "
 			+ "alert sounds.",
 		section = targetSection,
-		position = 23
+		position = 27
 	)
 	default Notification gemstoneCrabAlertSpawn()
 	{
@@ -699,7 +751,7 @@ public interface CombatVitalsConfig extends Config
 		description = "Notify once when the crab is about to burrow (the warn-before setting). Follows the "
 			+ "sidebar mute and Mute alert sounds.",
 		section = targetSection,
-		position = 24
+		position = 28
 	)
 	default Notification gemstoneCrabAlertBurrow()
 	{
@@ -712,7 +764,7 @@ public interface CombatVitalsConfig extends Config
 		description = "Notify once when the crab has burrowed and the cave is ready to crawl through. Follows "
 			+ "the sidebar mute and Mute alert sounds.",
 		section = targetSection,
-		position = 25
+		position = 29
 	)
 	default Notification gemstoneCrabAlertGo()
 	{
@@ -2901,5 +2953,29 @@ public interface CombatVitalsConfig extends Config
 	default boolean sidebarGuidesHidden()
 	{
 		return false;
+	}
+
+	/** The sidebar's last open tab, a {@link VitalsSidePanel.Main} name; written there, never listed. */
+	@ConfigItem(
+		keyName = VitalsSidePanel.TAB_KEY,
+		name = "",
+		description = "",
+		hidden = true
+	)
+	default String sidebarTab()
+	{
+		return "";
+	}
+
+	/** Which card the Live tab shows, a {@link LiveSection.View} name; written there, never listed. */
+	@ConfigItem(
+		keyName = LiveSection.VIEW_KEY,
+		name = "",
+		description = "",
+		hidden = true
+	)
+	default String sidebarLiveView()
+	{
+		return "";
 	}
 }
