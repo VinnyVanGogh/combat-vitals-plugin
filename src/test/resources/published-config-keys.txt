@@ -223,3 +223,5 @@ splashLingerForever boolean
 splashAlertStopSoon Notification
 splashWarnSeconds int
 splashAlertStopped Notification
+# 2026-11-19: overhead only after damage (task-d05368a1).
+overheadOnlyAfterDamage boolean
