@@ -30,10 +30,10 @@ final class BadgeCombat
 		return overHead && (targetShown || (fighting && hideInCombat));
 	}
 
-	/** Whether the fight ends the badge's "Not fishing": only over your head. */
+	/** Whether the fight ends the badge's "Not fishing": anywhere, so it never reads "Not hunting | in combat". */
 	static boolean endsIdle(boolean fighting, boolean overHead)
 	{
-		return fighting && overHead;
+		return fighting;
 	}
 
 	/** "in combat" on a stopped badge, "under attack" on a working one, or null out of combat. */

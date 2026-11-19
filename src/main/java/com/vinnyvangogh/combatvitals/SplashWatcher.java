@@ -36,6 +36,10 @@ class SplashWatcher
 	/** How long a hand-cast spell counts as casting at that NPC. */
 	static final int MANUAL_TICKS = 8;
 
+	/** COMBAT_WEAPON_CATEGORY values of weapons that can autocast: Staff and Bladed staff. */
+	private static final int WEAPON_STAFF = 18;
+	private static final int WEAPON_BLADED_STAFF = 21;
+
 	private static final Prayer[] MAGIC_PRAYERS = {
 		Prayer.AUGURY, Prayer.MYSTIC_VIGOUR, Prayer.MYSTIC_MIGHT, Prayer.MYSTIC_LORE, Prayer.MYSTIC_WILL};
 	/** The wiki's prayer multipliers, in {@link #MAGIC_PRAYERS} order. */
@@ -128,7 +132,10 @@ class SplashWatcher
 			return null;
 		}
 		final NPC npc = (NPC) target;
-		final boolean auto = client.getVarbitValue(VarbitID.AUTOCAST_SET) == 1;
+		// The autocast flag can stay set while a melee weapon is wielded: only a staff makes it a cast.
+		final int weaponCategory = client.getVarbitValue(VarbitID.COMBAT_WEAPON_CATEGORY);
+		final boolean auto = client.getVarbitValue(VarbitID.AUTOCAST_SET) == 1
+			&& (weaponCategory == WEAPON_STAFF || weaponCategory == WEAPON_BLADED_STAFF);
 		final boolean manual = manualTicks > 0 && manualNpcIndex == npc.getIndex();
 		if (!auto && !manual)
 		{
