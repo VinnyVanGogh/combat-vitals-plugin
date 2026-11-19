@@ -97,7 +97,7 @@ final class AlertSounds
 
 	private static List<String> packClip(AlertSound sound, Predicate<String> resourceExists)
 	{
-		final String resource = sound.getClip();
+		final String resource = sound.getClipPath();
 		return resource != null && resourceExists.test(resource)
 			? Collections.singletonList(resource)
 			: Collections.emptyList();
