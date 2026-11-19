@@ -165,7 +165,8 @@ final class PanelLayout
 						"showPlayerHitpoints", "showStatComparison"),
 					new Group("Big targets", "bigTargetDisplay", "otherTargetDisplay", "bigTargetRule",
 						"bigTargetMaxHp"),
-					new Group("Splashing (AFK Magic)", "splashMode", "splashMaxChance", "splashAlertBroke"));
+					new Group("Splashing (AFK Magic)", "splashMode", "splashMaxChance", "splashAlertBroke"),
+					new Group("Casts left", "castsLeft", "castsWarnAt", "castsAlertLow"));
 			case SKILLING:
 				return skillingGroups();
 			case LOOK:

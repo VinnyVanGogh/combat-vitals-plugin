@@ -212,5 +212,8 @@ soundSkillingEvent AlertSound
 volumeSkillingEvent int
 repeatSkillingEvent boolean
 autoResetSession boolean
+castsLeft boolean
+castsWarnAt int
+castsAlertLow Notification
 # 2026-11-18: Goals page (task-0e75f0d0).
 goalAlert Notification

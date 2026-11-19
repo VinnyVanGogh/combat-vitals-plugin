@@ -520,6 +520,48 @@ public interface CombatVitalsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "castsLeft",
+		name = "Show casts left",
+		description = "While you cast a combat spell at an NPC (autocast, or a spell clicked on it), show how many "
+			+ "casts you have left from the runes in your inventory and rune pouch, counting combination runes "
+			+ "and a worn staff or charged tome of fire or water that stands in for a rune. Shown on the same "
+			+ "card as Splashing mode, with the idle logout and session clocks. Information only.",
+		section = targetSection,
+		position = 12
+	)
+	default boolean castsLeft()
+	{
+		return true;
+	}
+
+	@Range(min = 0, max = 1000)
+	@ConfigItem(
+		keyName = "castsWarnAt",
+		name = "Casts: warn at",
+		description = "Turn the casts red and send the alert below when you have this many casts or fewer left. "
+			+ "0 turns the warning off.",
+		section = targetSection,
+		position = 13
+	)
+	default int castsWarnAt()
+	{
+		return 20;
+	}
+
+	@ConfigItem(
+		keyName = "castsAlertLow",
+		name = "Casts: running low",
+		description = "Notify when your casts drop to the warn level. It fires once, and again after you restock "
+			+ "above it. Follows the sidebar mute and Mute alert sounds.",
+		section = targetSection,
+		position = 14
+	)
+	default Notification castsAlertLow()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
 		keyName = "skillingEnabled",
 		name = "Skilling badge",
 		description =
