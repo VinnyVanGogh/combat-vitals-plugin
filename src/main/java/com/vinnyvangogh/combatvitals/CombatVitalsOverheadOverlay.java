@@ -88,7 +88,7 @@ class CombatVitalsOverheadOverlay extends Overlay
 				return null;
 			}
 
-			final CombatVitalsPlugin.Readout opponent = plugin.getReadout();
+			final CombatVitalsPlugin.Readout opponent = gated(plugin.getReadout());
 			if (opponent != null && (opponent.isNpc() || config.overheadForPlayers()))
 			{
 				liftChat(graphics, opponent.getActor(), draw(graphics, opponent), covered);
@@ -97,7 +97,7 @@ class CombatVitalsOverheadOverlay extends Overlay
 			// Both sides in one visual language. Getting your own health from some
 			// other plugin would render it in a different style beside your
 			// opponent's, which is the main reason this belongs here.
-			final CombatVitalsPlugin.Readout self = plugin.getSelfReadout();
+			final CombatVitalsPlugin.Readout self = gated(plugin.getSelfReadout());
 			final SkillingReadout skilling = plugin.getSkillingReadout();
 			final Rectangle selfBar;
 			if (skilling != null && skilling.isHealthAbove())
@@ -132,6 +132,21 @@ class CombatVitalsOverheadOverlay extends Overlay
 			// SkillingBadgeOverlay's own bounds (CombatVitalsPlugin#onMenuOpened).
 			plugin.setBadgeBounds(overHead != null ? overHead : spotBadgeBox);
 		}
+	}
+
+	/**
+	 * With "Only after damage" on, the readout of an actor that has not been
+	 * hit in the game's health-bar window; otherwise the readout unchanged.
+	 *
+	 * @return the readout to draw, or null for nothing
+	 */
+	private CombatVitalsPlugin.Readout gated(CombatVitalsPlugin.Readout readout)
+	{
+		if (readout == null || !config.overheadOnlyAfterDamage() || plugin.tookDamageRecently(readout.getActor()))
+		{
+			return readout;
+		}
+		return null;
 	}
 
 	/**

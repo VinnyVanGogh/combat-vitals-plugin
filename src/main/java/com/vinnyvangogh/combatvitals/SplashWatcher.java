@@ -1,6 +1,7 @@
 package com.vinnyvangogh.combatvitals;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -71,12 +72,16 @@ class SplashWatcher
 
 	private volatile SplashReadout readout;
 	private int manualNpcIndex = -1;
+	/** The NPC the player last clicked Attack on; autocast only counts as casting at that NPC. */
+	private int attackNpcIndex = -1;
 	private int manualSpell;
 	private String manualSpellName;
 	private int manualTicks;
 	private String spellName;
 	private boolean lowArmed = true;
 	private String lowAlert;
+	private String stopSoonAlert;
+	private String stoppedAlert;
 
 	@Inject
 	SplashWatcher(Client client, ItemManager itemManager, CombatVitalsConfig config)
@@ -86,10 +91,39 @@ class SplashWatcher
 		this.config = config;
 	}
 
+	/**
+	 * Runs the first-cast work once at start-up (class loading, the spell tables, the regexes, String.format)
+	 * so the first attack does it off the hot path instead of on the client thread. Touches no client state.
+	 */
+	void warm()
+	{
+		final SplashTracker.Input in = new SplashTracker.Input(1, 1, 1, 1, "warm", 0, 1, 1.0);
+		new SplashTracker(Collections.emptyMap()).step(in, 0);
+		final int[] cost = SpellCasts.cost("Fire Strike");
+		if (cost != null)
+		{
+			final SpellCasts.Supply supply = new SpellCasts.Supply();
+			supply.item("staff of fire");
+			SplashReadout.castsText(SpellCasts.casts(cost, supply));
+		}
+		SplashTracker.percent(0.5);
+		SplashTimer.clock(1000);
+	}
+
 	/** The latest read-out for the overlay, or null when nothing is being cast at an NPC. */
 	SplashReadout readout()
 	{
-		return on() ? readout : null;
+		final SplashReadout r = readout;
+		if (!on() || r == null)
+		{
+			return null;
+		}
+		if (r.isStopped() && !SplashTimer.lingers(System.currentTimeMillis() - r.stoppedAt,
+			config.splashLingerSeconds(), config.splashLingerForever()))
+		{
+			return null;
+		}
+		return r;
 	}
 
 	private boolean on()
@@ -101,8 +135,11 @@ class SplashWatcher
 	{
 		readout = null;
 		manualNpcIndex = -1;
+		attackNpcIndex = -1;
 		lowArmed = true;
 		lowAlert = null;
+		stopSoonAlert = null;
+		stoppedAlert = null;
 		tracker.reset();
 		timer.reset();
 	}
@@ -117,7 +154,20 @@ class SplashWatcher
 
 	void onMenuOptionClicked(MenuOptionClicked event)
 	{
-		if (!on() || event.getMenuAction() != MenuAction.WIDGET_TARGET_ON_NPC)
+		if (!on())
+		{
+			return;
+		}
+		if (isNpcOption(event.getMenuAction()))
+		{
+			final NPC clicked = event.getMenuEntry().getNpc();
+			if (clicked != null)
+			{
+				attackNpcIndex = attackClick(event.getMenuOption(), clicked.getIndex(), attackNpcIndex);
+			}
+			return;
+		}
+		if (event.getMenuAction() != MenuAction.WIDGET_TARGET_ON_NPC)
 		{
 			return;
 		}
@@ -131,6 +181,34 @@ class SplashWatcher
 		manualSpell = spell == null ? 0 : spell.getId();
 		manualSpellName = spell == null || spell.getName() == null ? null : Text.removeTags(spell.getName());
 		manualTicks = MANUAL_TICKS;
+	}
+
+	private static boolean isNpcOption(MenuAction action)
+	{
+		switch (action)
+		{
+			case NPC_FIRST_OPTION:
+			case NPC_SECOND_OPTION:
+			case NPC_THIRD_OPTION:
+			case NPC_FOURTH_OPTION:
+			case NPC_FIFTH_OPTION:
+				return true;
+			default:
+				return false;
+		}
+	}
+
+	/**
+	 * The attack target after a click on an NPC option: that NPC for Attack; none if it was the target and
+	 * the click was Talk-to, Pickpocket, Trade or anything else; otherwise unchanged.
+	 */
+	static int attackClick(String option, int npcIndex, int current)
+	{
+		if ("Attack".equalsIgnoreCase(option))
+		{
+			return npcIndex;
+		}
+		return current == npcIndex ? -1 : current;
 	}
 
 	/**
@@ -149,14 +227,22 @@ class SplashWatcher
 			manualTicks--;
 		}
 		final SplashTracker.Input in = read();
+		final long now = System.currentTimeMillis();
+		final SplashReadout shown = readout;
+		if (in != null || shown != null && !shown.isStopped())
+		{
+			afk(idleMillis());
+		}
 		if (in == null)
 		{
-			readout = null;
+			if (shown != null && !shown.isStopped())
+			{
+				readout = shown.stopped(now);
+			}
 			tracker.idle();
 			timer.idle();
 			return null;
 		}
-		final long now = System.currentTimeMillis();
 		timer.cast(now);
 		final SplashTracker.Result splash = tracker.step(in, config.splashMaxChance());
 		final boolean splashing = config.splashMode();
@@ -194,11 +280,46 @@ class SplashWatcher
 			items = Arrays.copyOf(items, n);
 			costs = Arrays.copyOf(costs, n);
 		}
-		final long idle = Math.min(client.getKeyboardIdleTicks(), client.getMouseIdleTicks())
+		return new SplashReadout(splash, spellName, castsText, casts, low, items, costs, idleMillis(),
+			SplashTimer.STOP_MS, timer.elapsed(now), now);
+	}
+
+	/** Milliseconds since the last mouse or keyboard input the client saw. */
+	private long idleMillis()
+	{
+		return Math.min(client.getKeyboardIdleTicks(), client.getMouseIdleTicks())
 			* (long) Constants.CLIENT_TICK_LENGTH;
-		final long logout = client.getIdleTimeout() * (long) Constants.CLIENT_TICK_LENGTH;
-		return new SplashReadout(splash, spellName, castsText, casts, low, items, costs, idle, logout,
-			timer.elapsed(now), now);
+	}
+
+	private void afk(long idleMillis)
+	{
+		final int due = timer.afk(idleMillis, config.splashWarnSeconds() * 1000L);
+		if (due == SplashTimer.STOPS_SOON)
+		{
+			stopSoonAlert = "Splashing stops by itself in "
+				+ SplashTimer.clock(SplashTimer.logoutLeft(idleMillis, SplashTimer.STOP_MS))
+				+ ": click or press a key to keep it going.";
+		}
+		else if (due == SplashTimer.STOPPED)
+		{
+			stoppedAlert = "Splashing has stopped: no input for 20 minutes.";
+		}
+	}
+
+	/** The stops-soon alert text due this tick, once, or null. */
+	String takeStopSoonAlert()
+	{
+		final String text = stopSoonAlert;
+		stopSoonAlert = null;
+		return text;
+	}
+
+	/** The stopped alert text due this tick, once, or null. */
+	String takeStoppedAlert()
+	{
+		final String text = stoppedAlert;
+		stoppedAlert = null;
+		return text;
 	}
 
 	/** Fires the low-casts alert once as the count drops to the warn level, and again after a refill. */
@@ -232,7 +353,9 @@ class SplashWatcher
 		// The autocast flag can stay set while a melee weapon is wielded: only a staff makes it a cast.
 		final int weaponCategory = client.getVarbitValue(VarbitID.COMBAT_WEAPON_CATEGORY);
 		final boolean auto = client.getVarbitValue(VarbitID.AUTOCAST_SET) == 1
-			&& (weaponCategory == WEAPON_STAFF || weaponCategory == WEAPON_BLADED_STAFF);
+			&& (weaponCategory == WEAPON_STAFF || weaponCategory == WEAPON_BLADED_STAFF)
+			// Talking to or pickpocketing an NPC also sets the interacting target: only an attacked one counts.
+			&& attackNpcIndex == npc.getIndex();
 		final boolean manual = manualTicks > 0 && manualNpcIndex == npc.getIndex();
 		if (!auto && !manual)
 		{

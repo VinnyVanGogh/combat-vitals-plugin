@@ -129,6 +129,19 @@ public interface CombatVitalsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "overheadOnlyAfterDamage",
+		name = "Only after damage",
+		description = "Show the readout over a target (or over you) only for a few seconds after it takes a hit, "
+			+ "like the game's own health bar. Off: it stays up for as long as it is shown today.",
+		section = displaySection,
+		position = 9
+	)
+	default boolean overheadOnlyAfterDamage()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "displayMode",
 		name = "Display",
 		description = "Show hitpoints, a percentage, or both.",
@@ -557,6 +570,151 @@ public interface CombatVitalsConfig extends Config
 		position = 14
 	)
 	default Notification castsAlertLow()
+	{
+		return Notification.ON;
+	}
+
+	@Range(min = 0, max = 300)
+	@ConfigItem(
+		keyName = "splashLingerSeconds",
+		name = "Card stays (s)",
+		description = "How many seconds the splashing card stays up, dimmed with 'Stopped Xs ago', after you stop "
+			+ "casting. 0 hides it at once.",
+		section = targetSection,
+		position = 15
+	)
+	default int splashLingerSeconds()
+	{
+		return 30;
+	}
+
+	@ConfigItem(
+		keyName = "splashLingerForever",
+		name = "Keep until new activity",
+		description = "Keep the dimmed splashing card up after you stop until you start casting again, "
+			+ "instead of for the seconds above.",
+		section = targetSection,
+		position = 16
+	)
+	default boolean splashLingerForever()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "splashAlertStopSoon",
+		name = "Splash: stops soon",
+		description = "Notify a little before splashing stops by itself: the OSRS wiki says the player stops "
+			+ "attacking after 20 minutes without input. Any mouse or keyboard input restarts the count. "
+			+ "Information only: nothing is clicked for you.",
+		section = targetSection,
+		position = 17
+	)
+	default Notification splashAlertStopSoon()
+	{
+		return Notification.ON;
+	}
+
+	@Range(min = 5, max = 600)
+	@ConfigItem(
+		keyName = "splashWarnSeconds",
+		name = "Splash: warn (s)",
+		description = "How long before splashing stops by itself the alert above fires.",
+		section = targetSection,
+		position = 18
+	)
+	default int splashWarnSeconds()
+	{
+		return 60;
+	}
+
+	@ConfigItem(
+		keyName = "splashAlertStopped",
+		name = "Splash: stopped",
+		description = "Notify when the 20 minutes without input have passed and splashing has stopped.",
+		section = targetSection,
+		position = 19
+	)
+	default Notification splashAlertStopped()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "gemstoneCrab",
+		name = "Gemstone Crab mode",
+		description = "At the Gemstone Crab: show its health and how long until it burrows (its health bar is a "
+			+ "timer of about ten minutes, not damage), then how long its shell stays. Information only.",
+		section = targetSection,
+		position = 20
+	)
+	default boolean gemstoneCrab()
+	{
+		return true;
+	}
+
+	@Range(min = 0, max = 120)
+	@ConfigItem(
+		keyName = "gemstoneCrabWarnSeconds",
+		name = "Crab: warn at (s)",
+		description = "The about-to-burrow alert and the cave arrow start this many seconds before the crab "
+			+ "burrows. At 0 the arrow and the alert wait for the burrow itself.",
+		section = targetSection,
+		position = 21
+	)
+	default int gemstoneCrabWarnSeconds()
+	{
+		return 30;
+	}
+
+	@ConfigItem(
+		keyName = "gemstoneCrabArrow",
+		name = "Crab: cave arrow",
+		description = "Draw an arrow and an outline over the cave to crawl through, from the burrow warning until "
+			+ "the shell is gone. Drawing only: nothing is clicked for you.",
+		section = targetSection,
+		position = 22
+	)
+	default boolean gemstoneCrabArrow()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "gemstoneCrabAlertSpawn",
+		name = "Crab: spawned",
+		description = "Notify when a Gemstone Crab appears, once per crab. Follows the sidebar mute and Mute "
+			+ "alert sounds.",
+		section = targetSection,
+		position = 23
+	)
+	default Notification gemstoneCrabAlertSpawn()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "gemstoneCrabAlertBurrow",
+		name = "Crab: about to burrow",
+		description = "Notify once when the crab is about to burrow (the warn-before setting). Follows the "
+			+ "sidebar mute and Mute alert sounds.",
+		section = targetSection,
+		position = 24
+	)
+	default Notification gemstoneCrabAlertBurrow()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "gemstoneCrabAlertGo",
+		name = "Crab: go through the cave",
+		description = "Notify once when the crab has burrowed and the cave is ready to crawl through. Follows "
+			+ "the sidebar mute and Mute alert sounds.",
+		section = targetSection,
+		position = 25
+	)
+	default Notification gemstoneCrabAlertGo()
 	{
 		return Notification.ON;
 	}
