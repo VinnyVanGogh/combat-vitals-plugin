@@ -39,7 +39,7 @@ final class InventoryFill
 			+ "|pearl (?:fishing|fly fishing|barbarian) rod|lobster pot|karambwan vessel|harpoon"
 			+ "|.*\\b(?:axe|pickaxe|harpoon)(?: \\(.*\\))?"
 			+ "|tinderbox|hammer|imcando hammer|chisel|knife|needle|glassblowing pipe|saw|crystal saw"
-			+ "|pestle and mortar|bucket|ammo mould|.*\\bmould|noose wand|butterfly net|.*\\bbutterfly net"
+			+ "|pestle and mortar|bucket|ammo mould|.*\\bmould|noose wand|butterfly net|.*\\bbutterfly net|insect net|.*\\binsect net"
 			+ "|rope|bird snare|box trap|rabbit snare|teasing stick)$");
 
 	private InventoryFill()
