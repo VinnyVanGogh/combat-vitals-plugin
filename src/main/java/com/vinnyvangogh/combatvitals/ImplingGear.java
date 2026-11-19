@@ -14,7 +14,7 @@ import java.util.Map;
  * clicked a baby impling and the badge read "Not hunting" while they fought a
  * Highwayman).
  *
- * Per the OSRS wiki "Impling" page (read 2026-11-19): a wielded butterfly net
+ * Per the OSRS wiki "Impling" page (read 2026-11-19): a wielded insect net
  * needs the impling's level; barehanded needs that level + 10; an impling jar
  * is only required inside Puro-Puro, outside it the impling is looted at
  * once. An impling not in the table skips the level check, so an unknown name
@@ -76,7 +76,7 @@ final class ImplingGear
 		boolean net = false;
 		for (String item : worn)
 		{
-			net |= item != null && item.toLowerCase(Locale.ROOT).endsWith("butterfly net");
+			net |= item != null && isNet(item.toLowerCase(Locale.ROOT));
 		}
 		boolean jar = false;
 		for (String item : inventory)
@@ -95,11 +95,11 @@ final class ImplingGear
 		}
 		else if (needed <= 0)
 		{
-			out.add("a butterfly net");
+			out.add("an insect net");
 		}
 		else if (level < needed + BAREHANDED_EXTRA)
 		{
-			out.add("a butterfly net or " + (needed + BAREHANDED_EXTRA) + " Hunter");
+			out.add("an insect net or " + (needed + BAREHANDED_EXTRA) + " Hunter");
 		}
 		if (inPuroPuro && !jar)
 		{
@@ -109,7 +109,18 @@ final class ImplingGear
 	}
 
 	/**
-	 * "Can't catch Baby impling: needs a butterfly net or 27 Hunter", or null
+	 * The game renamed the Butterfly net to "Insect net" and the Magic butterfly
+	 * net to "Magic insect net" (wiki "Insect net"); both names count.
+	 *
+	 * @param lower an item name, lower case
+	 */
+	private static boolean isNet(String lower)
+	{
+		return lower.endsWith("insect net") || lower.endsWith("butterfly net");
+	}
+
+	/**
+	 * "Can't catch Baby impling: needs an insect net or 27 Hunter", or null
 	 * when nothing is missing.
 	 */
 	static String text(String name, List<String> missing)

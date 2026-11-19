@@ -12,15 +12,15 @@ import org.junit.Test;
 public class ImplingGearTest
 {
 	private static final List<String> NONE = Collections.emptyList();
-	private static final List<String> NET = Collections.singletonList("Butterfly net");
+	private static final List<String> NET = Collections.singletonList("Insect net");
 	private static final List<String> JAR = Collections.singletonList("Impling jar");
 
 	@Test
 	public void hunterOneWithNoNetIsToldTheNetOrBarehandedLevel()
 	{
 		final List<String> missing = ImplingGear.missing("Baby impling", NONE, NONE, 1, false);
-		assertEquals(Collections.singletonList("a butterfly net or 27 Hunter"), missing);
-		assertEquals("Can't catch Baby impling: needs a butterfly net or 27 Hunter",
+		assertEquals(Collections.singletonList("an insect net or 27 Hunter"), missing);
+		assertEquals("Can't catch Baby impling: needs an insect net or 27 Hunter",
 			ImplingGear.text("Baby impling", missing));
 	}
 
@@ -52,7 +52,23 @@ public class ImplingGearTest
 		// carried but not wielded: treated as barehanded
 		assertEquals(1, ImplingGear.missing("Baby impling", NONE, NET, 20, false).size());
 		assertEquals(Collections.singletonList("58 Hunter"),
-			ImplingGear.missing("Nature impling", Arrays.asList("Magic butterfly net"), NONE, 57, false));
+			ImplingGear.missing("Nature impling", Arrays.asList("Magic insect net"), NONE, 57, false));
+		assertTrue(ImplingGear.missing("Nature impling", Arrays.asList("Magic insect net"), NONE, 58, false).isEmpty());
+	}
+
+	@Test
+	public void theOldButterflyNetNamesStillCount()
+	{
+		assertTrue(ImplingGear.missing("Baby impling", Arrays.asList("Butterfly net"), NONE, 17, false).isEmpty());
+		assertTrue(ImplingGear.missing("Nature impling", Arrays.asList("Magic butterfly net"), NONE, 58, false)
+			.isEmpty());
+	}
+
+	@Test
+	public void aWornInsectNetBelowTheBarehandedLevelGivesNoNote()
+	{
+		// Hunter 20 is under 17 + 10, so only the net lets a Baby impling be caught
+		assertTrue(ImplingGear.missing("Baby impling", NET, NONE, 20, false).isEmpty());
 	}
 
 	@Test
