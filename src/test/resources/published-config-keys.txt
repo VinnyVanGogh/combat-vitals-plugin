@@ -212,3 +212,6 @@ soundSkillingEvent AlertSound
 volumeSkillingEvent int
 repeatSkillingEvent boolean
 autoResetSession boolean
+castsLeft boolean
+castsWarnAt int
+castsAlertLow Notification

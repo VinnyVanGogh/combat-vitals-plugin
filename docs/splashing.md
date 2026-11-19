@@ -16,6 +16,30 @@ or the NPC you are casting at while splashing.
 
 It only reads and shows. It never casts, clicks or changes a menu.
 
+## The card, the clocks and casts left
+
+The read-out is one compact card like the skilling badge: the spell, the runes
+it costs per cast, **casts left**, then the Magic bonus and hit chance. Two
+clocks sit under them, like the pump's:
+
+- **Active** while you use the mouse or keyboard, otherwise **Logout in m:ss**,
+  the game's own idle logout counting down (any input resets it), with a thin
+  bar for how much is left.
+- **Casting m:ss**, since your first cast. It restarts after ten ticks with no
+  cast.
+
+**Show casts left** (Targets tab, on by default, works with Splashing mode off)
+counts casts from the runes in your inventory and rune pouch. A combination
+rune pays for either of its two elements, and a worn staff (staff of air, an
+air battlestaff, a mystic or combination staff) or a charged tome of fire or
+water stands in for that rune without limit. **Casts: warn at** turns the line
+red and **Casts: running low** notifies once, and again after a restock; both
+mutes apply. A tome counts as unlimited whatever its charges.
+
+A spell you click is read by name. For autocast the game only gives a number,
+and the table from that number to the spell (strike to wave) is **unverified in
+game**: if the spell name on the card is wrong, tell us.
+
 ## The formula
 
 From the OSRS Wiki, [Damage per second/Magic](https://oldschool.runescape.wiki/w/Damage_per_second/Magic)
