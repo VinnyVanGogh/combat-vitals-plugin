@@ -304,6 +304,16 @@ public class CombatVitalsPlugin extends Plugin
 	@Inject
 	private SplashWatcher splashWatcher;
 
+	/** Gemstone Crab mode: its card, the cave arrow, and the watcher that feeds both. */
+	@Inject
+	private GemstoneCrabOverlay gemstoneCrabOverlay;
+
+	@Inject
+	private GemstoneCrabArrowOverlay gemstoneCrabArrowOverlay;
+
+	@Inject
+	private GemstoneCrabWatcher gemstoneCrabWatcher;
+
 	/** The Goals page's book, kept per account, and the Max Hit page's gear reader. */
 	@Inject
 	private GoalsHub goalsHub;
@@ -525,6 +535,8 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.add(splashOverlay);
 		splashOverlay.showMode(config.splashMode());
 		splashWatcher.warm();
+		overlayManager.add(gemstoneCrabOverlay);
+		overlayManager.add(gemstoneCrabArrowOverlay);
 
 		knownSpots = KnownFishingSpots.load();
 		voiceLines = VoiceLines.load();
@@ -692,6 +704,9 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.remove(aggressionAreaOverlay);
 		overlayManager.remove(gameHealthBarOverlay);
 		overlayManager.remove(splashOverlay);
+		overlayManager.remove(gemstoneCrabOverlay);
+		overlayManager.remove(gemstoneCrabArrowOverlay);
+		gemstoneCrabWatcher.reset();
 		splashWatcher.reset();
 		mouseManager.unregisterMouseListener(backOnClick);
 		keyManager.unregisterKeyListener(backOnKey);
@@ -1668,6 +1683,7 @@ public class CombatVitalsPlugin extends Plugin
 	@Subscribe
 	public void onGameObjectSpawned(GameObjectSpawned event)
 	{
+		gemstoneCrabWatcher.caveSpawned(event.getGameObject());
 		if (PumpChecks.isStove(event.getGameObject().getId()))
 		{
 			stove = event.getGameObject();
@@ -1683,6 +1699,7 @@ public class CombatVitalsPlugin extends Plugin
 	@Subscribe
 	public void onGameObjectDespawned(GameObjectDespawned event)
 	{
+		gemstoneCrabWatcher.caveDespawned(event.getGameObject());
 		if (event.getGameObject() == stove)
 		{
 			stove = null;
@@ -2077,6 +2094,7 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			notifier.notify(muted(config.castsAlertLow()), castsLow);
 		}
+		tickGemstoneCrab();
 		readStatusBars();
 		tickSpotPathing();
 		readContainerDialog();
@@ -2086,6 +2104,29 @@ public class CombatVitalsPlugin extends Plugin
 		selfReadout = VitalsHalves.combat(config) ? buildSelfReadout() : null;
 		skillingReadout = VitalsHalves.skilling(config) ? buildSkillingReadout() : null;
 		publishLive();
+	}
+
+	/** Gemstone Crab mode's alerts: each once per cycle, through the sidebar mute like the splash ones. */
+	private void tickGemstoneCrab()
+	{
+		final GemstoneCrab.Alerts crab = gemstoneCrabWatcher.tick();
+		if (crab == null || alertMute.muted())
+		{
+			return;
+		}
+		if (crab.spawned)
+		{
+			notifier.notify(muted(config.gemstoneCrabAlertSpawn()), "A Gemstone Crab has appeared.");
+		}
+		if (crab.aboutToBurrow)
+		{
+			notifier.notify(muted(config.gemstoneCrabAlertBurrow()), "The Gemstone Crab is about to burrow.");
+		}
+		if (crab.goNow)
+		{
+			notifier.notify(muted(config.gemstoneCrabAlertGo()),
+				"The Gemstone Crab has burrowed: crawl through the cave now.");
+		}
 	}
 
 	/**
