@@ -130,11 +130,11 @@ public class AlertSoundsTest
 	{
 		for (AlertSound sound : AlertSound.values())
 		{
-			if (sound.getResource() == null)
+			if (sound.getClipPath() == null)
 			{
 				continue;
 			}
-			try (InputStream in = AlertSounds.class.getResourceAsStream(sound.getResource()))
+			try (InputStream in = AlertSounds.class.getResourceAsStream(sound.getClipPath()))
 			{
 				assertNotNull(sound + " is not bundled", in);
 				try (AudioInputStream audio = AudioSystem.getAudioInputStream(new java.io.BufferedInputStream(in)))
@@ -145,7 +145,7 @@ public class AlertSoundsTest
 
 			final AlertSounds.Plan plan = AlertSounds.plan(sound, STOPPED, null, voice, BUNDLED, f -> false);
 			assertFalse(plan.runelite);
-			assertEquals(Collections.singletonList(sound.getResource()), plan.resources);
+			assertEquals(Collections.singletonList(sound.getClipPath()), plan.resources);
 		}
 	}
 
@@ -246,9 +246,9 @@ public class AlertSoundsTest
 		final Predicate<String> bundled = AlertSounds.playable(AlertSounds.class::getResourceAsStream);
 		for (AlertSound sound : AlertSound.values())
 		{
-			if (sound.getResource() != null)
+			if (sound.getClipPath() != null)
 			{
-				assertTrue(sound.name(), bundled.test(sound.getResource()));
+				assertTrue(sound.name(), bundled.test(sound.getClipPath()));
 			}
 		}
 		assertFalse(bundled.test("voice/no-such-clip.wav"));
