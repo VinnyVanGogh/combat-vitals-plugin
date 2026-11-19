@@ -646,7 +646,7 @@ public interface CombatVitalsConfig extends Config
 		description = "At the Gemstone Crab: show its health and how long until it burrows (its health bar is a "
 			+ "timer of about ten minutes, not damage), then how long its shell stays. Information only.",
 		section = targetSection,
-		position = 15
+		position = 20
 	)
 	default boolean gemstoneCrab()
 	{
@@ -660,7 +660,7 @@ public interface CombatVitalsConfig extends Config
 		description = "The about-to-burrow alert and the cave arrow start this many seconds before the crab "
 			+ "burrows. At 0 the arrow and the alert wait for the burrow itself.",
 		section = targetSection,
-		position = 16
+		position = 21
 	)
 	default int gemstoneCrabWarnSeconds()
 	{
@@ -673,7 +673,7 @@ public interface CombatVitalsConfig extends Config
 		description = "Draw an arrow and an outline over the cave to crawl through, from the burrow warning until "
 			+ "the shell is gone. Drawing only: nothing is clicked for you.",
 		section = targetSection,
-		position = 17
+		position = 22
 	)
 	default boolean gemstoneCrabArrow()
 	{
@@ -686,7 +686,7 @@ public interface CombatVitalsConfig extends Config
 		description = "Notify when a Gemstone Crab appears, once per crab. Follows the sidebar mute and Mute "
 			+ "alert sounds.",
 		section = targetSection,
-		position = 18
+		position = 23
 	)
 	default Notification gemstoneCrabAlertSpawn()
 	{
@@ -699,7 +699,7 @@ public interface CombatVitalsConfig extends Config
 		description = "Notify once when the crab is about to burrow (the warn-before setting). Follows the "
 			+ "sidebar mute and Mute alert sounds.",
 		section = targetSection,
-		position = 19
+		position = 24
 	)
 	default Notification gemstoneCrabAlertBurrow()
 	{
@@ -712,7 +712,7 @@ public interface CombatVitalsConfig extends Config
 		description = "Notify once when the crab has burrowed and the cave is ready to crawl through. Follows "
 			+ "the sidebar mute and Mute alert sounds.",
 		section = targetSection,
-		position = 20
+		position = 25
 	)
 	default Notification gemstoneCrabAlertGo()
 	{
