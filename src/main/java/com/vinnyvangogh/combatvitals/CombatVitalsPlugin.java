@@ -65,6 +65,7 @@ import net.runelite.api.events.NpcSpawned;
 import net.runelite.api.events.OverheadTextChanged;
 import net.runelite.api.events.StatChanged;
 import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.Varbits;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.ItemID;
@@ -395,6 +396,7 @@ public class CombatVitalsPlugin extends Plugin
 	private final ProductionInputs productionInputs = new ProductionInputs();
 
 	private final AgilityLaps agilityLaps = new AgilityLaps();
+	private final PyramidPlunder pyramidPlunder = new PyramidPlunder();
 
 	/** The inventory as item id to quantity: now, and as it stood at the end of the last tick. */
 	private Map<Integer, Integer> inventoryNow = Collections.emptyMap();
@@ -918,6 +920,7 @@ public class CombatVitalsPlugin extends Plugin
 		xpBadge = false;
 		productionInputs.forget();
 		agilityLaps.clear();
+		pyramidPlunder.clear();
 		inventoryNow = Collections.emptyMap();
 		inventoryLastTick = Collections.emptyMap();
 		idleBadge.clear();
@@ -1716,6 +1719,10 @@ public class CombatVitalsPlugin extends Plugin
 	@Subscribe
 	public void onVarbitChanged(VarbitChanged event)
 	{
+		if (event.getVarbitId() == Varbits.PYRAMID_PLUNDER_ROOM)
+		{
+			pyramidPlunder.setRoom(event.getValue());
+		}
 		if (event.getVarpId() != VarPlayerID.SA_ENERGY)
 		{
 			return;
@@ -2611,7 +2618,9 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			return null;
 		}
-		final String own = skill == Skill.AGILITY ? agilityLaps.label() : productionInputs.label(skill, inventoryNow);
+		final String own = skill == Skill.AGILITY ? agilityLaps.label()
+			: skill == Skill.THIEVING && pyramidPlunder.active() ? pyramidPlunder.roomText()
+			: productionInputs.label(skill, inventoryNow);
 		return own != null ? own : ContainerRow.inventoryLabel(free, config.skillingInventoryCount(), containers,
 			config.skillingContainersAsInventory());
 	}
