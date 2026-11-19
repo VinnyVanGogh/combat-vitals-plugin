@@ -224,6 +224,15 @@ draggable fixed screen position, tinted per skill:
 - **Forestry event tracking:** names nearby Forestry events when they spawn and,
   when an event ends, prints a chat summary of the Woodcutting XP and Forestry
   rewards you earned during it.
+- **Forestry highlights:** outlines the glowing roots, the struggling sapling, the
+  flowering bush, the leprechaun, the poachers, pheasant control, the bee hive, the
+  enchantment ritual and the friendly ent while they are on screen. Each has its own
+  switch and there is one outline colour (Skilling tab, Forestry highlights). Not yet
+  covered: mulch ingredients, fox trap, pheasant nest, ritual circle, the leprechaun's
+  rainbow, Redwood trees, tree respawn timers and the leprechaun's luck.
+  Observation only, like RuneLite's Woodcutting plugin, whose spawn IDs they use
+  (BSD 2-Clause). Once those are covered you can turn off RuneLite's Woodcutting
+  plugin; for now keep it on if you use them.
 - **Mining and fishing events** (off by default): optional alert for gems mined
   and clue bottles caught.
 

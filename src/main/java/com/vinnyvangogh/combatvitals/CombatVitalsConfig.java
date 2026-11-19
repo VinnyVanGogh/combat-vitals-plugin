@@ -1718,7 +1718,141 @@ public interface CombatVitalsConfig extends Config
 		return false;
 	}
 
-	String SOUND_HELP = " RuneLite: your RuneLite notification sound, as before. Soft chime, Music box, Retro blip: "
+	@ConfigItem(
+		keyName = "forestryHighlights",
+		name = "Highlight Forestry events",
+		description = "Outline the parts of a Forestry event in the game view (glowing roots, the sapling, the "
+			+ "flowering bush, the leprechaun and the rest), as RuneLite's Woodcutting plugin does. You can turn "
+			+ "RuneLite's Woodcutting plugin off; this covers its Forestry highlights.",
+		section = skillingSection,
+		position = 42
+	)
+	default boolean forestryHighlights()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "forestryHighlightColour",
+		name = "Highlight colour",
+		description = "The outline colour for Forestry event highlights.",
+		section = skillingSection,
+		position = 43
+	)
+	default Color forestryHighlightColour()
+	{
+		return new Color(0x00FF7F);
+	}
+
+	@ConfigItem(
+		keyName = "highlightRisingRoots",
+		name = "Rising Roots",
+		description = "Highlight the glowing roots.",
+		section = skillingSection,
+		position = 44
+	)
+	default boolean highlightRisingRoots()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "highlightStrugglingSapling",
+		name = "Struggling Sapling",
+		description = "Highlight the sapling.",
+		section = skillingSection,
+		position = 45
+	)
+	default boolean highlightStrugglingSapling()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "highlightFloweringBush",
+		name = "Flowering Bush",
+		description = "Highlight the flowering bush.",
+		section = skillingSection,
+		position = 46
+	)
+	default boolean highlightFloweringBush()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "highlightLeprechaun",
+		name = "Leprechaun",
+		description = "Highlight the Woodcutting leprechaun.",
+		section = skillingSection,
+		position = 47
+	)
+	default boolean highlightLeprechaun()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "highlightPoachers",
+		name = "Poachers",
+		description = "Highlight the poachers.",
+		section = skillingSection,
+		position = 48
+	)
+	default boolean highlightPoachers()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "highlightPheasantControl",
+		name = "Pheasant Control",
+		description = "Highlight the pheasant control event.",
+		section = skillingSection,
+		position = 49
+	)
+	default boolean highlightPheasantControl()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "highlightBeeHive",
+		name = "Bee Hive",
+		description = "Highlight the bee hive.",
+		section = skillingSection,
+		position = 50
+	)
+	default boolean highlightBeeHive()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "highlightEnchantmentRitual",
+		name = "Enchantment Ritual",
+		description = "Highlight the ritual.",
+		section = skillingSection,
+		position = 51
+	)
+	default boolean highlightEnchantmentRitual()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "highlightFriendlyEnt",
+		name = "Friendly Ent",
+		description = "Highlight the friendly ent.",
+		section = skillingSection,
+		position = 52
+	)
+	default boolean highlightFriendlyEnt()
+	{
+		return true;
+	}
+
+	String SOUND_HELP =" RuneLite: your RuneLite notification sound, as before. Soft chime, Music box, Retro blip: "
 		+ "bundled sounds. Voice line: says what happened. My sounds: your own WAV in "
 		+ ".runelite/plugin-data/combat-vitals/sounds/";
 	String VOLUME_HELP = "Volume of this alert's own sounds. RuneLite's sound keeps RuneLite's volume.";

@@ -195,7 +195,10 @@ final class PanelLayout
 			Group.more("More skills", "skillingHerblore", "skillingCooking", "skillingFletching", "skillingCrafting",
 				"skillingSmithing", "skillingFiremaking", "skillingPrayer", "skillingMagic", "skillingAgility",
 				"skillingConstruction", "skillingSailing"),
-			new Group("New activity", "autoResetSession"));
+			new Group("New activity", "autoResetSession"),
+			Group.more("Forestry highlights", "forestryHighlights", "forestryHighlightColour", "highlightRisingRoots",
+				"highlightStrugglingSapling", "highlightFloweringBush", "highlightLeprechaun", "highlightPoachers",
+				"highlightPheasantControl", "highlightBeeHive", "highlightEnchantmentRitual", "highlightFriendlyEnt"));
 	}
 
 	private static List<Group> lookGroups()

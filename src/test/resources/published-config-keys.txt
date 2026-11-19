@@ -217,3 +217,15 @@ castsWarnAt int
 castsAlertLow Notification
 # 2026-11-18: Goals page (task-0e75f0d0).
 goalAlert Notification
+# 2026-11-19: Forestry highlights (task-7387091e).
+forestryHighlights boolean
+forestryHighlightColour Color
+highlightRisingRoots boolean
+highlightStrugglingSapling boolean
+highlightFloweringBush boolean
+highlightLeprechaun boolean
+highlightPoachers boolean
+highlightPheasantControl boolean
+highlightBeeHive boolean
+highlightEnchantmentRitual boolean
+highlightFriendlyEnt boolean
