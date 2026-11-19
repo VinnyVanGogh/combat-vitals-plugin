@@ -5,6 +5,7 @@ import java.util.Locale;
 /** Progress, rate and ETA for a {@link Goal}. Pure arithmetic. */
 final class GoalMath
 {
+	static final long HOUR_SECONDS = 3_600L;
 	static final long DAY_SECONDS = 86_400L;
 	static final long WEEK_SECONDS = 7 * DAY_SECONDS;
 	/** The game's weekly reset is Wednesday 00:00 UTC; 1970-01-01 was a Thursday, so Wednesday is day 6. */
@@ -82,6 +83,56 @@ final class GoalMath
 			return 0;
 		}
 		return xpPerAction <= 0 ? -1 : (long) Math.ceil(remainingXp / xpPerAction);
+	}
+
+	static String number(long n)
+	{
+		return java.text.NumberFormat.getIntegerInstance(Locale.US).format(n);
+	}
+
+	/** "Mining level 90", "Mining 5,000,000 xp", "Zulrah x100". */
+	static String title(Goal g)
+	{
+		switch (g.type)
+		{
+			case SKILL_LEVEL:
+				return g.label + " level " + g.target;
+			case SKILL_XP:
+				return g.label + " " + number(g.target) + " xp";
+			case BOSS_KC:
+			case ITEM:
+				return g.label + " x" + number(g.target);
+			case DAILY:
+				return "Daily: " + g.label;
+			default:
+				return "Weekly: " + g.label;
+		}
+	}
+
+	/** "120,000 xp to go (45%), 800 actions, 2h 05m at 60,000 xp/hr (session), ... (last hour)". */
+	static String summary(GoalBook.Progress p)
+	{
+		final StringBuilder sb = new StringBuilder(number(p.left)).append(" xp to go (").append(p.percent)
+			.append("%)");
+		if (p.actionsLeft > 0)
+		{
+			sb.append(", ").append(number(p.actionsLeft)).append(" actions left");
+		}
+		sb.append(", ").append(rate("session", p.left, p.sessionRate));
+		sb.append(", ").append(rate("last hour", p.left, p.hourRate));
+		return sb.toString();
+	}
+
+	private static String rate(String name, long left, double perHour)
+	{
+		final String at = perHour > 0 ? " at " + number(Math.round(perHour)) + " xp/hr" : "";
+		return etaText(etaSeconds(left, perHour)) + at + " (" + name + ")";
+	}
+
+	/** The level {@code levels} above {@code level}, capped at 99. */
+	static int defaultLevel(int level, int levels)
+	{
+		return Math.min(99, Math.max(1, level) + levels);
 	}
 
 	/** Start of the UTC day containing {@code nowSeconds}. */

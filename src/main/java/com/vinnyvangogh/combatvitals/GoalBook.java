@@ -35,6 +35,11 @@ final class GoalBook
 	private long nextId = 1;
 	/** The account hash the held goals were loaded for; null when none. */
 	private Long loadedFor;
+	/** The account whose stored goals read as absent: the profile may not be ready yet, so it is retried. */
+	private Long pendingFor;
+	/** Experience samples per skill over the last hour: {epoch seconds, experience}, oldest first. */
+	private final Map<String, java.util.ArrayDeque<long[]>> samples = new HashMap<>();
+	private java.util.function.ToDoubleFunction<String> actionXp = skill -> 0;
 
 	GoalBook(Storage storage)
 	{
@@ -63,18 +68,51 @@ final class GoalBook
 		{
 			return false;
 		}
-		load();
+		final String text = storage.load();
+		if (text == null)
+		{
+			// Nothing stored, or the RuneScape profile is not ready yet and reads as nothing. Keep what is held
+			// for this account (a goal added meanwhile) and ask again later, rather than call it loaded.
+			if (pendingFor != null && pendingFor == account)
+			{
+				return false;
+			}
+			goals.clear();
+			pendingFor = account;
+			return true;
+		}
+		goals.clear();
+		goals.addAll(Goal.decode(text));
+		for (Goal g : goals)
+		{
+			nextId = Math.max(nextId, g.id + 1);
+		}
 		loadedFor = account;
+		pendingFor = null;
 		return true;
+	}
+
+	/** True while no stored goals have been read for the logged-in account, so a retry is worth making. */
+	synchronized boolean needsLoad()
+	{
+		return loadedFor == null;
+	}
+
+	/** Where the per-action experience of a skill comes from: the skilling badge's session. */
+	synchronized void actionXp(java.util.function.ToDoubleFunction<String> source)
+	{
+		this.actionXp = source;
 	}
 
 	/** Forgets the session numbers and the goals held (logout, or another account). */
 	synchronized void clear()
 	{
 		loadedFor = null;
+		pendingFor = null;
 		goals.clear();
 		seen.clear();
 		xp.clear();
+		samples.clear();
 	}
 
 	synchronized List<Goal> goals()
@@ -94,6 +132,88 @@ final class GoalBook
 		final long[] first = seen.get(skill);
 		final Long now = xp.get(skill);
 		return first == null || now == null ? 0 : GoalMath.perHour(now - first[0], nowSeconds - first[1]);
+	}
+
+	private void sample(String skill, long experience, long nowSeconds)
+	{
+		final java.util.ArrayDeque<long[]> q = samples.computeIfAbsent(skill, k -> new java.util.ArrayDeque<>());
+		q.addLast(new long[] {nowSeconds, experience});
+		// Keep one sample at or before the window's start as its anchor; drop the ones older than that.
+		while (q.size() > 1)
+		{
+			final java.util.Iterator<long[]> it = q.iterator();
+			it.next();
+			if (it.next()[0] > nowSeconds - GoalMath.HOUR_SECONDS)
+			{
+				break;
+			}
+			q.removeFirst();
+		}
+	}
+
+	/** Experience per hour over the last hour in a skill, 0 until there is a minute of it. */
+	synchronized double xpLastHour(String skill, long nowSeconds)
+	{
+		final java.util.ArrayDeque<long[]> q = samples.get(skill);
+		final Long now = xp.get(skill);
+		if (q == null || q.isEmpty() || now == null)
+		{
+			return 0;
+		}
+		final long[] anchor = q.peekFirst();
+		final long from = Math.max(anchor[0], nowSeconds - GoalMath.HOUR_SECONDS);
+		return GoalMath.perHour(now - anchor[1], nowSeconds - from);
+	}
+
+	/** Where a skill goal stands and how long it will take: the Goals page and the Skilling tab both show this. */
+	static final class Progress
+	{
+		final long left;
+		final int percent;
+		final double sessionRate;
+		final double hourRate;
+		final double actionXp;
+		final long actionsLeft;
+
+		Progress(long left, int percent, double sessionRate, double hourRate, double actionXp, long actionsLeft)
+		{
+			this.left = left;
+			this.percent = percent;
+			this.sessionRate = sessionRate;
+			this.hourRate = hourRate;
+			this.actionXp = actionXp;
+			this.actionsLeft = actionsLeft;
+		}
+	}
+
+	/** Progress of a skill goal; null for any other kind. */
+	synchronized Progress progress(Goal g, long nowSeconds)
+	{
+		if (!g.skill())
+		{
+			return null;
+		}
+		final long value = value(g);
+		final long goalValue = g.goalValue();
+		final long left = GoalMath.remaining(value, goalValue);
+		final int percent = (int) Math.round(100 * GoalMath.fraction(g.baseline, value, goalValue));
+		final double perAction = actionXp.applyAsDouble(g.label);
+		return new Progress(left, percent, xpPerHour(g.label, nowSeconds), xpLastHour(g.label, nowSeconds),
+			perAction, GoalMath.actionsLeft(left, perAction));
+	}
+
+	/** One line per unmet skill goal in {@code skill}, for the Skilling tab. */
+	synchronized List<String> skillLines(String skill, long nowSeconds)
+	{
+		final List<String> out = new ArrayList<>();
+		for (Goal g : goals)
+		{
+			if (g.skill() && g.label.equals(skill) && !g.reached)
+			{
+				out.add("Goal " + GoalMath.title(g) + ": " + GoalMath.summary(progress(g, nowSeconds)));
+			}
+		}
+		return out;
 	}
 
 	/** The current value of a goal: live experience for a skill goal, else what is counted. */
@@ -160,6 +280,7 @@ final class GoalBook
 	{
 		seen.putIfAbsent(skill, new long[] {experience, nowSeconds});
 		xp.put(skill, experience);
+		sample(skill, experience, nowSeconds);
 		return settle();
 	}
 

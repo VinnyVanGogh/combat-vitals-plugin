@@ -36,7 +36,26 @@ final class MaxHitPage extends VitalsSidePanel.Column
 		String target = "";
 		int targetMagicLevel = -1;
 		int targetMagicDefence = -1;
+		/** What is worn, by equipment slot index (0 head ... 13 ammo); 0, null and null where the slot is empty. */
+		final int[] itemIds = new int[SLOTS];
+		final String[] itemNames = new String[SLOTS];
+		final java.awt.image.BufferedImage[] itemIcons = new java.awt.image.BufferedImage[SLOTS];
+
+		/** The worn items and the levels the numbers come from: same key, same setup. */
+		String setupKey()
+		{
+			return java.util.Arrays.toString(itemIds) + attack + "/" + strength + "/" + ranged + "/" + magic;
+		}
 	}
+
+	/** The game's equipment slots (EquipmentInventorySlot), by index. */
+	static final int SLOTS = 14;
+	/** The paper-doll, a row each: slot indexes, -1 for a gap. Head; cape, amulet, ammo; weapon, body, shield; legs; gloves, boots, ring. */
+	private static final int[][] DOLL = {{-1, 0, -1}, {1, 2, 13}, {3, 4, 5}, {-1, 7, -1}, {9, 10, 12}};
+	private static final String[] SLOT_NAMES = {"Head", "Cape", "Neck", "Weapon", "Body", "Shield", "", "Legs", "",
+		"Hands", "Feet", "", "Ring", "Ammo"};
+	/** The setup is read again this often while the page is showing, in milliseconds. */
+	private static final int POLL_MILLIS = 2000;
 
 	/** Reads the snapshot off the Swing thread and hands it back on it. */
 	interface Source
@@ -86,16 +105,34 @@ final class MaxHitPage extends VitalsSidePanel.Column
 	private final JLabel result = new JLabel();
 	private boolean loading;
 
+	private final java.util.function.Function<net.runelite.api.Skill, java.awt.image.BufferedImage> icons;
+	private final VitalsSidePanel.Column worn = new VitalsSidePanel.Column();
+	private final javax.swing.Timer poll = new javax.swing.Timer(POLL_MILLIS, e -> source().request(this::auto));
+	private String lastSetup = "";
+
 	MaxHitPage(Source source)
 	{
+		this(source, null);
+	}
+
+	/** {@code icons} gives a skill's small icon for the levels row; null shows names alone. */
+	MaxHitPage(Source source, java.util.function.Function<net.runelite.api.Skill, java.awt.image.BufferedImage> icons)
+	{
 		this.source = source;
-		add(VitalsSidePanel.text("Max hit and chance to hit against an NPC. Type over any box for a what-if "
-			+ "(a different weapon is a different strength bonus). Special attacks and set effects are not "
-			+ "modelled; use Other % for Slayer helm, Salve or similar.", PanelStyle.MUTED));
+		this.icons = icons;
+		add(VitalsSidePanel.text("Max hit and chance to hit against an NPC, from what you are wearing and your "
+			+ "current levels (boosts included), read from the game while this page is open. Type over any box "
+			+ "for a what-if. Special attacks and set effects are not modelled; use Other % for Slayer helm, "
+			+ "Salve or similar.", PanelStyle.MUTED));
+
+		final Card gear = Card.of(PanelStyle.ACCENT);
+		gear.add(VitalsSidePanel.heading("Worn and levels used"));
+		gear.add(worn);
+		add(gear);
 
 		final Card inputs = Card.of(PanelStyle.ACCENT);
 		inputs.add(VitalsSidePanel.heading("Your setup"));
-		final JButton use = new JButton("Use what I wear and my levels");
+		final JButton use = new JButton("Read from the game now");
 		use.setFont(PanelStyle.body());
 		use.setFocusable(false);
 		use.addActionListener(e -> source.request(this::fill));
@@ -141,6 +178,113 @@ final class MaxHitPage extends VitalsSidePanel.Column
 			s.addChangeListener(e -> recompute());
 		}
 		styleChanged();
+		showWorn(new Snapshot());
+		// Read the game whenever the page comes into view, and keep reading while it is: a swap or a boost
+		// changes the numbers without a click.
+		addHierarchyListener(e ->
+		{
+			if ((e.getChangeFlags() & java.awt.event.HierarchyEvent.SHOWING_CHANGED) == 0)
+			{
+				return;
+			}
+			if (isShowing())
+			{
+				source.request(this::auto);
+				poll.start();
+			}
+			else
+			{
+				poll.stop();
+			}
+		});
+	}
+
+	private Source source()
+	{
+		return source;
+	}
+
+	/** Refills the boxes only when the worn items or levels are not the ones already shown, so a what-if survives. */
+	void auto(Snapshot s)
+	{
+		if (!s.setupKey().equals(lastSetup))
+		{
+			fill(s);
+		}
+	}
+
+	/** The worn items as a paper-doll of icons, then the four levels the numbers use. */
+	private void showWorn(Snapshot s)
+	{
+		worn.removeAll();
+		for (int[] row : DOLL)
+		{
+			final JPanel line = new JPanel(new java.awt.GridLayout(1, 3, 2, 2));
+			line.setOpaque(false);
+			for (int slot : row)
+			{
+				line.add(slot < 0 ? new JLabel() : slotCell(s, slot));
+			}
+			line.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+			worn.add(line);
+		}
+		final JPanel levels = new JPanel(new java.awt.GridLayout(1, 4, 2, 2));
+		levels.setOpaque(false);
+		levels.setBorder(new javax.swing.border.EmptyBorder(PanelStyle.S, 0, 0, 0));
+		levels.add(level(net.runelite.api.Skill.ATTACK, s.attack));
+		levels.add(level(net.runelite.api.Skill.STRENGTH, s.strength));
+		levels.add(level(net.runelite.api.Skill.RANGED, s.ranged));
+		levels.add(level(net.runelite.api.Skill.MAGIC, s.magic));
+		worn.add(levels);
+		worn.revalidate();
+		worn.repaint();
+	}
+
+	private JComponent slotCell(Snapshot s, int slot)
+	{
+		final JLabel cell = new JLabel("", javax.swing.SwingConstants.CENTER);
+		cell.setOpaque(true);
+		cell.setBackground(PanelStyle.TRACK);
+		cell.setPreferredSize(new Dimension(36, 34));
+		if (s.itemIcons[slot] == null)
+		{
+			cell.setToolTipText(SLOT_NAMES[slot] + ": empty");
+			return cell;
+		}
+		cell.setToolTipText(SLOT_NAMES[slot] + ": " + s.itemNames[slot]);
+		if (s.itemIcons[slot] instanceof net.runelite.client.util.AsyncBufferedImage)
+		{
+			((net.runelite.client.util.AsyncBufferedImage) s.itemIcons[slot]).addTo(cell);
+		}
+		else
+		{
+			cell.setIcon(new javax.swing.ImageIcon(s.itemIcons[slot]));
+		}
+		return cell;
+	}
+
+	private JComponent level(net.runelite.api.Skill skill, int level)
+	{
+		final JLabel l = new JLabel(String.valueOf(level), javax.swing.SwingConstants.CENTER);
+		l.setFont(PanelStyle.body());
+		l.setForeground(PanelStyle.TEXT);
+		l.setToolTipText(skill.getName() + " level used: " + level);
+		final java.awt.image.BufferedImage image = icons == null ? null : icons.apply(skill);
+		if (image != null)
+		{
+			l.setIcon(new javax.swing.ImageIcon(image));
+		}
+		else
+		{
+			l.setText(skill.getName().substring(0, 3) + " " + level);
+		}
+		return l;
+	}
+
+	/** Test hook: the setup last shown. */
+	String lastSetup()
+	{
+		return lastSetup;
 	}
 
 	private static JSpinner spinner(int value, int min, int max)
@@ -191,8 +335,10 @@ final class MaxHitPage extends VitalsSidePanel.Column
 	}
 
 	/** Fills the boxes from what the game reports. */
-	private void fill(Snapshot s)
+	void fill(Snapshot s)
 	{
+		lastSetup = s.setupKey();
+		showWorn(s);
 		loading = true;
 		final int st = styleIndex();
 		if (st == 0)

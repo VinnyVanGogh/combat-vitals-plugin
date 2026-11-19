@@ -123,9 +123,19 @@ final class LiveVitals
 		/** Gear warning, the inventory line and each container's, as the badge has them. */
 		final List<String> lines;
 
+		/** The unmet goals in this skill, one line each ("Goal Mining level 90: 1,200 xp to go ..."); may be empty. */
+		final List<String> goals;
+
 		Skilling(String header, Color colour, BufferedImage icon, Bar xp, Map<SessionRow.Kind, String> stats,
 			List<String> chips, List<String> lines)
 		{
+			this(header, colour, icon, xp, stats, chips, lines, Collections.emptyList());
+		}
+
+		Skilling(String header, Color colour, BufferedImage icon, Bar xp, Map<SessionRow.Kind, String> stats,
+			List<String> chips, List<String> lines, List<String> goals)
+		{
+			this.goals = goals;
 			this.header = header;
 			this.colour = colour;
 			this.icon = icon;
@@ -210,6 +220,12 @@ final class LiveVitals
 	/** The same, with the skill's icon for the card's title. */
 	static Skilling skilling(SkillingReadout r, BufferedImage icon)
 	{
+		return skilling(r, icon, Collections.emptyList());
+	}
+
+	/** The same, with the active skill's goal lines under the readout. */
+	static Skilling skilling(SkillingReadout r, BufferedImage icon, List<String> goals)
+	{
 		if (r == null)
 		{
 			return new Skilling(null, SkillColours.DEFAULT, null, null, Collections.emptyMap(),
@@ -227,7 +243,7 @@ final class LiveVitals
 		final List<String> chips = timers ? Arrays.asList(r.getInventoryLabel().split(" \\| "))
 			: Collections.emptyList();
 		return new Skilling(SkillingBadgeRenderer.headerText(r), r.getColour(), icon, xp, stats, chips,
-			lines(r, !timers));
+			lines(r, !timers), goals);
 	}
 
 	/** The badge's lines under its XP and session rows: gear warning, inventory, containers. */

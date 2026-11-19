@@ -571,7 +571,19 @@ public class CombatVitalsPlugin extends Plugin
 			items.put(d.key(), d);
 		}
 		sidePanel = new VitalsSidePanel(ConfigStore.of(configManager, executor), items, colorPickerManager,
-			type -> clientThread.invoke(() -> testAlert(type)), alertMute, goalsHub.book(), goalsHub.source());
+			type -> clientThread.invoke(() -> testAlert(type)), alertMute, goalsHub.book(), goalsHub.source(),
+			skill -> skillIconManager.getSkillImage(skill, true));
+		goalsHub.book().actionXp(name ->
+		{
+			for (Skill s : Skill.values())
+			{
+				if (s.getName().equals(name))
+				{
+					return session.xpPerAction(s);
+				}
+			}
+			return 0;
+		});
 		navButton = NavigationButton.builder()
 			.tooltip(VitalsSidePanel.TITLE)
 			.icon(VitalsSidePanel.icon())
@@ -2019,7 +2031,10 @@ public class CombatVitalsPlugin extends Plugin
 	@Subscribe
 	public void onGameTick(GameTick tick)
 	{
-		goalsHub.tick(tick == null ? 0 : client.getTickCount());
+		if (goalsHub.tick(tick == null ? 0 : client.getTickCount()))
+		{
+			goalsChanged();
+		}
 		tickAggression();
 		tickSkillingEventSummaries();
 		loginSync.tick();
@@ -2084,7 +2099,9 @@ public class CombatVitalsPlugin extends Plugin
 	private LiveVitals.Skilling liveSkilling()
 	{
 		final SkillingReadout r = skillingReadout;
-		return LiveVitals.skilling(r, r == null ? null : skillIconManager.getSkillImage(r.getSkill(), true));
+		return LiveVitals.skilling(r, r == null ? null : skillIconManager.getSkillImage(r.getSkill(), true),
+			r == null ? java.util.Collections.emptyList()
+				: goalsHub.book().skillLines(r.getSkill().getName(), System.currentTimeMillis() / 1000));
 	}
 
 	/** Your vitals, the target as the overhead readout has it, and the combat skill gained in last. */

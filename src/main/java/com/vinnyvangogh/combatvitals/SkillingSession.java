@@ -94,6 +94,13 @@ final class SkillingSession
 		return latest;
 	}
 
+	/** The average experience of one action this session (the badge's actions), or 0 before the first. */
+	double xpPerAction(Skill skill)
+	{
+		final int i = skill.ordinal();
+		return actions[i] == 0 ? 0 : (double) (lastXp[i] - baseXp[i]) / actions[i];
+	}
+
 	int actions(Skill skill)
 	{
 		return actions[skill.ordinal()];
