@@ -41,6 +41,8 @@ final class SplashTimer
 	{
 		startMillis = -1;
 		idleTicks = 0;
+		soonArmed = true;
+		stoppedArmed = true;
 	}
 
 	/** Milliseconds this session has run, or -1 when none is. */
@@ -59,7 +61,71 @@ final class SplashTimer
 		return Math.max(0, logoutMillis - idleMillis);
 	}
 
-	/** "Active" while you are using the client, else "Logout in 14:32"; null when unknown. */
+	/**
+	 * How long without input before splashing stops by itself: "The player will
+	 * stop attacking after 20 minutes of inactivity"
+	 * (https://oldschool.runescape.wiki/w/Splashing).
+	 */
+	static final long STOP_MS = 20 * 60_000L;
+
+	static final int NONE = 0;
+	static final int STOPS_SOON = 1;
+	static final int STOPPED = 2;
+
+	private boolean soonArmed = true;
+	private boolean stoppedArmed = true;
+
+	/**
+	 * The alert due for this much idle time: {@link #STOPS_SOON} once when
+	 * {@code warnMillis} or less is left, {@link #STOPPED} once when none is,
+	 * each again after any input brings the idle time back under
+	 * {@link TrainingSession#ACTIVE_MS}.
+	 */
+	int afk(long idleMillis, long warnMillis)
+	{
+		if (idleMillis < TrainingSession.ACTIVE_MS)
+		{
+			soonArmed = true;
+			stoppedArmed = true;
+			return NONE;
+		}
+		final long left = STOP_MS - idleMillis;
+		if (left <= 0)
+		{
+			soonArmed = false;
+			if (stoppedArmed)
+			{
+				stoppedArmed = false;
+				return STOPPED;
+			}
+			return NONE;
+		}
+		if (left <= warnMillis && soonArmed)
+		{
+			soonArmed = false;
+			return STOPS_SOON;
+		}
+		return NONE;
+	}
+
+	/** Whether the card is still shown {@code sinceStopMillis} after the last cast. */
+	static boolean lingers(long sinceStopMillis, int seconds, boolean forever)
+	{
+		return forever || sinceStopMillis < seconds * 1000L;
+	}
+
+	/** "Stopped 12s ago", or "Stopped 2m 05s ago" from a minute. */
+	static String stoppedAgo(long sinceStopMillis)
+	{
+		final long s = Math.max(0, sinceStopMillis) / 1000;
+		if (s >= 60)
+		{
+			return String.format(Locale.ROOT, "Stopped %dm %02ds ago", s / 60, s % 60);
+		}
+		return "Stopped " + s + "s ago";
+	}
+
+	/** "Active" while you are using the client, else "Splashing stops in 14:32"; null when unknown. */
 	static String logoutText(long idleMillis, long logoutMillis)
 	{
 		final long left = logoutLeft(idleMillis, logoutMillis);
@@ -67,7 +133,7 @@ final class SplashTimer
 		{
 			return null;
 		}
-		return idleMillis < TrainingSession.ACTIVE_MS ? "Active" : "Logout in " + clock(left);
+		return idleMillis < TrainingSession.ACTIVE_MS ? "Active" : "Splashing stops in " + clock(left);
 	}
 
 	/** "3:07", or "1:02:09" from an hour. */
