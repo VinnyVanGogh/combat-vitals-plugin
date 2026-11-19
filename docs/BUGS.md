@@ -2,6 +2,16 @@
 
 Merged bug fixes in reverse chronological order (newest first). Pre-PR bootstrap commits on `main` are cited by short commit hash.
 
+## 2026-11-18 — `Follow game volume` defaulted on and silenced alert sounds when game sound effects were muted (#53)
+- **What broke:** `#50` introduced `alertFollowGameVolume` (`Follow game volume`) enabled by default (`true`), which scales the plugin's own alert sounds by the client's in-game sound effects volume and plays nothing at `0`. Players who keep Old School RuneScape's sound effects at `0` while expecting plugin alert sounds to play heard no alert sounds after `#50`.
+- **How it was found:** Review and in-game check after `#50` merged.
+- **Fix:** Changed `CombatVitalsConfig.alertFollowGameVolume()` to default to `false` so the plugin's own alert sounds play at their configured volume unless the player opts in (#53).
+
+## 2026-11-18 — Splashing setup-changed alert bypassed sidebar mute and `Mute alert sounds` (#52)
+- **What broke:** `SplashWatcher` called `Notifier` directly when gear, spell, or target changed while splashing, so `#51`'s sidebar mute (`AlertMute`) and `#50`'s `alertMuteSounds` setting did not silence the splashing alert.
+- **How it was found:** Merging `main` (`#50`, `#51`) into the splashing mode branch before `#52` merged.
+- **Fix:** Changed `SplashWatcher.tick()` to return the alert text and routed the notification through `CombatVitalsPlugin`'s `alertMute` and `alertMuteSounds` checks (#52).
+
 ## 2026-11-03 — Pickpocketing an attackable NPC skipped the Thieving badge (#12)
 - **What broke:** NPCs that offer both `Attack` and a skilling option such as `Pickpocket` (for example, a Man) were classified by `CombatState.isAttackable` before checking the clicked menu option, so pickpocketing them never showed the Thieving skilling badge.
 - **How it was found:** Review of RUNELITE-40 (#7).
