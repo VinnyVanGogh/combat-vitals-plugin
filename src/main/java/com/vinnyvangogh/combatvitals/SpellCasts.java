@@ -275,9 +275,12 @@ final class SpellCasts
 	{
 		// Strike, Bolt, Blast, Wave, Surge: air / water / earth / fire.
 		final String[] tiers = {"Strike", "Bolt", "Blast", "Wave", "Surge"};
-		// Wind and water spells cost the same air; earth spells that air and more earth, fire spells more fire.
+		// Air is shared by the four elements; water and earth have their own columns because they differ from
+		// it at Wave and Surge. Water Wave/Surge, Earth Surge and Crumble Undead checked against the OSRS Wiki
+		// spell pages 2026-11-19; the rest are unchecked.
 		final int[] air = {1, 2, 3, 5, 7};
-		final int[] earth = {2, 3, 4, 7, 9};
+		final int[] water = {1, 2, 3, 7, 10};
+		final int[] earth = {2, 3, 4, 7, 10};
 		final int[] fire = {3, 4, 5, 7, 10};
 		final int[] fireAir = {2, 3, 4, 5, 7};
 		for (int t = 0; t < tiers.length; t++)
@@ -288,11 +291,11 @@ final class SpellCasts
 			final int blood = t == 3 ? 1 : 0;
 			final int wrath = t == 4 ? 1 : 0;
 			spell("Wind " + tiers[t], cost(air[t], 0, 0, 0, mind, chaos, death, blood, 0, wrath));
-			spell("Water " + tiers[t], cost(air[t], air[t], 0, 0, mind, chaos, death, blood, 0, wrath));
+			spell("Water " + tiers[t], cost(air[t], water[t], 0, 0, mind, chaos, death, blood, 0, wrath));
 			spell("Earth " + tiers[t], cost(air[t], 0, earth[t], 0, mind, chaos, death, blood, 0, wrath));
 			spell("Fire " + tiers[t], cost(fireAir[t], 0, 0, fire[t], mind, chaos, death, blood, 0, wrath));
 		}
-		spell("Crumble Undead", cost(1, 0, 2, 0, 0, 1, 0, 0, 0, 0));
+		spell("Crumble Undead", cost(2, 0, 2, 0, 0, 1, 0, 0, 0, 0));
 		spell("Iban Blast", cost(0, 0, 0, 5, 0, 0, 1, 0, 0, 0));
 		spell("Magic Dart", cost(0, 0, 0, 0, 4, 0, 1, 0, 0, 0));
 		// Ancient Magicks.
@@ -313,16 +316,36 @@ final class SpellCasts
 		spell("Ice Blitz", cost(0, 3, 0, 0, 0, 0, 2, 2, 0, 0));
 		spell("Ice Barrage", cost(0, 6, 0, 0, 0, 0, 4, 2, 0, 0));
 
-		// The autocast varbit's values for the standard spellbook, strike to wave. Unverified in game.
+		// AUTOCAST_SPELL counts from 1 at Wind Strike (0 is no spell): strike, bolt, blast, wave in element order
+		// (1 to 16), Crumble Undead 17, Magic Dart 18, the ancient rushes to barrages 31 to 46 (smoke, shadow,
+		// blood, ice per tier), Iban Blast 47 and the four surges 48 to 51. Read 2026-11-19 from the Hub plugin
+		// Autocasting's Spell enum (jcarbelbide/autocasting), as numbers only; not confirmed in game.
 		final String[] elements = {"Wind", "Water", "Earth", "Fire"};
-		int value = 3;
+		int value = 1;
 		for (int t = 0; t < 4; t++)
 		{
 			for (String element : elements)
 			{
-				AUTOCAST.put(value, element + " " + tiers[t]);
-				value += 2;
+				AUTOCAST.put(value++, element + " " + tiers[t]);
 			}
+		}
+		AUTOCAST.put(17, "Crumble Undead");
+		AUTOCAST.put(18, "Magic Dart");
+		final String[] ancientTiers = {"Rush", "Burst", "Blitz", "Barrage"};
+		final String[] ancientKinds = {"Smoke", "Shadow", "Blood", "Ice"};
+		value = 31;
+		for (String tier : ancientTiers)
+		{
+			for (String kind : ancientKinds)
+			{
+				AUTOCAST.put(value++, kind + " " + tier);
+			}
+		}
+		AUTOCAST.put(47, "Iban Blast");
+		value = 48;
+		for (String element : elements)
+		{
+			AUTOCAST.put(value++, element + " Surge");
 		}
 	}
 }

@@ -37,8 +37,12 @@ red and **Casts: running low** notifies once, and again after a restock; both
 mutes apply. A tome counts as unlimited whatever its charges.
 
 A spell you click is read by name. For autocast the game only gives a number,
-and the table from that number to the spell (strike to wave) is **unverified in
-game**: if the spell name on the card is wrong, tell us.
+and the table from that number to the spell is taken from the Hub plugin
+Autocasting's spell list (numbers only, read 2026-11-19): it counts from 1 at
+Wind Strike, then strike, bolt, blast and wave in air, water, earth, fire
+order (1 to 16), Crumble Undead 17, Magic Dart 18, the ancient rushes to
+barrages 31 to 46, Iban Blast 47 and the four surges 48 to 51. It is **not
+confirmed in game**: if the spell name on the card is wrong, tell us.
 
 ## The formula
 
