@@ -167,7 +167,9 @@ final class PanelLayout
 					new Group("Big targets", "bigTargetDisplay", "otherTargetDisplay", "bigTargetRule",
 						"bigTargetMaxHp"),
 					new Group("Splashing (AFK Magic)", "splashMode", "splashMaxChance", "splashAlertBroke"),
-					new Group("Casts left", "castsLeft", "castsWarnAt", "castsAlertLow"));
+					new Group("Casts left", "castsLeft", "castsWarnAt", "castsAlertLow"),
+					new Group("Splash card and AFK timer", "splashLingerSeconds", "splashLingerForever",
+						"splashAlertStopSoon", "splashWarnSeconds", "splashAlertStopped"));
 			case SKILLING:
 				return skillingGroups();
 			case LOOK:

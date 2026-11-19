@@ -6,6 +6,65 @@ import org.junit.Test;
 
 public class SplashTimerTest
 {
+	private static final long MIN = 60_000L;
+
+	@Test
+	public void theStopsSoonAlertFiresOnceThenAgainAfterInput()
+	{
+		final SplashTimer t = new SplashTimer();
+		assertEquals(SplashTimer.NONE, t.afk(10 * MIN, MIN));
+		assertEquals(SplashTimer.NONE, t.afk(19 * MIN - 1, MIN));
+		assertEquals(SplashTimer.STOPS_SOON, t.afk(19 * MIN, MIN));
+		assertEquals(SplashTimer.NONE, t.afk(19 * MIN + 5000, MIN));
+		assertEquals(SplashTimer.NONE, t.afk(1000, MIN));
+		assertEquals(SplashTimer.STOPS_SOON, t.afk(19 * MIN, MIN));
+	}
+
+	@Test
+	public void theStoppedAlertFiresOnceAndSkipsAStaleSoon()
+	{
+		final SplashTimer t = new SplashTimer();
+		assertEquals(SplashTimer.STOPPED, t.afk(SplashTimer.STOP_MS, MIN));
+		assertEquals(SplashTimer.NONE, t.afk(SplashTimer.STOP_MS + 3000, MIN));
+		assertEquals(SplashTimer.NONE, t.afk(0, MIN));
+		assertEquals(SplashTimer.STOPPED, t.afk(SplashTimer.STOP_MS, MIN));
+	}
+
+	@Test
+	public void theWarnLeadIsConfigurable()
+	{
+		final SplashTimer t = new SplashTimer();
+		assertEquals(SplashTimer.NONE, t.afk(19 * MIN, 30_000));
+		assertEquals(SplashTimer.STOPS_SOON, t.afk(19 * MIN + 30_000, 30_000));
+	}
+
+	@Test
+	public void theCardLingersForTheSettingOrUntilNewActivity()
+	{
+		assertEquals(true, SplashTimer.lingers(29_999, 30, false));
+		assertEquals(false, SplashTimer.lingers(30_000, 30, false));
+		assertEquals(false, SplashTimer.lingers(0, 0, false));
+		assertEquals(true, SplashTimer.lingers(3_600_000, 0, true));
+	}
+
+	@Test
+	public void stoppedAgoReadsInSecondsThenMinutes()
+	{
+		assertEquals("Stopped 12s ago", SplashTimer.stoppedAgo(12_900));
+		assertEquals("Stopped 2m 05s ago", SplashTimer.stoppedAgo(125_000));
+	}
+
+	@Test
+	public void aStoppedReadoutKeepsItsCardAndNoticesIt()
+	{
+		final SplashReadout live = new SplashReadout(null, "Fire Strike", null, -2, false, new int[0], new int[0],
+			0, SplashTimer.STOP_MS, 5000, 100);
+		assertEquals(false, live.isStopped());
+		assertEquals(true, live.stopped(900).isStopped());
+		assertEquals(900, live.stopped(900).stoppedAt);
+		assertEquals("Fire Strike", live.stopped(900).spell);
+	}
+
 	@Test
 	public void theSessionStartsAtTheFirstCastAndKeepsRunning()
 	{
@@ -78,7 +137,7 @@ public class SplashTimerTest
 	@Test
 	public void logoutCountsDownOnceIdle()
 	{
-		assertEquals("Logout in 4:00", SplashTimer.logoutText(60_000, 300_000));
+		assertEquals("Splashing stops in 4:00", SplashTimer.logoutText(60_000, 300_000));
 		assertEquals(240_000, SplashTimer.logoutLeft(60_000, 300_000));
 	}
 
