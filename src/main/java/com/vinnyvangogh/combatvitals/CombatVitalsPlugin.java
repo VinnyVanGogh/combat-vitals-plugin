@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
@@ -305,6 +306,13 @@ public class CombatVitalsPlugin extends Plugin
 	@Inject
 	private SplashWatcher splashWatcher;
 
+	/** The Goals page's book, kept per account, and the Max Hit page's gear reader. */
+	@Inject
+	private GoalsHub goalsHub;
+
+	/** A repaint of the Goals page is already queued on the Swing thread. */
+	private final AtomicBoolean goalsRepaintQueued = new AtomicBoolean();
+
 	/** Finds the next fishing spot and paths to or highlights it. Client thread only; null until started. */
 	private SpotPathing spotPathing;
 
@@ -568,7 +576,7 @@ public class CombatVitalsPlugin extends Plugin
 			items.put(d.key(), d);
 		}
 		sidePanel = new VitalsSidePanel(ConfigStore.of(configManager, executor), items, colorPickerManager,
-			type -> clientThread.invoke(() -> testAlert(type)), alertMute);
+			type -> clientThread.invoke(() -> testAlert(type)), alertMute, goalsHub.book(), goalsHub.source());
 		navButton = NavigationButton.builder()
 			.tooltip(VitalsSidePanel.TITLE)
 			.icon(VitalsSidePanel.icon())
@@ -576,6 +584,38 @@ public class CombatVitalsPlugin extends Plugin
 			.panel(sidePanel)
 			.build();
 		clientToolbar.addNavigation(navButton);
+	}
+
+	/** Says each goal just reached, through the Goal reached notification and the sidebar mute. Client thread. */
+	private void announceGoals(List<Goal> reached)
+	{
+		if (reached.isEmpty())
+		{
+			return;
+		}
+		goalsChanged();
+		if (alertMute.muted())
+		{
+			return;
+		}
+		for (Goal g : reached)
+		{
+			notifier.notify(muted(config.goalAlert()), GoalsHub.message(g));
+		}
+	}
+
+	/** Asks the sidebar to redraw the Goals page, once however many changes come before it runs. */
+	private void goalsChanged()
+	{
+		final VitalsSidePanel panel = sidePanel;
+		if (panel != null && goalsRepaintQueued.compareAndSet(false, true))
+		{
+			SwingUtilities.invokeLater(() ->
+			{
+				goalsRepaintQueued.set(false);
+				panel.goalsChanged();
+			});
+		}
 	}
 
 	/**
@@ -793,6 +833,8 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			case LOGGED_IN:
 				hiscoreEndpoint = HiscoreEndpoint.fromWorldTypes(client.getWorldType());
+				goalsHub.loggedIn();
+				goalsChanged();
 				// Logging in restarts the drain segment (OSRS wiki, "Temporary
 				// skill boost"): the one anchor available before a drop is seen.
 				boostTimer.anchorLogin(client.getTickCount());
@@ -808,6 +850,8 @@ public class CombatVitalsPlugin extends Plugin
 				// Logging out ends the session's counts; a hop does not.
 				session.clear();
 				sessionActivity.clear();
+				goalsHub.loggedOut();
+				goalsChanged();
 				// No more ticks come to redraw the Live section, so it says so now.
 				publishLive();
 				// Another account may log in next: its own counts are restored from its profile.
@@ -1161,6 +1205,12 @@ public class CombatVitalsPlugin extends Plugin
 		final int real = event.getLevel();
 		final int boosted = event.getBoostedLevel();
 
+		// Goals follow experience from the login sync on, so a goal met while away shows as met.
+		if (skill != Skill.OVERALL)
+		{
+			announceGoals(goalsHub.onStat(skill, event.getXp()));
+		}
+
 		// The login sync is nobody's experience drop: seedBoosts takes the
 		// baselines from the client once it is over.
 		if (!loginSync.syncing())
@@ -1491,6 +1541,7 @@ public class CombatVitalsPlugin extends Plugin
 			activityAlerts.necklaceBroke();
 		}
 		skillingEvents.chat(message);
+		announceGoals(goalsHub.onChat(message));
 		observeActivity(message);
 
 		containerContents.message(message, client.getTickCount());
@@ -1974,6 +2025,7 @@ public class CombatVitalsPlugin extends Plugin
 	@Subscribe
 	public void onGameTick(GameTick tick)
 	{
+		goalsHub.tick(tick == null ? 0 : client.getTickCount());
 		tickAggression();
 		tickSkillingEventSummaries();
 		loginSync.tick();
