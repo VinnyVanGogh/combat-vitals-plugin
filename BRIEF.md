@@ -841,6 +841,36 @@ Gradle dependency verification with cryptographic hashes; the cleanest way to
 keep that painless is to add no non-RuneLite dependencies at all. A BSD 2-Clause
 licence is required and is already in `LICENSE`.
 
+### Replace-more bundle, compliance verdicts (added 2026-11-18, RUNELITE-363)
+
+Board, 2026-11-18: "the more we can replace, the better." Four features, each
+checked against `AGENTS.md` before any code. Precedent marked **unverified**
+was named from the task text and not yet read from source; it must be read
+(Hub repo, licence, what it actually does) before the feature is built.
+
+| Feature | Nearest rule | Precedent | Verdict |
+|---|---|---|---|
+| Themed boss health bars (RUNELITE-337) | None: own target's HP, already shown | Base Opponent Information; this plugin's existing overlay | Allowed |
+| Boss HP bar markers at **user-set** percentages (a line at 50%, a label) | "No additional indicators of a boss mechanic" and "no advance warning of future hazards" | Hub `boss-health-indicators` (**unverified**, named by Board) | **Restricted.** Only thresholds the player types in, identical for every NPC, no built-in per-boss phase table (a table of phase HP is the plugin telling you a mechanic is coming). Under that form it is a manual helper |
+| Per-boss presets of phase thresholds | Same rule, plus "no new high-end PvM boss plugins" | None | **Forbidden** as built-in data. Cut |
+| Prayer book markers (highlight / label chosen prayers, player-set) | "No resizing prayer book click zones"; "no combat prayer recommendations" | Hub `prayer-markers` (**unverified**), base Screen Markers | **Restricted.** Draw only over the player's own chosen prayers, overlay only, no click-zone change, no input |
+| Per-boss prayer presets | "No combat prayer recommendations", "no prayer switching indicators" | None | **Forbidden.** Presets may be named by the player, never shipped per boss. Cut the built-in ones |
+| Flick reminder | "No flinch timing helpers"; Jagex bans automation of prayer | None found | **Not allowed to build until a precedent is read.** A tick metronome tied to the player's own prayer state with no boss input is the only form worth checking, and the verdict is open |
+| Screen markers | None | Base Screen Markers | Allowed, only if worth adding over the base plugin |
+| Farm run timers: herb, tree, fruit, hops, birdhouse, contract; per-patch status; "run ready" alert | None: own-account varbits and own timers | Base Time Tracking and Farming plugins read the same patch varbits | Allowed |
+| Farm run voice alert ("Herb run ready") through `AudioPlayer`, both mutes, follow-game-volume | None: this plugin's own alert system (see Alert sounds above) | Same | Allowed. This is what base Time Tracking lacks |
+| Spellbook presets: hide / reorder spells per preset | "No resizing spellbook components", "no moving or resizing click zones for spellbook", "no menu removal tricks" | Hub `spellbook-presets` (**unverified**) | **Blocked.** Hiding or moving spell widgets is the thing the rules name. Build nothing until the precedent's source shows exactly which widget calls it makes and that review accepted them |
+
+Not built, recorded so it is not re-proposed: built-in per-boss phase tables,
+built-in per-boss prayer presets, any prayer-switch cue tied to a boss.
+
+Token budget: not measured this turn (`tokens.py` run was held by the gate).
+Measure before any code lands; the Hub skips review above 200k.
+
+Build order once the gaps close: farm run timers first (clean verdict, the
+Board's voice-alert comment), then themed boss bars and user-set markers, then
+prayer markers. Spellbook presets last, and only after its precedent is read.
+
 ---
 
 ## Reporting
