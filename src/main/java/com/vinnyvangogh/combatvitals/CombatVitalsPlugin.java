@@ -283,6 +283,13 @@ public class CombatVitalsPlugin extends Plugin
 	private NextSpotOverlay nextSpotOverlay;
 
 	@Inject
+	private ForestryHighlightOverlay forestryHighlightOverlay;
+
+	/** The Forestry event parts on the scene, for the highlight overlay. Client thread only. */
+	@Getter
+	private final ForestryMarks forestryMarks = new ForestryMarks();
+
+	@Inject
 	private AggressionOverlay aggressionOverlay;
 
 	@Inject
@@ -529,6 +536,7 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.add(skillingBadgeOverlay);
 		overlayManager.add(pillarOverlay);
 		overlayManager.add(nextSpotOverlay);
+		overlayManager.add(forestryHighlightOverlay);
 		overlayManager.add(aggressionOverlay);
 		overlayManager.add(aggressionAreaOverlay);
 		overlayManager.add(gameHealthBarOverlay);
@@ -700,6 +708,8 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.remove(skillingBadgeOverlay);
 		overlayManager.remove(pillarOverlay);
 		overlayManager.remove(nextSpotOverlay);
+		overlayManager.remove(forestryHighlightOverlay);
+		forestryMarks.clear();
 		overlayManager.remove(aggressionOverlay);
 		overlayManager.remove(aggressionAreaOverlay);
 		overlayManager.remove(gameHealthBarOverlay);
@@ -885,6 +895,7 @@ public class CombatVitalsPlugin extends Plugin
 				pouchesCarried.clear();
 				// fall through
 			case HOPPING:
+				forestryMarks.clear();
 				loginSync.loggingIn();
 				aggression.clear();
 				opponent = null;
@@ -1691,6 +1702,7 @@ public class CombatVitalsPlugin extends Plugin
 		final SkillingEvents.Forestry kind = SkillingEvents.forestryObject(event.getGameObject().getId());
 		if (kind != null)
 		{
+			forestryMarks.spawned(kind, event.getGameObject());
 			skillingEvents.forestrySpawned(kind, event.getGameObject(), near(event.getGameObject().getWorldLocation()),
 				client.getTickCount());
 		}
@@ -1707,6 +1719,7 @@ public class CombatVitalsPlugin extends Plugin
 		final SkillingEvents.Forestry kind = SkillingEvents.forestryObject(event.getGameObject().getId());
 		if (kind != null)
 		{
+			forestryMarks.despawned(kind, event.getGameObject());
 			skillingEvents.forestryDespawned(kind, event.getGameObject(), client.getTickCount());
 		}
 	}
@@ -1717,6 +1730,7 @@ public class CombatVitalsPlugin extends Plugin
 		final SkillingEvents.Forestry kind = SkillingEvents.forestryNpc(event.getNpc().getId());
 		if (kind != null)
 		{
+			forestryMarks.spawned(kind, event.getNpc());
 			skillingEvents.forestrySpawned(kind, event.getNpc(), near(event.getNpc().getWorldLocation()),
 				client.getTickCount());
 		}
@@ -1798,6 +1812,7 @@ public class CombatVitalsPlugin extends Plugin
 		final SkillingEvents.Forestry kind = SkillingEvents.forestryNpc(event.getNpc().getId());
 		if (kind != null)
 		{
+			forestryMarks.despawned(kind, event.getNpc());
 			skillingEvents.forestryDespawned(kind, event.getNpc(), client.getTickCount());
 		}
 
