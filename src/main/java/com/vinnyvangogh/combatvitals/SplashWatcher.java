@@ -77,6 +77,8 @@ class SplashWatcher
 	private String spellName;
 	private boolean lowArmed = true;
 	private String lowAlert;
+	private String stopSoonAlert;
+	private String stoppedAlert;
 
 	@Inject
 	SplashWatcher(Client client, ItemManager itemManager, CombatVitalsConfig config)
@@ -89,7 +91,17 @@ class SplashWatcher
 	/** The latest read-out for the overlay, or null when nothing is being cast at an NPC. */
 	SplashReadout readout()
 	{
-		return on() ? readout : null;
+		final SplashReadout r = readout;
+		if (!on() || r == null)
+		{
+			return null;
+		}
+		if (r.isStopped() && !SplashTimer.lingers(System.currentTimeMillis() - r.stoppedAt,
+			config.splashLingerSeconds(), config.splashLingerForever()))
+		{
+			return null;
+		}
+		return r;
 	}
 
 	private boolean on()
@@ -103,6 +115,8 @@ class SplashWatcher
 		manualNpcIndex = -1;
 		lowArmed = true;
 		lowAlert = null;
+		stopSoonAlert = null;
+		stoppedAlert = null;
 		tracker.reset();
 		timer.reset();
 	}
@@ -149,14 +163,22 @@ class SplashWatcher
 			manualTicks--;
 		}
 		final SplashTracker.Input in = read();
+		final long now = System.currentTimeMillis();
+		final SplashReadout shown = readout;
+		if (in != null || shown != null && !shown.isStopped())
+		{
+			afk(idleMillis());
+		}
 		if (in == null)
 		{
-			readout = null;
+			if (shown != null && !shown.isStopped())
+			{
+				readout = shown.stopped(now);
+			}
 			tracker.idle();
 			timer.idle();
 			return null;
 		}
-		final long now = System.currentTimeMillis();
 		timer.cast(now);
 		final SplashTracker.Result splash = tracker.step(in, config.splashMaxChance());
 		final boolean splashing = config.splashMode();
@@ -194,11 +216,46 @@ class SplashWatcher
 			items = Arrays.copyOf(items, n);
 			costs = Arrays.copyOf(costs, n);
 		}
-		final long idle = Math.min(client.getKeyboardIdleTicks(), client.getMouseIdleTicks())
+		return new SplashReadout(splash, spellName, castsText, casts, low, items, costs, idleMillis(),
+			SplashTimer.STOP_MS, timer.elapsed(now), now);
+	}
+
+	/** Milliseconds since the last mouse or keyboard input the client saw. */
+	private long idleMillis()
+	{
+		return Math.min(client.getKeyboardIdleTicks(), client.getMouseIdleTicks())
 			* (long) Constants.CLIENT_TICK_LENGTH;
-		final long logout = client.getIdleTimeout() * (long) Constants.CLIENT_TICK_LENGTH;
-		return new SplashReadout(splash, spellName, castsText, casts, low, items, costs, idle, logout,
-			timer.elapsed(now), now);
+	}
+
+	private void afk(long idleMillis)
+	{
+		final int due = timer.afk(idleMillis, config.splashWarnSeconds() * 1000L);
+		if (due == SplashTimer.STOPS_SOON)
+		{
+			stopSoonAlert = "Splashing stops by itself in "
+				+ SplashTimer.clock(SplashTimer.logoutLeft(idleMillis, SplashTimer.STOP_MS))
+				+ ": click or press a key to keep it going.";
+		}
+		else if (due == SplashTimer.STOPPED)
+		{
+			stoppedAlert = "Splashing has stopped: no input for 20 minutes.";
+		}
+	}
+
+	/** The stops-soon alert text due this tick, once, or null. */
+	String takeStopSoonAlert()
+	{
+		final String text = stopSoonAlert;
+		stopSoonAlert = null;
+		return text;
+	}
+
+	/** The stopped alert text due this tick, once, or null. */
+	String takeStoppedAlert()
+	{
+		final String text = stoppedAlert;
+		stoppedAlert = null;
+		return text;
 	}
 
 	/** Fires the low-casts alert once as the count drops to the warn level, and again after a refill. */

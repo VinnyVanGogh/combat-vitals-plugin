@@ -2035,6 +2035,16 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			notifier.notify(muted(config.splashAlertBroke()), splashBroke);
 		}
+		final String splashSoon = splashWatcher.takeStopSoonAlert();
+		if (splashSoon != null && !alertMute.muted())
+		{
+			notifier.notify(muted(config.splashAlertStopSoon()), splashSoon);
+		}
+		final String splashStopped = splashWatcher.takeStoppedAlert();
+		if (splashStopped != null && !alertMute.muted())
+		{
+			notifier.notify(muted(config.splashAlertStopped()), splashStopped);
+		}
 		final String castsLow = splashWatcher.takeLowCastsAlert();
 		if (castsLow != null && !alertMute.muted())
 		{

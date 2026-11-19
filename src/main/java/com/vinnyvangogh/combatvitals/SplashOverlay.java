@@ -1,6 +1,8 @@
 package com.vinnyvangogh.combatvitals;
 
+import java.awt.AlphaComposite;
 import java.awt.Color;
+import java.awt.Composite;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -66,8 +68,13 @@ class SplashOverlay extends Overlay
 			return null;
 		}
 		final long now = System.currentTimeMillis();
-		final Color accent = accent(readout);
+		final Color accent = readout.isStopped() ? MUTED : accent(readout);
 		final List<Row> rows = rows(readout, now, accent);
+		final Composite before = graphics.getComposite();
+		if (readout.isStopped())
+		{
+			graphics.setComposite(AlphaComposite.SrcOver.derive(0.55f));
+		}
 
 		final Font body = FontManager.getRunescapeSmallFont();
 		final Font bold = FontManager.getRunescapeBoldFont();
@@ -99,6 +106,7 @@ class SplashOverlay extends Overlay
 			row.draw(graphics, x, y, width - x - PAD, lineHeight, body, bold, bodyMetrics, boldMetrics);
 			y += row.height(lineHeight) + ROW_GAP;
 		}
+		graphics.setComposite(before);
 		return new Dimension(width, height);
 	}
 
@@ -124,6 +132,11 @@ class SplashOverlay extends Overlay
 			final Color colour = colour(r.splash.status);
 			rows.add(Row.text(r.splash.bonusLine, colour, false));
 			rows.add(Row.text(r.splash.chanceLine, colour, false));
+		}
+		if (r.isStopped())
+		{
+			rows.add(Row.text(SplashTimer.stoppedAgo(now - r.stoppedAt), MUTED, false));
+			return rows;
 		}
 		final String logout = r.logoutText(now);
 		final long session = r.session(now);
