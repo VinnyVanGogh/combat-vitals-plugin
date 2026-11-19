@@ -507,6 +507,19 @@ public interface CombatVitalsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "goalAlert",
+		name = "Goal reached",
+		description = "Notify when a goal on the Goals page is reached (a level, experience, item, kill count, "
+			+ "daily or weekly goal). Obeys the sidebar mute.",
+		section = displaySection,
+		position = 60
+	)
+	default Notification goalAlert()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
 		keyName = "castsLeft",
 		name = "Show casts left",
 		description = "While you cast a combat spell at an NPC (autocast, or a spell clicked on it), show how many "

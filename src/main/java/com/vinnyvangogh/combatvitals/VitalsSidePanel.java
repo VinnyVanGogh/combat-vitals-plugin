@@ -97,6 +97,11 @@ final class VitalsSidePanel extends PluginPanel
 	private final JButton hideGuides = linkButton(HIDE_GUIDES, "Hide or show the guide at the top of each tab.");
 	private final LiveSection live;
 	private final MuteBar muteBar;
+	private final GoalsPage goalsPage;
+	/** One group over the settings tabs and the two pages, so only one is raised. */
+	private final ButtonGroup tabGroup = new ButtonGroup();
+	static final String PAGE_GOALS = "PAGE_GOALS";
+	static final String PAGE_MAX_HIT = "PAGE_MAX_HIT";
 	/** The sidebar has this panel open; set on the Swing thread, read on the client thread. */
 	private volatile boolean shown;
 	private Presets.Preset previewing;
@@ -109,10 +114,41 @@ final class VitalsSidePanel extends PluginPanel
 		this(store, items, pickers, actions, new AlertMute());
 	}
 
-	/** {@code mute} is the plugin's, so a panel built again shows the mute as it stands. */
 	VitalsSidePanel(ConfigStore store, Map<String, ConfigItemDescriptor> items, ColorPickerManager pickers,
 		Actions actions, AlertMute mute)
 	{
+		this(store, items, pickers, actions, mute, new GoalBook(new GoalBook.Storage()
+		{
+			private String kept;
+
+			@Override
+			public String load()
+			{
+				return kept;
+			}
+
+			@Override
+			public void save(String text)
+			{
+				kept = text;
+			}
+
+			@Override
+			public void unset()
+			{
+				kept = null;
+			}
+		}), done -> done.accept(new MaxHitPage.Snapshot()));
+	}
+
+	/**
+	 * {@code mute} is the plugin's, so a panel built again shows the mute as it stands. {@code goals} and
+	 * {@code gear} are what the Goals and Max Hit pages read.
+	 */
+	VitalsSidePanel(ConfigStore store, Map<String, ConfigItemDescriptor> items, ColorPickerManager pickers,
+		Actions actions, AlertMute mute, GoalBook goals, MaxHitPage.Source gear)
+	{
+		this.goalsPage = new GoalsPage(goals);
 		this.muteBar = new MuteBar(mute);
 		this.store = store;
 		this.controls = new SettingControls(store, items, pickers);
@@ -137,6 +173,8 @@ final class VitalsSidePanel extends PluginPanel
 			card.add(tab(tab), BorderLayout.NORTH);
 			cardPanel.add(card, tab.name());
 		}
+		addPage(PAGE_GOALS, goalsPage);
+		addPage(PAGE_MAX_HIT, new MaxHitPage(gear));
 		root.add(cardPanel);
 		add(root, BorderLayout.NORTH);
 		show(PanelLayout.Tab.COMBAT);
@@ -194,6 +232,34 @@ final class VitalsSidePanel extends PluginPanel
 		tabButtons.get(tab).setSelected(true);
 		revalidate();
 		repaint();
+	}
+
+	private void addPage(String name, JComponent page)
+	{
+		final JPanel card = new JPanel(new BorderLayout());
+		card.setOpaque(false);
+		card.add(page, BorderLayout.NORTH);
+		cardPanel.add(card, name);
+	}
+
+	private void showPage(String name)
+	{
+		cards.show(cardPanel, name);
+		if (PAGE_GOALS.equals(name))
+		{
+			goalsPage.refresh();
+		}
+		revalidate();
+		repaint();
+	}
+
+	/** Redraws the Goals page when it is the one showing; Swing thread. */
+	void goalsChanged()
+	{
+		if (shown)
+		{
+			goalsPage.refresh();
+		}
 	}
 
 	// ---- Header and guides ----
@@ -465,19 +531,37 @@ final class VitalsSidePanel extends PluginPanel
 		};
 		bar.setOpaque(false);
 		bar.setBorder(new EmptyBorder(PanelStyle.XS, PanelStyle.XS, PanelStyle.XS, PanelStyle.XS));
-		final ButtonGroup group = new ButtonGroup();
 		for (PanelLayout.Tab tab : PanelLayout.Tab.values())
 		{
 			final Segment b = new Segment(tab.label);
 			b.addActionListener(e -> show(tab));
-			group.add(b);
+			tabGroup.add(b);
 			tabButtons.put(tab, b);
 			bar.add(b);
 		}
 		final Column c = new Column();
 		c.setBorder(new EmptyBorder(PanelStyle.L, 0, PanelStyle.M, 0));
 		c.add(bar);
+		c.add(pageBar());
 		return c;
+	}
+
+	/** The two pages that are not settings: Goals and Max Hit, one row under the tabs. */
+	private JComponent pageBar()
+	{
+		final JPanel bar = new JPanel(new GridLayout(1, 0, 0, 0));
+		bar.setOpaque(false);
+		bar.setBorder(new EmptyBorder(PanelStyle.S, PanelStyle.XS, 0, PanelStyle.XS));
+		final String[][] pages = {{"Goals", PAGE_GOALS}, {"Max hit", PAGE_MAX_HIT}};
+		for (String[] p : pages)
+		{
+			final Segment b = new Segment(p[0]);
+			b.setName(p[1]);
+			b.addActionListener(e -> showPage(p[1]));
+			tabGroup.add(b);
+			bar.add(b);
+		}
+		return bar;
 	}
 
 	private JComponent tab(PanelLayout.Tab tab)
