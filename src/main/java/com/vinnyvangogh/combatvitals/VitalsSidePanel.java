@@ -132,6 +132,12 @@ final class VitalsSidePanel extends PluginPanel
 			{
 				kept = text;
 			}
+
+			@Override
+			public void unset()
+			{
+				kept = null;
+			}
 		}), done -> done.accept(new MaxHitPage.Snapshot()));
 	}
 

@@ -20,7 +20,11 @@ final class GoalBook
 	{
 		String load();
 
+		/** Stores the goals as they stand. Never deletes: an empty text is stored as an empty text. */
 		void save(String text);
+
+		/** Deletes the stored goals. Only an explicit removal of the last goal calls this. */
+		void unset();
 	}
 
 	private final Storage storage;
@@ -29,6 +33,8 @@ final class GoalBook
 	private final Map<String, long[]> seen = new HashMap<>();
 	private final Map<String, Long> xp = new HashMap<>();
 	private long nextId = 1;
+	/** The account hash the held goals were loaded for; null when none. */
+	private Long loadedFor;
 
 	GoalBook(Storage storage)
 	{
@@ -46,9 +52,26 @@ final class GoalBook
 		}
 	}
 
+	/**
+	 * Loads the saved goals unless this account's are already held. LOGGED_IN fires after every loading
+	 * screen and world hop as well as a login, and a reload then could replace the goals with an empty read.
+	 * Returns whether it loaded.
+	 */
+	synchronized boolean loadFor(long account)
+	{
+		if (loadedFor != null && loadedFor == account)
+		{
+			return false;
+		}
+		load();
+		loadedFor = account;
+		return true;
+	}
+
 	/** Forgets the session numbers and the goals held (logout, or another account). */
 	synchronized void clear()
 	{
+		loadedFor = null;
 		goals.clear();
 		seen.clear();
 		xp.clear();
@@ -105,7 +128,15 @@ final class GoalBook
 	{
 		if (goals.removeIf(g -> g.id == id))
 		{
-			save();
+			// The one place the stored list may go away: the player removed the last goal.
+			if (goals.isEmpty())
+			{
+				storage.unset();
+			}
+			else
+			{
+				save();
+			}
 		}
 	}
 
@@ -165,7 +196,11 @@ final class GoalBook
 		}
 	}
 
-	/** Marks goals that have just been met, saves, and returns them. */
+	/**
+	 * Marks goals that have just been met and returns them. Saves only when one was met: an experience drop
+	 * that meets nothing changes nothing worth writing, and writing then could overwrite the stored goals
+	 * with a list that was never loaded.
+	 */
 	private List<Goal> settle()
 	{
 		final List<Goal> met = new ArrayList<>();
@@ -179,7 +214,10 @@ final class GoalBook
 				met.add(done);
 			}
 		}
-		save();
+		if (!met.isEmpty())
+		{
+			save();
+		}
 		return met;
 	}
 

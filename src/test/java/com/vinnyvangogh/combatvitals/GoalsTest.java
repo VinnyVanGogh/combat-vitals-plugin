@@ -13,6 +13,8 @@ public class GoalsTest
 	private static final class Mem implements GoalBook.Storage
 	{
 		String text;
+		int saves;
+		int unsets;
 
 		@Override
 		public String load()
@@ -23,8 +25,78 @@ public class GoalsTest
 		@Override
 		public void save(String t)
 		{
+			saves++;
 			text = t;
 		}
+
+		@Override
+		public void unset()
+		{
+			unsets++;
+			text = null;
+		}
+	}
+
+	@Test
+	public void anEmptyLoadFollowedByAnXpChangeWritesNothing()
+	{
+		final Mem mem = new Mem();
+		final GoalBook book = new GoalBook(mem);
+		book.load();
+		assertTrue(book.goals().isEmpty());
+		assertTrue(book.onXp("Mining", 5000, 0).isEmpty());
+		assertTrue(book.onXp("Mining", 6000, 10).isEmpty());
+		assertEquals(0, mem.saves);
+		assertEquals(0, mem.unsets);
+	}
+
+	@Test
+	public void aLoginReloadsOnlyWhenTheAccountChanges()
+	{
+		final Mem mem = new Mem();
+		mem.text = Goal.encode(java.util.Collections.singletonList(
+			new Goal(1, Goal.Type.ITEM, "x", 1, 0, 0, 0, false)));
+		final GoalBook book = new GoalBook(mem);
+		assertTrue(book.loadFor(42));
+		assertEquals(1, book.goals().size());
+		// A hop or loading screen fires LOGGED_IN again for the same account: the held goals stay.
+		mem.text = null;
+		assertFalse(book.loadFor(42));
+		assertEquals(1, book.goals().size());
+		// Another account loads its own.
+		assertTrue(book.loadFor(43));
+		assertTrue(book.goals().isEmpty());
+		// A logout forgets which account was loaded, so the same account loads again.
+		book.clear();
+		assertTrue(book.loadFor(43));
+	}
+
+	@Test
+	public void anXpChangeThatMeetsNothingWritesNothing()
+	{
+		final Mem mem = new Mem();
+		final GoalBook book = new GoalBook(mem);
+		book.addCounted(Goal.Type.ITEM, "Dragon pickaxe", 1, 0);
+		final int before = mem.saves;
+		assertTrue(book.onXp("Mining", 5000, 0).isEmpty());
+		assertEquals(before, mem.saves);
+	}
+
+	@Test
+	public void aMetGoalIsSavedAndOnlyRemovingTheLastGoalUnsetsTheKey()
+	{
+		final Mem mem = new Mem();
+		final GoalBook book = new GoalBook(mem);
+		book.onXp("Mining", 1000, 0);
+		final Goal a = book.addSkill("Mining", false, 2000, 0);
+		final Goal b = book.addCounted(Goal.Type.ITEM, "x", 1, 0);
+		final int before = mem.saves;
+		assertEquals(1, book.onXp("Mining", 2000, 10).size());
+		assertEquals(before + 1, mem.saves);
+		book.remove(a.id);
+		assertEquals(0, mem.unsets);
+		book.remove(b.id);
+		assertEquals(1, mem.unsets);
 	}
 
 	@Test

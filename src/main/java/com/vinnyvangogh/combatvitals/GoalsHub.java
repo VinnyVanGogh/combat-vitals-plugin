@@ -67,17 +67,13 @@ final class GoalsHub
 			@Override
 			public void save(String text)
 			{
-				executor.execute(() ->
-				{
-					if (text.isEmpty())
-					{
-						configManager.unsetRSProfileConfiguration(CombatVitalsConfig.GROUP, KEY);
-					}
-					else
-					{
-						configManager.setRSProfileConfiguration(CombatVitalsConfig.GROUP, KEY, text);
-					}
-				});
+				executor.execute(() -> configManager.setRSProfileConfiguration(CombatVitalsConfig.GROUP, KEY, text));
+			}
+
+			@Override
+			public void unset()
+			{
+				executor.execute(() -> configManager.unsetRSProfileConfiguration(CombatVitalsConfig.GROUP, KEY));
 			}
 		});
 	}
@@ -87,10 +83,13 @@ final class GoalsHub
 		return book;
 	}
 
-	/** Logged in: the account's goals replace what was held. Client thread. */
+	/**
+	 * Logged in: the account's goals replace what was held, but only when the account is not the one already
+	 * loaded (see {@link GoalBook#loadFor}). Client thread.
+	 */
 	void loggedIn()
 	{
-		book.load();
+		book.loadFor(client.getAccountHash());
 		book.rollover(now());
 	}
 
