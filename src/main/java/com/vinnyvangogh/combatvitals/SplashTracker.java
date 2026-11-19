@@ -108,7 +108,7 @@ final class SplashTracker
 		if (monster == null)
 		{
 			return new Result(Status.UNKNOWN, bonus(in.magicBonus) + " (need " + SplashMath.SPLASH_BONUS
-				+ " or lower)", "Hit chance: no wiki data for " + in.npcName, changed);
+				+ " or lower)", null, changed);
 		}
 		final double chance = SplashMath.hitChance(in.magicLevel, in.prayerBonus, in.magicBonus, monster.level,
 			monster.defence);
