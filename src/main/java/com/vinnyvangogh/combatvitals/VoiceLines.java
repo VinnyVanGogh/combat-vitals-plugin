@@ -4,7 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
+import com.google.common.base.Charsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -56,7 +56,7 @@ final class VoiceLines
 				log.warn("Voice word list {} is missing", LIST);
 				return new VoiceLines();
 			}
-			return parse(new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8)));
+			return parse(new BufferedReader(new InputStreamReader(in, Charsets.UTF_8)));
 		}
 		catch (IOException e)
 		{

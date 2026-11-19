@@ -2496,7 +2496,7 @@ public class CombatVitalsPlugin extends Plugin
 		final int autoStop = method.autoStopTicks();
 		final boolean pump = method == TrainingMethod.BLAST_FURNACE_PUMP;
 		return builder
-			.method(method)
+			.training(method)
 			.gearText(pump ? pumpChecks.warning() : null)
 			.inventoryFill(stopTicks < 0 || autoStop <= 0 ? 0 : 1 - (double) stopTicks / autoStop)
 			.inventoryLabel(SkillingText.methodTimers(trainingSession.reclickMillis(), trainingSession.active(),

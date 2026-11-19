@@ -24,7 +24,7 @@ public enum AlertSound
 
 	/** The bundled clip's class resource path, for a pack sound; null otherwise. */
 	@Getter
-	private final String resource;
+	private final String clip;
 
 	@Override
 	public String toString()
