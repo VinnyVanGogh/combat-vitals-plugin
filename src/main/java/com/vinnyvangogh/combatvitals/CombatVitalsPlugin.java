@@ -414,9 +414,15 @@ public class CombatVitalsPlugin extends Plugin
 	/** How long "Needs: ..." stays on the badge after the click: about as long as the game's dialog. */
 	private static final long GEAR_WARNING_MILLIS = 8_000;
 
+	/** Puro-Puro's map region: the only place an impling jar is required. */
+	private static final int PURO_PURO_REGION = 10307;
+
 	/** "Needs: Fishing rod + bait" from the last fishing click, and when; null when nothing was missing. */
 	private String gearWarning;
 	private long gearWarningAt;
+
+	/** Which skill the gear warning is about: Fishing, or Hunter for an impling that cannot be caught. */
+	private Skill gearWarningSkill = Skill.FISHING;
 
 	/** This login's counts and rates; outlives a hop, not a logout. */
 	private final SkillingSession session = new SkillingSession();
@@ -1264,10 +1270,37 @@ public class CombatVitalsPlugin extends Plugin
 	private void checkFishingGear(NPC npc, String option, Skill skill)
 	{
 		gearWarning = null;
-		if (skill != Skill.FISHING || !config.skillingGearWarning())
+		if (!config.skillingGearWarning())
 		{
 			return;
 		}
+
+		// An impling that cannot be caught is not hunting: no Hunter state
+		// starts, and the badge says why instead.
+		final String name = npc.getName();
+		if (skill == Skill.HUNTER && ImplingGear.isImpling(name))
+		{
+			final Player me = client.getLocalPlayer();
+			final boolean puroPuro = me != null && me.getWorldLocation() != null
+				&& me.getWorldLocation().getRegionID() == PURO_PURO_REGION;
+			final String note = ImplingGear.text(name,
+				ImplingGear.missing(name, containerNames(InventoryID.WORN), containerNames(InventoryID.INV),
+					client.getBoostedSkillLevel(Skill.HUNTER), puroPuro));
+			if (note != null)
+			{
+				gearWarning = note;
+				gearWarningAt = System.currentTimeMillis();
+				gearWarningSkill = Skill.HUNTER;
+				clickedNpcSkill = null;
+			}
+			return;
+		}
+
+		if (skill != Skill.FISHING)
+		{
+			return;
+		}
+		gearWarningSkill = Skill.FISHING;
 
 		final List<FishingCatches.Fish> fish = FishingCatches.forOption(FishingSpot.findSpot(npc.getId()), option);
 		// BRUT_FISHING_S is Barbarian Training's barehanded stage. What each
@@ -1282,8 +1315,14 @@ public class CombatVitalsPlugin extends Plugin
 	/** The names of everything in the inventory and worn, read on the click. */
 	private List<String> carriedItemNames()
 	{
+		return containerNames(InventoryID.INV, InventoryID.WORN);
+	}
+
+	/** The names of everything in the given containers. */
+	private List<String> containerNames(int... containerIds)
+	{
 		final List<String> names = new ArrayList<>();
-		for (int containerId : new int[] {InventoryID.INV, InventoryID.WORN})
+		for (int containerId : containerIds)
 		{
 			final ItemContainer container = client.getItemContainer(containerId);
 			if (container == null)
@@ -2424,7 +2463,8 @@ public class CombatVitalsPlugin extends Plugin
 	 */
 	private SkillingReadout gearOnlyReadout(long now)
 	{
-		return gearWarning(now) != null && skillShown(Skill.FISHING) ? baseReadout(Skill.FISHING, now).build() : null;
+		return gearWarning(now) != null && skillShown(gearWarningSkill)
+			? baseReadout(gearWarningSkill, now).build() : null;
 	}
 
 	/** The badge while working: the shared rows plus the boost, spec, warning, catches and spot. */
@@ -2481,7 +2521,7 @@ public class CombatVitalsPlugin extends Plugin
 		final List<ContainerRow> containers = free < 0 || !config.skillingContainers()
 			? Collections.emptyList() : containerRows(skill);
 		return builder
-			.gearText(skill == Skill.FISHING ? gearWarning(now) : null)
+			.gearText(skill == gearWarningSkill ? gearWarning(now) : null)
 			.inventoryFill(free < 0 ? -1 : InventoryFill.fraction(inventoryFilling, inventoryEmpty))
 			.inventoryLabel(inventoryLabel(skill, free, containers))
 			.inventoryFree(free)

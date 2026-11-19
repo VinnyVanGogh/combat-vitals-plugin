@@ -51,24 +51,21 @@ public class BadgeCombatTest
 	}
 
 	@Test
-	public void fightDoesNotEndAMovedBadgesIdle()
+	public void fightEndsAMovedBadgesIdleToo()
 	{
-		assertFalse(BadgeCombat.endsIdle(true, false));
+		assertTrue(BadgeCombat.endsIdle(true, false));
 	}
 
 	@Test
-	public void movedIdleTimerRunsNormallyThroughAFight()
+	public void movedIdleBadgeGoesWhenAFightStarts()
 	{
 		final IdleBadge idle = new IdleBadge();
-		idle.tick(Skill.WOODCUTTING, false, 0);
+		idle.tick(Skill.HUNTER, false, 0);
 		idle.tick(null, BadgeCombat.endsIdle(false, false), 1_000);
-		// A fight starts and goes on; the moved badge's idle is untouched by it.
-		idle.tick(null, BadgeCombat.endsIdle(true, false), 2_000);
-		idle.tick(null, BadgeCombat.endsIdle(true, false), 30_000);
-		assertEquals(Skill.WOODCUTTING, idle.idleSkill(IdleBadgeMode.TIMED, SECONDS, 30_000));
-		// And it still runs out on its own timer, counted from the stop, not the fight.
-		assertEquals(Skill.WOODCUTTING, idle.idleSkill(IdleBadgeMode.TIMED, SECONDS, 60_999));
-		assertNull(idle.idleSkill(IdleBadgeMode.TIMED, SECONDS, 61_000));
+		assertEquals(Skill.HUNTER, idle.idleSkill(IdleBadgeMode.TIMED, SECONDS, 2_000));
+		// No "Not hunting | in combat": the fight ends the idle badge.
+		idle.tick(null, BadgeCombat.endsIdle(true, false), 3_000);
+		assertNull(idle.idleSkill(IdleBadgeMode.TIMED, SECONDS, 3_000));
 	}
 
 	// --- Over your head: unchanged -------------------------------------------

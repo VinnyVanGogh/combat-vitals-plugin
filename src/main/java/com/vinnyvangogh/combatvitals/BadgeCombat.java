@@ -3,12 +3,12 @@ package com.vinnyvangogh.combatvitals;
 /**
  * What a fight does to the skilling badge (Board, 2026-11-14).
  *
- * Over your head the badge shares the space with the health bars, so a
- * target's bar replaces it, Hide during combat hides it, and a fight ends its
- * "Not fishing". Moved off your head (fixed or over the spot) it shares no
- * space with them: a fight never hides it nor ends its idle, it only says so,
- * "in combat" once stopped or "under attack" while still at it, and the idle
- * runs out on its own timer.
+ * A fight ends the badge's "Not fishing" wherever it is drawn, so it never
+ * reads "Not hunting | in combat". Over your head the badge also shares the
+ * space with the health bars, so a target's bar replaces it and Hide during
+ * combat hides it. Moved off your head (fixed or over the spot) it shares no
+ * space with them: a fight never hides it, it only says "under attack" while
+ * the work is still going.
  *
  * Pure: flags in, decisions out.
  */
@@ -30,10 +30,10 @@ final class BadgeCombat
 		return overHead && (targetShown || (fighting && hideInCombat));
 	}
 
-	/** Whether the fight ends the badge's "Not fishing": only over your head. */
+	/** Whether the fight ends the badge's "Not fishing": anywhere, so it never reads "Not hunting | in combat". */
 	static boolean endsIdle(boolean fighting, boolean overHead)
 	{
-		return fighting && overHead;
+		return fighting;
 	}
 
 	/** "in combat" on a stopped badge, "under attack" on a working one, or null out of combat. */
