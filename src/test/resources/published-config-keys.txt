@@ -231,3 +231,10 @@ splashWarnSeconds int
 splashAlertStopped Notification
 # 2026-11-19: overhead only after damage (task-d05368a1).
 overheadOnlyAfterDamage boolean
+# 2026-11-19: Gemstone Crab mode (RUNELITE-462).
+gemstoneCrab boolean
+gemstoneCrabWarnSeconds int
+gemstoneCrabArrow boolean
+gemstoneCrabAlertSpawn Notification
+gemstoneCrabAlertBurrow Notification
+gemstoneCrabAlertGo Notification

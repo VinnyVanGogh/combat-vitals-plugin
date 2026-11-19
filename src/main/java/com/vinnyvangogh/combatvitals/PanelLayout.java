@@ -170,7 +170,9 @@ final class PanelLayout
 					new Group("Casts left", "castsLeft", "castsAlways", "castsSpell", "castsOnlyBelow",
 						"castsMerge", "castsWarnAt", "castsAlertLow"),
 					new Group("Splash card and AFK timer", "splashLingerSeconds", "splashLingerForever",
-						"splashAlertStopSoon", "splashWarnSeconds", "splashAlertStopped"));
+						"splashAlertStopSoon", "splashWarnSeconds", "splashAlertStopped"),
+					new Group("Gemstone Crab", "gemstoneCrab", "gemstoneCrabWarnSeconds", "gemstoneCrabArrow",
+						"gemstoneCrabAlertSpawn", "gemstoneCrabAlertBurrow", "gemstoneCrabAlertGo"));
 			case SKILLING:
 				return skillingGroups();
 			case LOOK:
