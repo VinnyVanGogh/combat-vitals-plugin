@@ -805,6 +805,12 @@ public class CombatVitalsPlugin extends Plugin
 			SwingUtilities.invokeLater(() -> panel.guides(hidden, closed));
 			return;
 		}
+		if (VitalsSidePanel.TAB_KEY.equals(event.getKey()) || LiveSection.VIEW_KEY.equals(event.getKey()))
+		{
+			// The panel wrote its own tab choice; nothing to redraw.
+			log.debug("Sidebar tab {} view {}", config.sidebarTab(), config.sidebarLiveView());
+			return;
+		}
 		SwingUtilities.invokeLater(panel::refresh);
 	}
 

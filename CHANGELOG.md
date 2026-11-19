@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Changed
+- The sidebar is now multi-tab (Live, Goals, Max Hit, Overlays, Presets, Settings) with the mute bar pinned above every tab. Live has a Combat / Skilling / Overall toggle; the settings tabs (Combat, Targets, Skilling, Alerts, Look) sit under Settings. The last tab and Live view are remembered (hidden settings `sidebarTab`, `sidebarLiveView`). Nothing was removed.
 - Rewrote `README.md` with a personal first-person intro, a complete grouped inventory of every feature currently on `main` (including 1.3.0 and 2026-11-18 additions), a "Covers these plugins" comparison table for Plugin Hub and built-in RuneLite plugins, and expanded `NOTICE` + README credits distinguishing BSD-2-Clause adapted code/tables from independent re-implementations.
 
 ### Fixed
