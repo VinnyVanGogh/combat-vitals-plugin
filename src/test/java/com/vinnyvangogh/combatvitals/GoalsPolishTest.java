@@ -268,7 +268,7 @@ public class GoalsPolishTest
 		{
 			section[0] = new LiveSection(PanelFixture.store());
 			section[0].update(new LiveVitals(true, null, s, Collections.emptyList()));
-			assertTrue(texts(section[0]).contains("Goal Mining level 80: 5,000 xp to go (50%)"));
+			assertTrue(texts(section[0]).stream().anyMatch(t -> t.contains("Goal Mining level 80: 5,000 xp to go (50%)")));
 		});
 	}
 
@@ -288,8 +288,8 @@ public class GoalsPolishTest
 			page[0].fill(a);
 			assertEquals(a.setupKey(), page[0].lastSetup());
 			final List<String> t = texts(page[0]);
-			assertTrue(t.toString(), t.contains("118"));
-			assertTrue(t.toString(), t.contains("99"));
+			assertTrue(t.toString(), t.contains("Str 118"));
+			assertTrue(t.toString(), t.contains("Att 99"));
 		});
 		final MaxHitPage.Snapshot b = new MaxHitPage.Snapshot();
 		b.attack = 99;

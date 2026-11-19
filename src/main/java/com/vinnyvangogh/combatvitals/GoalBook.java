@@ -37,6 +37,9 @@ final class GoalBook
 	private Long loadedFor;
 	/** The account whose stored goals read as absent: the profile may not be ready yet, so it is retried. */
 	private Long pendingFor;
+	/** Retries made for the pending account; loading stops being retried at MAX_RETRIES. */
+	private int retries;
+	private static final int MAX_RETRIES = 12;
 	/** Experience samples per skill over the last hour: {epoch seconds, experience}, oldest first. */
 	private final Map<String, java.util.ArrayDeque<long[]>> samples = new HashMap<>();
 	private java.util.function.ToDoubleFunction<String> actionXp = skill -> 0;
@@ -75,8 +78,11 @@ final class GoalBook
 			// for this account (a goal added meanwhile) and ask again later, rather than call it loaded.
 			if (pendingFor != null && pendingFor == account)
 			{
+				// An account with no saved goals reads as absent forever; stop asking after a few tries.
+				retries++;
 				return false;
 			}
+			retries = 0;
 			goals.clear();
 			pendingFor = account;
 			return true;
@@ -95,7 +101,7 @@ final class GoalBook
 	/** True while no stored goals have been read for the logged-in account, so a retry is worth making. */
 	synchronized boolean needsLoad()
 	{
-		return loadedFor == null;
+		return loadedFor == null && retries < MAX_RETRIES;
 	}
 
 	/** Where the per-action experience of a skill comes from: the skilling badge's session. */
@@ -109,6 +115,7 @@ final class GoalBook
 	{
 		loadedFor = null;
 		pendingFor = null;
+		retries = 0;
 		goals.clear();
 		seen.clear();
 		xp.clear();
