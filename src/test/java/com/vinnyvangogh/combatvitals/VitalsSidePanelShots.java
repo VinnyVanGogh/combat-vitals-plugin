@@ -38,6 +38,14 @@ public class VitalsSidePanelShots
 			});
 			final SwingDriver ui = new SwingDriver(panel);
 			ui.layout(WIDTH);
+			for (VitalsSidePanel.Main m : VitalsSidePanel.Main.values())
+			{
+				panel.display(m);
+				ui.layout(WIDTH);
+				shot(ui, "panel-main-" + m.name().toLowerCase() + ".png");
+			}
+			panel.display(VitalsSidePanel.Main.PRESETS);
+			ui.layout(WIDTH);
 			ui.click("Skiller");
 			shot(ui, "panel-presets.png");
 			ui.click("Cancel");

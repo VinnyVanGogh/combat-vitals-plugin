@@ -19,6 +19,7 @@ import java.util.Set;
 import javax.swing.AbstractButton;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComponent;
@@ -30,6 +31,7 @@ import net.runelite.client.config.ConfigItemDescriptor;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.colorpicker.ColorPickerManager;
+import net.runelite.client.util.ImageUtil;
 
 /**
  * The plugin's sidebar panel: a title with Hide guides, the live vitals as
@@ -98,10 +100,47 @@ final class VitalsSidePanel extends PluginPanel
 	private final LiveSection live;
 	private final MuteBar muteBar;
 	private final GoalsPage goalsPage;
-	/** One group over the settings tabs and the two pages, so only one is raised. */
 	private final ButtonGroup tabGroup = new ButtonGroup();
-	static final String PAGE_GOALS = "PAGE_GOALS";
-	static final String PAGE_MAX_HIT = "PAGE_MAX_HIT";
+	/** Hidden setting: the last open main tab, a {@link Main} name. */
+	static final String TAB_KEY = "sidebarTab";
+	static final String SOON = "Coming soon.";
+	private final CardLayout mainCards = new CardLayout();
+	private final JPanel mainPanel = new JPanel(mainCards);
+	private final Map<Main, Segment> mainButtons = new EnumMap<>(Main.class);
+	private final ButtonGroup mainGroup = new ButtonGroup();
+	private Main main = Main.LIVE;
+
+	/** The sidebar's tabs, in the order of the tab bar; each has an icon bundled under /icons. */
+	enum Main
+	{
+		LIVE("Live", "tab_live.png"),
+		GOALS("Goals", "tab_goals.png"),
+		MAX_HIT("Max Hit", "tab_maxhit.png"),
+		OVERLAYS("Overlays", "tab_overlays.png"),
+		PRESETS("Presets", "tab_presets.png"),
+		SETTINGS("Settings", "tab_settings.png");
+
+		final String label;
+		final String icon;
+
+		Main(String label, String icon)
+		{
+			this.label = label;
+			this.icon = icon;
+		}
+
+		static Main of(String name)
+		{
+			for (Main m : values())
+			{
+				if (m.name().equals(name))
+				{
+					return m;
+				}
+			}
+			return LIVE;
+		}
+	}
 	/** The sidebar has this panel open; set on the Swing thread, read on the client thread. */
 	private volatile boolean shown;
 	private Presets.Preset previewing;
@@ -159,10 +198,12 @@ final class VitalsSidePanel extends PluginPanel
 		final Column root = new Column();
 		root.add(header());
 		live = new LiveSection(store);
-		root.add(live);
-		root.add(overlays());
-		root.add(presets());
-		root.add(tabBar());
+		root.add(mainBar());
+		mainPanel.setOpaque(false);
+		addMain(Main.LIVE, live);
+		root.add(mainPanel);
+		final Column settings = new Column();
+		settings.add(tabBar());
 		cardPanel.setOpaque(false);
 		for (PanelLayout.Tab tab : PanelLayout.Tab.values())
 		{
@@ -173,11 +214,19 @@ final class VitalsSidePanel extends PluginPanel
 			card.add(tab(tab), BorderLayout.NORTH);
 			cardPanel.add(card, tab.name());
 		}
-		addPage(PAGE_GOALS, goalsPage);
-		addPage(PAGE_MAX_HIT, new MaxHitPage(gear));
-		root.add(cardPanel);
+		settings.add(cardPanel);
+		addMain(Main.GOALS, goalsPage);
+		addMain(Main.MAX_HIT, new MaxHitPage(gear));
+		final Column overlayTab = new Column();
+		overlayTab.add(overlays());
+		overlayTab.add(text("The look of each overlay, the pillars and the casts overlay are under Settings.",
+			PanelStyle.MUTED));
+		addMain(Main.OVERLAYS, overlayTab);
+		addMain(Main.PRESETS, presets());
+		addMain(Main.SETTINGS, settings);
 		add(root, BorderLayout.NORTH);
 		show(PanelLayout.Tab.COMBAT);
+		display(Main.of(store.get(TAB_KEY, String.class)));
 		refresh();
 	}
 
@@ -226,37 +275,102 @@ final class VitalsSidePanel extends PluginPanel
 		muteBar.stop();
 	}
 
+	/** Opens a settings tab, under the Settings main tab. */
 	void show(PanelLayout.Tab tab)
 	{
 		cards.show(cardPanel, tab.name());
 		tabButtons.get(tab).setSelected(true);
-		revalidate();
-		repaint();
+		select(Main.SETTINGS, false);
 	}
 
-	private void addPage(String name, JComponent page)
+	/** Opens a main tab and remembers it. */
+	void showMain(Main m)
 	{
-		final JPanel card = new JPanel(new BorderLayout());
-		card.setOpaque(false);
-		card.add(page, BorderLayout.NORTH);
-		cardPanel.add(card, name);
+		select(m, true);
 	}
 
-	private void showPage(String name)
+	/** Opens a main tab without remembering it, as the panel does while it is built. */
+	void display(Main m)
 	{
-		cards.show(cardPanel, name);
-		if (PAGE_GOALS.equals(name))
+		select(m, false);
+	}
+
+	Main main()
+	{
+		return main;
+	}
+
+	private void select(Main m, boolean remember)
+	{
+		main = m;
+		mainCards.show(mainPanel, m.name());
+		mainButtons.get(m).setSelected(true);
+		if (m == Main.GOALS)
 		{
 			goalsPage.refresh();
+		}
+		if (remember)
+		{
+			store.set(TAB_KEY, m.name());
 		}
 		revalidate();
 		repaint();
 	}
 
+	private void addMain(Main m, JComponent page)
+	{
+		final JPanel card = new JPanel(new BorderLayout());
+		card.setOpaque(false);
+		card.add(page, BorderLayout.NORTH);
+		mainPanel.add(card, m.name());
+	}
+
+	/** The main tabs as the same segmented strip as the settings tabs, three to a row, each with its icon. */
+	private JComponent mainBar()
+	{
+		final JPanel bar = new JPanel(new GridLayout(0, 3, 0, PanelStyle.XS))
+		{
+			@Override
+			protected void paintComponent(Graphics g)
+			{
+				final Graphics2D g2 = PanelStyle.smooth(g);
+				try
+				{
+					g2.setColor(PanelStyle.CARD);
+					g2.fillRoundRect(0, 0, getWidth(), getHeight(), PanelStyle.ARC, PanelStyle.ARC);
+				}
+				finally
+				{
+					g2.dispose();
+				}
+			}
+		};
+		bar.setOpaque(false);
+		bar.setBorder(new EmptyBorder(PanelStyle.XS, PanelStyle.XS, PanelStyle.XS, PanelStyle.XS));
+		for (Main m : Main.values())
+		{
+			final Segment b = new Segment(m.label);
+			b.setName("main-" + m.name());
+			final BufferedImage icon = ImageUtil.loadImageResource(VitalsSidePanel.class, "/com/vinnyvangogh/combatvitals/icons/"
+				+ m.icon);
+			b.setIcon(new ImageIcon(icon));
+			b.setIconTextGap(PanelStyle.XS);
+			b.setBorder(new EmptyBorder(PanelStyle.S, PanelStyle.XS, PanelStyle.S, PanelStyle.XS));
+			b.addActionListener(e -> showMain(m));
+			mainGroup.add(b);
+			mainButtons.put(m, b);
+			bar.add(b);
+		}
+		final Column c = new Column();
+		c.setBorder(new EmptyBorder(0, 0, PanelStyle.M, 0));
+		c.add(bar);
+		return c;
+	}
+
 	/** Redraws the Goals page when it is the one showing; Swing thread. */
 	void goalsChanged()
 	{
-		if (shown)
+		if (shown && main == Main.GOALS)
 		{
 			goalsPage.refresh();
 		}
@@ -542,26 +656,7 @@ final class VitalsSidePanel extends PluginPanel
 		final Column c = new Column();
 		c.setBorder(new EmptyBorder(PanelStyle.L, 0, PanelStyle.M, 0));
 		c.add(bar);
-		c.add(pageBar());
 		return c;
-	}
-
-	/** The two pages that are not settings: Goals and Max Hit, one row under the tabs. */
-	private JComponent pageBar()
-	{
-		final JPanel bar = new JPanel(new GridLayout(1, 0, 0, 0));
-		bar.setOpaque(false);
-		bar.setBorder(new EmptyBorder(PanelStyle.S, PanelStyle.XS, 0, PanelStyle.XS));
-		final String[][] pages = {{"Goals", PAGE_GOALS}, {"Max hit", PAGE_MAX_HIT}};
-		for (String[] p : pages)
-		{
-			final Segment b = new Segment(p[0]);
-			b.setName(p[1]);
-			b.addActionListener(e -> showPage(p[1]));
-			tabGroup.add(b);
-			bar.add(b);
-		}
-		return bar;
 	}
 
 	private JComponent tab(PanelLayout.Tab tab)

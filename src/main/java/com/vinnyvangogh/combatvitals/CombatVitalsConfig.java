@@ -2954,4 +2954,28 @@ public interface CombatVitalsConfig extends Config
 	{
 		return false;
 	}
+
+	/** The sidebar's last open tab, a {@link VitalsSidePanel.Main} name; written there, never listed. */
+	@ConfigItem(
+		keyName = VitalsSidePanel.TAB_KEY,
+		name = "",
+		description = "",
+		hidden = true
+	)
+	default String sidebarTab()
+	{
+		return "";
+	}
+
+	/** Which card the Live tab shows, a {@link LiveSection.View} name; written there, never listed. */
+	@ConfigItem(
+		keyName = LiveSection.VIEW_KEY,
+		name = "",
+		description = "",
+		hidden = true
+	)
+	default String sidebarLiveView()
+	{
+		return "";
+	}
 }
