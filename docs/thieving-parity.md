@@ -34,7 +34,7 @@ debug level for the Board to confirm.
 
 | Original feature | Our equivalent | Status |
 |---|---|---|
-| Pyramid Plunder: room number, thieving level per room | `PyramidPlunder.roomText/levelForRoom/nextRoomOpen` | **done** (logic + tests, not yet wired to the badge) |
+| Pyramid Plunder: room number, thieving level per room | `PyramidPlunder.roomText/levelForRoom/nextRoomOpen` | **wired** (room text on the Thieving badge via `Varbits.PYRAMID_PLUNDER_ROOM`; level per room not shown; unverified in game) |
 | Pyramid Plunder: timer + urgent warning | `PyramidPlunder.timerText/urgent` | **done** (logic + tests, not yet wired) |
 | Pyramid Plunder: per-room loot and xp | `PyramidPlunder.roomLoot/roomXp/roomItems` | **done** (logic + tests, not yet wired) |
 | Pyramid Plunder: highlight spear traps, urns, chests, sarcophagus | scene overlay on `NTK_*` objects | todo |
