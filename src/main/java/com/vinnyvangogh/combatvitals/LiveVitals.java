@@ -164,6 +164,12 @@ final class LiveVitals
 			name + " " + current + "/" + max, colour);
 	}
 
+	/** "Run 64% on | Spec 100%": the run toggle, on or off, is said beside the run energy. */
+	static String energy(int runHundredths, int specTenths, boolean running)
+	{
+		return "Run " + runHundredths / 100 + "% " + (running ? "on" : "off") + " | Spec " + specTenths / 10 + "%";
+	}
+
 	/** "Run 64% | Spec 100%"; run energy in hundredths and spec in tenths of a percent, as the client gives them. */
 	static String energy(int runHundredths, int specTenths)
 	{

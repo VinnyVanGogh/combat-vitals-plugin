@@ -304,10 +304,10 @@ public class CombatVitalsPlugin extends Plugin
 	@Inject
 	private SplashWatcher splashWatcher;
 
-	/** Gemstone Crab mode: its card, the cave arrow, and the watcher that feeds both. */
-	@Inject
-	private GemstoneCrabOverlay gemstoneCrabOverlay;
+	/** True while auto-detect itself flips splashMode, so onConfigChanged does not read it as a hand switch. */
+	private boolean autoSwitching;
 
+	/** Gemstone Crab mode: its cave arrow and the watcher that feeds it and the combat card's crab section. */
 	@Inject
 	private GemstoneCrabArrowOverlay gemstoneCrabArrowOverlay;
 
@@ -535,7 +535,6 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.add(splashOverlay);
 		splashOverlay.showMode(config.splashMode());
 		splashWatcher.warm();
-		overlayManager.add(gemstoneCrabOverlay);
 		overlayManager.add(gemstoneCrabArrowOverlay);
 
 		knownSpots = KnownFishingSpots.load();
@@ -704,10 +703,10 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.remove(aggressionAreaOverlay);
 		overlayManager.remove(gameHealthBarOverlay);
 		overlayManager.remove(splashOverlay);
-		overlayManager.remove(gemstoneCrabOverlay);
 		overlayManager.remove(gemstoneCrabArrowOverlay);
 		gemstoneCrabWatcher.reset();
 		splashWatcher.reset();
+		splashWatcher.resetAuto();
 		mouseManager.unregisterMouseListener(backOnClick);
 		keyManager.unregisterKeyListener(backOnKey);
 		alertRepeat.stop();
@@ -800,6 +799,10 @@ public class CombatVitalsPlugin extends Plugin
 			return;
 		}
 		splashOverlay.showMode(config.splashMode());
+		if ("splashMode".equals(event.getKey()) && !autoSwitching)
+		{
+			splashWatcher.manualSwitch();
+		}
 		if (config.skillingSessionReset())
 		{
 			session.reset();
@@ -2075,6 +2078,20 @@ public class CombatVitalsPlugin extends Plugin
 		tickBoostTimer();
 		tickAlerts();
 		final String splashBroke = splashWatcher.tick();
+		final Boolean autoSplash = splashWatcher.takeAutoSwitch();
+		if (autoSplash != null)
+		{
+			// Not a hand-made switch: onConfigChanged must not count it as an override.
+			autoSwitching = true;
+			try
+			{
+				configManager.setConfiguration(CombatVitalsConfig.GROUP, "splashMode", autoSplash);
+			}
+			finally
+			{
+				autoSwitching = false;
+			}
+		}
 		if (splashBroke != null && !alertMute.muted())
 		{
 			notifier.notify(muted(config.splashAlertBroke()), splashBroke);
@@ -2176,7 +2193,8 @@ public class CombatVitalsPlugin extends Plugin
 				client.getRealSkillLevel(Skill.HITPOINTS), LiveVitals.HITPOINTS),
 			LiveVitals.level("Prayer", client.getBoostedSkillLevel(Skill.PRAYER),
 				client.getRealSkillLevel(Skill.PRAYER), LiveVitals.PRAYER),
-			LiveVitals.energy(client.getEnergy(), client.getVarpValue(VarPlayerID.SA_ENERGY)),
+			LiveVitals.energy(client.getEnergy(), client.getVarpValue(VarPlayerID.SA_ENERGY),
+				client.getVarpValue(VarPlayerID.OPTION_RUN) == 1),
 			target == null ? null : target.getName(),
 			LiveVitals.target(target, config.percentageDecimals()),
 			skill == null ? null : LiveVitals.training(skill, xp, skillColour(skill)),

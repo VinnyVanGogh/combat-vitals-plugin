@@ -232,3 +232,5 @@ gemstoneCrabArrow boolean
 gemstoneCrabAlertSpawn Notification
 gemstoneCrabAlertBurrow Notification
 gemstoneCrabAlertGo Notification
+autoSplash boolean
+autoSplashThreshold int

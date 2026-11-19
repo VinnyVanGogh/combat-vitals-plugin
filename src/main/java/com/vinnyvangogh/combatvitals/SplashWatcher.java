@@ -70,6 +70,11 @@ class SplashWatcher
 	private final SplashTimer timer = new SplashTimer();
 	private final Map<Integer, String> names = new HashMap<>();
 
+	private final SplashAuto auto = new SplashAuto();
+	private int autoGearHash;
+	private int autoBonus;
+	private Boolean autoSwitch;
+
 	private volatile SplashReadout readout;
 	private int manualNpcIndex = -1;
 	/** The NPC the player last clicked Attack on; autocast only counts as casting at that NPC. */
@@ -142,6 +147,14 @@ class SplashWatcher
 		stoppedAlert = null;
 		tracker.reset();
 		timer.reset();
+	}
+
+	/** Logout or shutdown: forget what auto-detect saw. */
+	void resetAuto()
+	{
+		auto.reset();
+		autoGearHash = 0;
+		autoSwitch = null;
 	}
 
 	/** The low-casts alert text due this tick, once, or null. */
@@ -217,6 +230,7 @@ class SplashWatcher
 	 */
 	String tick()
 	{
+		autoDetect();
 		if (!on())
 		{
 			reset();
@@ -248,6 +262,37 @@ class SplashWatcher
 		final boolean splashing = config.splashMode();
 		readout = build(splashing ? splash : null, now);
 		return splashing ? splash.changed : null;
+	}
+
+	/** Reads the worn Magic bonus and queues a Splashing mode switch when auto-detect wants one. */
+	private void autoDetect()
+	{
+		if (!config.autoSplash() || client.getLocalPlayer() == null || client.getItemContainer(InventoryID.WORN) == null)
+		{
+			return;
+		}
+		final int[] gear = worn();
+		final int hash = Arrays.hashCode(gear);
+		if (hash != autoGearHash)
+		{
+			autoGearHash = hash;
+			autoBonus = magicBonus(gear);
+		}
+		autoSwitch = auto.step(autoBonus, config.autoSplashThreshold(), config.splashMode());
+	}
+
+	/** The Splashing mode auto-detect wants set now (once), or null. */
+	Boolean takeAutoSwitch()
+	{
+		final Boolean sw = autoSwitch;
+		autoSwitch = null;
+		return sw;
+	}
+
+	/** The player flipped Splashing mode by hand: auto-detect leaves it until the gear crosses the threshold. */
+	void manualSwitch()
+	{
+		auto.manualSwitch();
 	}
 
 	private SplashReadout build(SplashTracker.Result splash, long now)
