@@ -24,6 +24,9 @@ final class GemstoneCrab
 	/** How long the shell stays before it sinks into the ground. */
 	static final long SHELL_MS = 90_000L;
 
+	/** A crab that vanishes with no shell counts as burrowed only if its timer was this close to zero. */
+	static final long BURROW_GRACE_MS = 10_000L;
+
 	/** Samples younger than this, or with less drop than {@link #MIN_DROP}, are too noisy for a rate. */
 	private static final long MIN_SPAN_MS = 30_000L;
 	private static final double MIN_DROP = 0.05;
@@ -91,6 +94,9 @@ final class GemstoneCrab
 	private boolean sentSpawned;
 	private boolean sentWarn;
 	private boolean sentGo;
+	private long lastLeft = Long.MAX_VALUE;
+	private boolean lost;
+	private long lostAt;
 
 	GemstoneCrab(int warnSeconds)
 	{
@@ -104,6 +110,8 @@ final class GemstoneCrab
 		sentSpawned = false;
 		sentWarn = false;
 		sentGo = false;
+		lost = false;
+		lastLeft = Long.MAX_VALUE;
 	}
 
 	/** True while a crab or its shell is being tracked. */
@@ -147,13 +155,31 @@ final class GemstoneCrab
 		{
 			return crab(fraction, now, out);
 		}
-		if (shellSeen || phase == Phase.CRAB)
+		if (shellSeen)
 		{
 			return shell(now, out);
+		}
+		if (phase == Phase.CRAB)
+		{
+			// The crab vanished with no shell. Burrowed only if the timer had run
+			// out (or it was seen about to); otherwise it just left the scene.
+			if (lastLeft <= BURROW_GRACE_MS)
+			{
+				return shell(now, out);
+			}
+			phase = Phase.NONE;
+			firstSampleAt = -1;
+			lost = true;
+			lostAt = now;
+			return new Reading(Phase.NONE, -1, -1, Source.CLOCK, -1);
 		}
 		if (phase == Phase.SHELL && now - shellStart < SHELL_MS)
 		{
 			return shell(now, out);
+		}
+		if (lost && now - lostAt < FIGHT_MS)
+		{
+			return new Reading(Phase.NONE, -1, -1, Source.CLOCK, -1);
 		}
 		reset();
 		return new Reading(Phase.NONE, -1, -1, Source.CLOCK, -1);
@@ -161,7 +187,13 @@ final class GemstoneCrab
 
 	private Reading crab(double fraction, long now, Alerts out)
 	{
-		if (phase != Phase.CRAB)
+		if (phase != Phase.CRAB && lost)
+		{
+			// The same crab back in view: same cycle, no second spawn alert.
+			phase = Phase.CRAB;
+			lost = false;
+		}
+		else if (phase != Phase.CRAB)
 		{
 			phase = Phase.CRAB;
 			cycleStart = now;
@@ -200,6 +232,7 @@ final class GemstoneCrab
 			sentWarn = true;
 			out.aboutToBurrow = true;
 		}
+		lastLeft = left;
 		return new Reading(Phase.CRAB, fraction, left, source, -1);
 	}
 
