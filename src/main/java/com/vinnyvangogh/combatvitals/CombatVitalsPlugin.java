@@ -62,6 +62,8 @@ import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.NpcChanged;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
+import net.runelite.client.events.OverlayMenuClicked;
+import net.runelite.client.ui.overlay.OverlayMenuEntry;
 import net.runelite.api.events.OverheadTextChanged;
 import net.runelite.api.events.StatChanged;
 import net.runelite.api.events.VarbitChanged;
@@ -360,6 +362,15 @@ public class CombatVitalsPlugin extends Plugin
 	 */
 	private final CombatState combat = new CombatState();
 
+	/** Last hitsplat per actor, for "Only after damage". */
+	private final RecentHits<Actor> recentHits = new RecentHits<>();
+
+	/** Whether the actor took a hit within the game's health-bar window. */
+	boolean tookDamageRecently(Actor actor)
+	{
+		return recentHits.recent(actor, System.currentTimeMillis());
+	}
+
 	/** The skilling NPC being worked, when the interaction is not a fight. */
 	private NPC skillingTarget;
 
@@ -522,6 +533,8 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.add(aggressionAreaOverlay);
 		overlayManager.add(gameHealthBarOverlay);
 		overlayManager.add(splashOverlay);
+		splashOverlay.showMode(config.splashMode());
+		splashWatcher.warm();
 		overlayManager.add(gemstoneCrabOverlay);
 		overlayManager.add(gemstoneCrabArrowOverlay);
 
@@ -786,6 +799,7 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			return;
 		}
+		splashOverlay.showMode(config.splashMode());
 		if (config.skillingSessionReset())
 		{
 			session.reset();
@@ -1263,6 +1277,18 @@ public class CombatVitalsPlugin extends Plugin
 	 * holds the object until the swing starts. Walk here ends an object
 	 * badge. The event is read, never changed.
 	 */
+	/** The splash card's right-click "Splashing mode: on/off" flips the setting, same key as the settings list. */
+	@Subscribe
+	public void onOverlayMenuClicked(OverlayMenuClicked event)
+	{
+		final OverlayMenuEntry entry = event.getEntry();
+		if (event.getOverlay() == splashOverlay && entry.getOption() != null
+			&& entry.getOption().startsWith(SplashOverlay.MODE_PREFIX))
+		{
+			configManager.setConfiguration(CombatVitalsConfig.GROUP, "splashMode", !config.splashMode());
+		}
+	}
+
 	@Subscribe
 	public void onMenuOptionClicked(MenuOptionClicked event)
 	{
@@ -1847,6 +1873,7 @@ public class CombatVitalsPlugin extends Plugin
 		}
 
 		final Actor actor = event.getActor();
+		recentHits.hit(actor, System.currentTimeMillis());
 		final boolean onMe = actor == self;
 		if (!CombatState.evidence(onMe, event.getHitsplat()))
 		{
@@ -2051,6 +2078,16 @@ public class CombatVitalsPlugin extends Plugin
 		if (splashBroke != null && !alertMute.muted())
 		{
 			notifier.notify(muted(config.splashAlertBroke()), splashBroke);
+		}
+		final String splashSoon = splashWatcher.takeStopSoonAlert();
+		if (splashSoon != null && !alertMute.muted())
+		{
+			notifier.notify(muted(config.splashAlertStopSoon()), splashSoon);
+		}
+		final String splashStopped = splashWatcher.takeStoppedAlert();
+		if (splashStopped != null && !alertMute.muted())
+		{
+			notifier.notify(muted(config.splashAlertStopped()), splashStopped);
 		}
 		final String castsLow = splashWatcher.takeLowCastsAlert();
 		if (castsLow != null && !alertMute.muted())

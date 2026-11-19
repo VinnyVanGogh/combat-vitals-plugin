@@ -158,6 +158,7 @@ final class PanelLayout
 					new Group("Your own health", "showOwnHealth"),
 					new Group("The game's own", "hideGameHealthBar", "hideGameOverheadChat"),
 					new Group("NPC aggression", "aggressionTimer", "aggressionAreaLines"),
+					new Group("Readout timing", "overheadOnlyAfterDamage"),
 					new Group("Goals", "goalAlert"));
 			case TARGETS:
 				return Arrays.asList(
@@ -167,6 +168,8 @@ final class PanelLayout
 						"bigTargetMaxHp"),
 					new Group("Splashing (AFK Magic)", "splashMode", "splashMaxChance", "splashAlertBroke"),
 					new Group("Casts left", "castsLeft", "castsWarnAt", "castsAlertLow"),
+					new Group("Splash card and AFK timer", "splashLingerSeconds", "splashLingerForever",
+						"splashAlertStopSoon", "splashWarnSeconds", "splashAlertStopped"),
 					new Group("Gemstone Crab", "gemstoneCrab", "gemstoneCrabWarnSeconds", "gemstoneCrabArrow",
 						"gemstoneCrabAlertSpawn", "gemstoneCrabAlertBurrow", "gemstoneCrabAlertGo"));
 			case SKILLING:

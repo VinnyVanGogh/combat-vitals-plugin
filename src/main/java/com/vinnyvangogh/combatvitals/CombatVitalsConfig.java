@@ -129,6 +129,19 @@ public interface CombatVitalsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "overheadOnlyAfterDamage",
+		name = "Only after damage",
+		description = "Show the readout over a target (or over you) only for a few seconds after it takes a hit, "
+			+ "like the game's own health bar. Off: it stays up for as long as it is shown today.",
+		section = displaySection,
+		position = 9
+	)
+	default boolean overheadOnlyAfterDamage()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "displayMode",
 		name = "Display",
 		description = "Show hitpoints, a percentage, or both.",
@@ -557,6 +570,72 @@ public interface CombatVitalsConfig extends Config
 		position = 14
 	)
 	default Notification castsAlertLow()
+	{
+		return Notification.ON;
+	}
+
+	@Range(min = 0, max = 300)
+	@ConfigItem(
+		keyName = "splashLingerSeconds",
+		name = "Card stays (s)",
+		description = "How many seconds the splashing card stays up, dimmed with 'Stopped Xs ago', after you stop "
+			+ "casting. 0 hides it at once.",
+		section = targetSection,
+		position = 15
+	)
+	default int splashLingerSeconds()
+	{
+		return 30;
+	}
+
+	@ConfigItem(
+		keyName = "splashLingerForever",
+		name = "Keep until new activity",
+		description = "Keep the dimmed splashing card up after you stop until you start casting again, "
+			+ "instead of for the seconds above.",
+		section = targetSection,
+		position = 16
+	)
+	default boolean splashLingerForever()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "splashAlertStopSoon",
+		name = "Splash: stops soon",
+		description = "Notify a little before splashing stops by itself: the OSRS wiki says the player stops "
+			+ "attacking after 20 minutes without input. Any mouse or keyboard input restarts the count. "
+			+ "Information only: nothing is clicked for you.",
+		section = targetSection,
+		position = 17
+	)
+	default Notification splashAlertStopSoon()
+	{
+		return Notification.ON;
+	}
+
+	@Range(min = 5, max = 600)
+	@ConfigItem(
+		keyName = "splashWarnSeconds",
+		name = "Splash: warn (s)",
+		description = "How long before splashing stops by itself the alert above fires.",
+		section = targetSection,
+		position = 18
+	)
+	default int splashWarnSeconds()
+	{
+		return 60;
+	}
+
+	@ConfigItem(
+		keyName = "splashAlertStopped",
+		name = "Splash: stopped",
+		description = "Notify when the 20 minutes without input have passed and splashing has stopped.",
+		section = targetSection,
+		position = 19
+	)
+	default Notification splashAlertStopped()
 	{
 		return Notification.ON;
 	}
