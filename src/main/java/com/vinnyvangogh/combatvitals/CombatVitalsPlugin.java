@@ -410,6 +410,9 @@ public class CombatVitalsPlugin extends Plugin
 	/** How long "Needs: ..." stays on the badge after the click: about as long as the game's dialog. */
 	private static final long GEAR_WARNING_MILLIS = 8_000;
 
+	/** Puro-Puro's map region: the only place an impling jar is required. */
+	private static final int PURO_PURO_REGION = 10307;
+
 	/** "Needs: Fishing rod + bait" from the last fishing click, and when; null when nothing was missing. */
 	private String gearWarning;
 	private long gearWarningAt;
@@ -1271,8 +1274,12 @@ public class CombatVitalsPlugin extends Plugin
 		final String name = npc.getName();
 		if (skill == Skill.HUNTER && ImplingGear.isImpling(name))
 		{
+			final Player me = client.getLocalPlayer();
+			final boolean puroPuro = me != null && me.getWorldLocation() != null
+				&& me.getWorldLocation().getRegionID() == PURO_PURO_REGION;
 			final String note = ImplingGear.text(name,
-				ImplingGear.missing(name, carriedItemNames(), client.getBoostedSkillLevel(Skill.HUNTER)));
+				ImplingGear.missing(name, containerNames(InventoryID.WORN), containerNames(InventoryID.INV),
+					client.getBoostedSkillLevel(Skill.HUNTER), puroPuro));
 			if (note != null)
 			{
 				gearWarning = note;
@@ -1302,8 +1309,14 @@ public class CombatVitalsPlugin extends Plugin
 	/** The names of everything in the inventory and worn, read on the click. */
 	private List<String> carriedItemNames()
 	{
+		return containerNames(InventoryID.INV, InventoryID.WORN);
+	}
+
+	/** The names of everything in the given containers. */
+	private List<String> containerNames(int... containerIds)
+	{
 		final List<String> names = new ArrayList<>();
-		for (int containerId : new int[] {InventoryID.INV, InventoryID.WORN})
+		for (int containerId : containerIds)
 		{
 			final ItemContainer container = client.getItemContainer(containerId);
 			if (container == null)

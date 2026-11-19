@@ -14,16 +14,19 @@ import java.util.Map;
  * clicked a baby impling and the badge read "Not hunting" while they fought a
  * Highwayman).
  *
- * An impling needs a butterfly net, carried or wielded, an impling jar, and
- * the Hunter level for that kind. Levels are the OSRS wiki "Impling" page's
- * from memory and not re-read this session; an impling not in the table
- * skips the level check, so an unknown name can only hide the note, never
- * show a wrong one.
+ * Per the OSRS wiki "Impling" page (read 2026-11-19): a wielded butterfly net
+ * needs the impling's level; barehanded needs that level + 10; an impling jar
+ * is only required inside Puro-Puro, outside it the impling is looted at
+ * once. An impling not in the table skips the level check, so an unknown name
+ * can only hide the note, never show a wrong one.
  *
- * Pure: item names, a level and a name in, the missing things out.
+ * Pure: item names, a level, a name and a place in, the missing things out.
  */
 final class ImplingGear
 {
+	/** Barehanded catching needs this many Hunter levels more than with a net. */
+	static final int BAREHANDED_EXTRA = 10;
+
 	/** Impling kind (lower case, without "impling") to the Hunter level it needs. */
 	private static final Map<String, Integer> LEVELS = new LinkedHashMap<>();
 
@@ -54,13 +57,16 @@ final class ImplingGear
 	}
 
 	/**
-	 * @param name      the impling's name, e.g. "Baby impling"
-	 * @param itemNames everything carried or worn, any case
-	 * @param level     the boosted Hunter level
-	 * @return what is missing, in badge order: net, jar, level; empty when
-	 *         nothing is or the target is not an impling
+	 * @param name       the impling's name, e.g. "Baby impling"
+	 * @param worn       the names of what is worn, any case; only a worn net counts
+	 * @param inventory  the names of what is carried, any case
+	 * @param level      the boosted Hunter level
+	 * @param inPuroPuro whether the player is inside Puro-Puro
+	 * @return what is missing, in badge order; empty when nothing is or the
+	 *         target is not an impling
 	 */
-	static List<String> missing(String name, Collection<String> itemNames, int level)
+	static List<String> missing(String name, Collection<String> worn, Collection<String> inventory,
+		int level, boolean inPuroPuro)
 	{
 		if (!isImpling(name))
 		{
@@ -68,37 +74,42 @@ final class ImplingGear
 		}
 
 		boolean net = false;
-		boolean jar = false;
-		for (String item : itemNames)
+		for (String item : worn)
 		{
-			if (item == null)
-			{
-				continue;
-			}
-			final String lower = item.toLowerCase(Locale.ROOT);
-			net |= lower.endsWith("butterfly net");
-			jar |= lower.equals("impling jar");
+			net |= item != null && item.toLowerCase(Locale.ROOT).endsWith("butterfly net");
+		}
+		boolean jar = false;
+		for (String item : inventory)
+		{
+			jar |= item != null && item.equalsIgnoreCase("impling jar");
 		}
 
-		final List<String> out = new ArrayList<>(3);
-		if (!net)
+		final List<String> out = new ArrayList<>(2);
+		final int needed = levelFor(name);
+		if (net)
+		{
+			if (needed > 0 && level < needed)
+			{
+				out.add(needed + " Hunter");
+			}
+		}
+		else if (needed <= 0)
 		{
 			out.add("a butterfly net");
 		}
-		if (!jar)
+		else if (level < needed + BAREHANDED_EXTRA)
+		{
+			out.add("a butterfly net or " + (needed + BAREHANDED_EXTRA) + " Hunter");
+		}
+		if (inPuroPuro && !jar)
 		{
 			out.add("an impling jar");
-		}
-		final int needed = levelFor(name);
-		if (needed > 0 && level < needed)
-		{
-			out.add(needed + " Hunter");
 		}
 		return out;
 	}
 
 	/**
-	 * "Can't catch Baby impling: needs 17 Hunter / a butterfly net", or null
+	 * "Can't catch Baby impling: needs a butterfly net or 27 Hunter", or null
 	 * when nothing is missing.
 	 */
 	static String text(String name, List<String> missing)
