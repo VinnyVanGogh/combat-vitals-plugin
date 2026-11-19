@@ -1,6 +1,8 @@
 package com.vinnyvangogh.combatvitals;
 
+import java.awt.AlphaComposite;
 import java.awt.Color;
+import java.awt.Composite;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -14,8 +16,10 @@ import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.overlay.Overlay;
+import net.runelite.client.ui.overlay.OverlayMenuEntry;
 import net.runelite.client.ui.overlay.OverlayPosition;
 
+import static net.runelite.api.MenuAction.RUNELITE_OVERLAY;
 import static net.runelite.api.MenuAction.RUNELITE_OVERLAY_CONFIG;
 import static net.runelite.client.ui.overlay.OverlayManager.OPTION_CONFIGURE;
 
@@ -55,6 +59,29 @@ class SplashOverlay extends Overlay
 		this.itemManager = itemManager;
 		setPosition(OverlayPosition.TOP_LEFT);
 		addMenuEntry(RUNELITE_OVERLAY_CONFIG, OPTION_CONFIGURE, PluginName.NAME + " splashing overlay");
+		getMenuEntries().add(new OverlayMenuEntry(RUNELITE_OVERLAY, modeOption(false), PluginName.NAME));
+	}
+
+	/** The right-click option's text; clicking it flips Splashing mode. */
+	static final String MODE_PREFIX = "Splashing mode: ";
+
+	static String modeOption(boolean on)
+	{
+		return MODE_PREFIX + (on ? "on" : "off");
+	}
+
+	/** Shows the current state in the right-click option; client thread. */
+	void showMode(boolean on)
+	{
+		final List<OverlayMenuEntry> entries = getMenuEntries();
+		for (int i = 0; i < entries.size(); i++)
+		{
+			final OverlayMenuEntry e = entries.get(i);
+			if (e.getOption() != null && e.getOption().startsWith(MODE_PREFIX))
+			{
+				entries.set(i, new OverlayMenuEntry(e.getMenuAction(), modeOption(on), e.getTarget()));
+			}
+		}
 	}
 
 	@Override
@@ -66,8 +93,21 @@ class SplashOverlay extends Overlay
 			return null;
 		}
 		final long now = System.currentTimeMillis();
-		final Color accent = accent(readout);
-		return card(graphics, rows(readout, now, accent), accent);
+		final Color accent = readout.isStopped() ? MUTED : accent(readout);
+		final List<Row> rows = rows(readout, now, accent);
+		final Composite before = graphics.getComposite();
+		if (readout.isStopped())
+		{
+			graphics.setComposite(AlphaComposite.SrcOver.derive(0.55f));
+		}
+		try
+		{
+			return card(graphics, rows, accent);
+		}
+		finally
+		{
+			graphics.setComposite(before);
+		}
 	}
 
 	/** Paints the rounded card with its accent bar around the rows, and returns its size. */
@@ -127,7 +167,15 @@ class SplashOverlay extends Overlay
 		{
 			final Color colour = colour(r.splash.status);
 			rows.add(Row.text(r.splash.bonusLine, colour, false));
-			rows.add(Row.text(r.splash.chanceLine, colour, false));
+			if (r.splash.chanceLine != null)
+			{
+				rows.add(Row.text(r.splash.chanceLine, colour, false));
+			}
+		}
+		if (r.isStopped())
+		{
+			rows.add(Row.text(SplashTimer.stoppedAgo(now - r.stoppedAt), MUTED, false));
+			return rows;
 		}
 		final String logout = r.logoutText(now);
 		final long session = r.session(now);

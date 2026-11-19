@@ -223,3 +223,11 @@ castsMerge boolean
 
 # 2026-11-18: Goals page (task-0e75f0d0).
 goalAlert Notification
+# 2026-11-19: splash card linger and stop-by-itself alerts (task-a7fefc21).
+splashLingerSeconds int
+splashLingerForever boolean
+splashAlertStopSoon Notification
+splashWarnSeconds int
+splashAlertStopped Notification
+# 2026-11-19: overhead only after damage (task-d05368a1).
+overheadOnlyAfterDamage boolean
