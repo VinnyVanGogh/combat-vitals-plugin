@@ -1,5 +1,6 @@
 package com.vinnyvangogh.combatvitals;
 
+import com.google.common.base.Charsets;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.EOFException;
@@ -7,7 +8,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -97,7 +97,7 @@ final class AlertSounds
 
 	private static List<String> packClip(AlertSound sound, Predicate<String> resourceExists)
 	{
-		final String resource = sound.getResource();
+		final String resource = sound.getClip();
 		return resource != null && resourceExists.test(resource)
 			? Collections.singletonList(resource)
 			: Collections.emptyList();
@@ -366,12 +366,12 @@ final class AlertSounds
 		{
 			final byte[] id = new byte[4];
 			in.readFully(id);
-			return new String(id, StandardCharsets.US_ASCII);
+			return new String(id, Charsets.US_ASCII);
 		}
 
 		private static byte[] ascii(String s)
 		{
-			return s.getBytes(StandardCharsets.US_ASCII);
+			return s.getBytes(Charsets.US_ASCII);
 		}
 
 		private static void skip(DataInputStream in, long n) throws IOException

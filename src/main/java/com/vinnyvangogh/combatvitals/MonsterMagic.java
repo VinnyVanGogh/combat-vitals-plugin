@@ -1,10 +1,10 @@
 package com.vinnyvangogh.combatvitals;
 
+import com.google.common.base.Charsets;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -47,7 +47,7 @@ final class MonsterMagic
 	static Map<Integer, MonsterMagic> parse(InputStream in) throws IOException
 	{
 		final Map<Integer, MonsterMagic> table = new HashMap<>();
-		final BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
+		final BufferedReader reader = new BufferedReader(new InputStreamReader(in, Charsets.UTF_8));
 		String line;
 		while ((line = reader.readLine()) != null)
 		{
