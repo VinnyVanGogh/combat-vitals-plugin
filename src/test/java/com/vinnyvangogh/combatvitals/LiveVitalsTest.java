@@ -78,7 +78,7 @@ public class LiveVitalsTest
 	{
 		final SkillingReadout r = SkillingReadout.builder()
 			.skill(Skill.STRENGTH).real(85).boosted(85).colour(Color.RED).header(true)
-			.method(TrainingMethod.values()[0])
+			.technique(TrainingMethod.values()[0])
 			.inventoryLabel("Active | Pump stops in 97:30")
 			.tickMillis(System.currentTimeMillis())
 			.build();

@@ -223,7 +223,7 @@ final class LiveVitals
 			stats.put(c.getKind(), c.getText());
 		}
 		// A training method puts its timers where the inventory line goes ("Active | Pump stops in 97:30").
-		final boolean timers = r.getMethod() != null && r.getInventoryLabel() != null;
+		final boolean timers = r.getTechnique() != null && r.getInventoryLabel() != null;
 		final List<String> chips = timers ? Arrays.asList(r.getInventoryLabel().split(" \\| "))
 			: Collections.emptyList();
 		return new Skilling(SkillingBadgeRenderer.headerText(r), r.getColour(), icon, xp, stats, chips,
