@@ -50,9 +50,9 @@ public class MainTabsTest
 	public void opensOnLiveAndEachTabShowsItsOwnContent()
 	{
 		assertEquals(VitalsSidePanel.Main.LIVE, SwingDriver.onEdt(panel::main));
-		ui.assertShows(LiveSection.TITLE);
+		ui.assertShows(LiveSection.LOGGED_OUT);
 		click(VitalsSidePanel.Main.GOALS);
-		ui.assertHides(LiveSection.TITLE);
+		ui.assertHides(LiveSection.LOGGED_OUT);
 		click(VitalsSidePanel.Main.OVERLAYS);
 		ui.assertShows(VitalsSidePanel.SHOW_ALL);
 		click(VitalsSidePanel.Main.PRESETS);
@@ -61,7 +61,7 @@ public class MainTabsTest
 		click(VitalsSidePanel.Main.SETTINGS);
 		ui.assertShows("Combat vitals");
 		click(VitalsSidePanel.Main.LIVE);
-		ui.assertShows(LiveSection.TITLE);
+		ui.assertShows(LiveSection.LOGGED_OUT);
 	}
 
 	@Test
@@ -82,7 +82,7 @@ public class MainTabsTest
 		build();
 		assertEquals(VitalsSidePanel.Main.OVERLAYS, SwingDriver.onEdt(panel::main));
 		ui.assertShows(VitalsSidePanel.SHOW_ALL);
-		ui.assertHides(LiveSection.TITLE);
+		ui.assertHides(LiveSection.LOGGED_OUT);
 	}
 
 	@Test

@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
 import org.junit.Before;
@@ -322,7 +323,7 @@ public class LiveSectionTest
 		assertTrue(SwingDriver.onEdt(panel::wantsLive));
 		SwingDriver.onEdt(() ->
 		{
-			ui.click(LiveSection.TITLE);
+			ui.click(liveToggle(ui));
 			ui.layout(WIDTH);
 		});
 		assertEquals(Boolean.FALSE, store.values.get(LiveSection.OPEN_KEY));
@@ -340,8 +341,7 @@ public class LiveSectionTest
 			d.layout(WIDTH);
 			return d;
 		});
-		ui2.assertShows(LiveSection.TITLE);
-		assertFalse(SwingDriver.onEdt(() -> ((FoldCard.Header) ui2.button(LiveSection.TITLE)).isOpen()));
+		assertFalse(SwingDriver.onEdt(() -> ((FoldCard.Header) liveToggle(ui2)).isOpen()));
 		ui2.assertHides(LiveSection.LOGGED_OUT);
 
 		// Opened from the list (or another panel): the refresh that follows opens it.
@@ -367,6 +367,7 @@ public class LiveSectionTest
 	public void noTextRunsPastThePanelsRightEdge()
 	{
 		live(new LiveVitals(true, fighting(), chopping(), LONG_SESSION));
+		view(LiveSection.View.OVERALL);
 		SwingDriver.onEdt(() ->
 		{
 			ui.click("Show all 5");
@@ -424,12 +425,22 @@ public class LiveSectionTest
 		return out;
 	}
 
+	private static JButton liveToggle(SwingDriver d)
+	{
+		return d.find(JButton.class, b -> "live-toggle".equals(b.getName()), "the Live fold header");
+	}
+
 	private void shot(String name)
 	{
 		final BufferedImage full = SwingDriver.onEdt(() -> ui.render(WIDTH, 0, 2.0));
-		final int presets = SwingDriver.onEdt(() -> ui.yOf(ui.find(GuideCard.class,
-			g -> VitalsSidePanel.PRESETS_GUIDE.equals(g.id), "the presets guide")));
-		final BufferedImage image = full.getSubimage(0, 0, full.getWidth(), presets * 2);
+		final int bottom = SwingDriver.onEdt(() ->
+		{
+			final Component section = ui.find(LiveSection.class, s -> true, "the live section");
+			return SwingUtilities.convertPoint(section.getParent(), section.getLocation(), panel).y
+				+ section.getHeight();
+		});
+		final BufferedImage image = full.getSubimage(0, 0, full.getWidth(),
+			Math.min(full.getHeight(), bottom * 2));
 		assertTrue(name + " is empty", image.getHeight() > 100);
 		SwingDriver.writePng(image, new File(System.getProperty("screenshots.dir", "build/screenshots"), name));
 	}

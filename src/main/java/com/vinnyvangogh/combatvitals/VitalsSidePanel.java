@@ -226,7 +226,7 @@ final class VitalsSidePanel extends PluginPanel
 		addMain(Main.SETTINGS, settings);
 		add(root, BorderLayout.NORTH);
 		show(PanelLayout.Tab.COMBAT);
-		showMain(Main.of(store.get(TAB_KEY, String.class)));
+		display(Main.of(store.get(TAB_KEY, String.class)));
 		refresh();
 	}
 
