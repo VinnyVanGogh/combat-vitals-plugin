@@ -152,12 +152,9 @@ final class GemstoneCrab
 		}
 		if (phase == Phase.CRAB)
 		{
-			// The crab vanished with no shell. Burrowed only if the timer had run
-			// out (or it was seen about to); otherwise it just left the scene.
-			if (lastLeft <= BURROW_GRACE_MS)
-			{
-				return shell(now, out);
-			}
+			// The crab vanished with no shell: it only left the scene. A burrow is
+			// the shell NPC appearing (wiki: it leaves a shell), never a guess from
+			// the timer, so the arrow and the go alert are never early.
 			phase = Phase.NONE;
 			firstSampleAt = -1;
 			lost = true;

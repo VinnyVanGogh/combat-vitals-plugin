@@ -125,12 +125,16 @@ public class GemstoneCrabTest
 	}
 
 	@Test
-	public void crabGoneWithTimerRunOutCountsAsBurrowed()
+	public void crabGoneWithTimerRunOutIsNotABurrowUntilTheShellAppears()
 	{
 		final GemstoneCrab c = new GemstoneCrab(30);
 		step(c, true, false, 0.01, 0, new GemstoneCrab.Alerts());
-		final GemstoneCrab.Alerts a = new GemstoneCrab.Alerts();
-		final GemstoneCrab.Reading r = step(c, false, false, -1, 1000, a);
+		GemstoneCrab.Alerts a = new GemstoneCrab.Alerts();
+		GemstoneCrab.Reading r = step(c, false, false, -1, 1000, a);
+		assertEquals(GemstoneCrab.Phase.NONE, r.phase);
+		assertFalse(a.goNow);
+		a = new GemstoneCrab.Alerts();
+		r = step(c, false, true, -1, 2000, a);
 		assertEquals(GemstoneCrab.Phase.SHELL, r.phase);
 		assertTrue(a.goNow);
 	}

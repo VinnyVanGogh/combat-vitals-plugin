@@ -2171,23 +2171,43 @@ public class CombatVitalsPlugin extends Plugin
 	private void tickGemstoneCrab()
 	{
 		final GemstoneCrab.Alerts crab = gemstoneCrabWatcher.tick();
-		if (crab == null || alertMute.muted())
+		if (crab == null || alertMute.muted() || !VitalsHalves.combat(config))
 		{
 			return;
 		}
 		if (crab.spawned)
 		{
-			notifier.notify(muted(config.gemstoneCrabAlertSpawn()), "A Gemstone Crab has appeared.");
+			crabAlert(config.gemstoneCrabAlertSpawn(), "A Gemstone Crab has appeared.");
 		}
 		if (crab.aboutToBurrow)
 		{
-			notifier.notify(muted(config.gemstoneCrabAlertBurrow()), "The Gemstone Crab is about to burrow.");
+			crabAlert(config.gemstoneCrabAlertBurrow(), "The Gemstone Crab is about to burrow.");
 		}
 		if (crab.goNow)
 		{
-			notifier.notify(muted(config.gemstoneCrabAlertGo()),
-				"The Gemstone Crab has burrowed: crawl through the cave now.");
+			crabAlert(config.gemstoneCrabAlertGo(), "The Gemstone Crab has burrowed: crawl through the cave now.");
 		}
+	}
+
+	/**
+	 * One crab alert. RuneLite's notification alone is silent while the game
+	 * is focused, so the plugin's own sound plays too: the shared alert sound
+	 * and volume, or the soft chime when that is RuneLite's own, a voice line
+	 * or a file (the crab has none of its own).
+	 */
+	private void crabAlert(Notification notification, String message)
+	{
+		if (notification == null || !notification.isEnabled())
+		{
+			return;
+		}
+		final AlertSound shared = config.alertSoundAll();
+		final AlertSound sound = shared == AlertSound.RUNELITE || shared == AlertSound.VOICE
+			|| shared == AlertSound.MY_SOUNDS ? AlertSound.SOFT_CHIME : shared;
+		final AlertSounds.Plan plan = AlertSounds.plan(sound, new ActivityAlerts.Alert(ActivityAlerts.Type.STUNNED, null),
+			null, voiceLines, BUNDLED, name -> false);
+		notifier.notify(AlertSettings.quiet(notification, runeLiteConfig), message);
+		play(plan, config.alertVolumeAll());
 	}
 
 	/**
