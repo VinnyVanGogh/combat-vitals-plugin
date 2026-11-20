@@ -216,8 +216,7 @@ class SplashOverlay extends Overlay
 		}
 		final Color colour = due ? WARN : crab.remainingMs < 2 * 60_000L ? LOW : SAFE;
 		rows.add(Row.text(crab.percent() >= 0 ? "Health " + crab.percent() + "%" : "Health unknown", colour, true));
-		rows.add(Row.text("Burrows in " + GemstoneCrab.clock(crab.remainingMs) + " (" + crab.source.label + ")",
-			colour, false));
+		rows.add(Row.text("Burrows in " + GemstoneCrab.clock(crab.remainingMs), colour, false));
 	}
 
 	private static void castRows(List<Row> rows, SplashReadout r, boolean underCrab, long now, Color accent,

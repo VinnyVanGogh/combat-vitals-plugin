@@ -34,16 +34,7 @@ final class GemstoneCrab
 	/** Where the remaining time came from. */
 	enum Source
 	{
-		BAR("health bar"),
-		OBSERVED("observed rate"),
-		CLOCK("estimate");
-
-		final String label;
-
-		Source(String label)
-		{
-			this.label = label;
-		}
+		BAR, OBSERVED, CLOCK
 	}
 
 	enum Phase

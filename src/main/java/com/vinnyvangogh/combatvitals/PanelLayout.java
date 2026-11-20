@@ -166,14 +166,14 @@ final class PanelLayout
 						"showPlayerHitpoints", "showStatComparison"),
 					new Group("Big targets", "bigTargetDisplay", "otherTargetDisplay", "bigTargetRule",
 						"bigTargetMaxHp"),
-					new Group("Splashing (AFK Magic)", "splashMode", "autoSplash", "autoSplashThreshold", "splashMaxChance",
-						"splashAlertBroke"),
+					new Group("Splashing (AFK Magic)", "splashMode", "splashMaxChance", "splashAlertBroke"),
 					new Group("Casts left", "castsLeft", "castsAlways", "castsSpell", "castsOnlyBelow",
 						"castsMerge", "castsWarnAt", "castsAlertLow"),
 					new Group("Splash card and AFK timer", "splashLingerSeconds", "splashLingerForever",
 						"splashAlertStopSoon", "splashWarnSeconds", "splashAlertStopped"),
 					new Group("Gemstone Crab", "gemstoneCrab", "gemstoneCrabWarnSeconds", "gemstoneCrabArrow",
-						"gemstoneCrabAlertSpawn", "gemstoneCrabAlertBurrow", "gemstoneCrabAlertGo"));
+						"gemstoneCrabAlertSpawn", "gemstoneCrabAlertBurrow", "gemstoneCrabAlertGo"),
+						new Group("Auto-detect splashing", "autoSplash", "autoSplashThreshold"));
 			case SKILLING:
 				return skillingGroups();
 			case LOOK:

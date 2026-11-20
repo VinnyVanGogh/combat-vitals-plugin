@@ -241,8 +241,6 @@ gemstoneCrabArrow boolean
 gemstoneCrabAlertSpawn Notification
 gemstoneCrabAlertBurrow Notification
 gemstoneCrabAlertGo Notification
-autoSplash boolean
-autoSplashThreshold int
 # 2026-11-19: Forestry highlights (task-7387091e).
 forestryHighlights boolean
 forestryHighlightColour Color
@@ -256,3 +254,6 @@ highlightBeeHive boolean
 highlightEnchantmentRitual boolean
 highlightFriendlyEnt boolean
 pauseAfterIdleSeconds int
+# 2026-11-19: Auto-detect splashing (RUNELITE-469).
+autoSplash boolean
+autoSplashThreshold int

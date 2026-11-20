@@ -50,7 +50,8 @@ public class CombatCardRowsTest
 		final List<String> t = texts(rows(casting(), crab(), false));
 		assertEquals("Gemstone Crab", t.get(0));
 		assertTrue(t.contains("Health 87%"));
-		assertTrue(t.contains("Burrows in 4:00 (health bar)"));
+		assertTrue(t.contains("Burrows in 4:00"));
+		assertFalse(t.contains("(health bar)"));
 		assertTrue(t.contains("Fire Strike"));
 		assertTrue(t.contains("142 casts left"));
 		// The casting clocks stay on the one card.
@@ -97,6 +98,23 @@ public class CombatCardRowsTest
 		final SplashReadout stopped = casting().stopped(NOW - 12_000);
 		final List<String> t = texts(rows(stopped, null, false));
 		assertTrue(t.contains("Stopped 12s ago"));
+	}
+
+	@Test
+	public void theStandaloneCastsReadoutBecomesTheSameCardWithNoClocks()
+	{
+		final CastsReadout c = new CastsReadout("Fire Strike", "142 casts left", 142, false, new int[]{1}, new int[]{1});
+		final SplashReadout card = SplashReadout.castsOnly(c, NOW);
+		assertNull(card.splash);
+		assertNull(card.logoutText(NOW));
+		assertEquals(-1, card.session(NOW));
+		assertTrue(card.logoutFraction(NOW) < 0);
+		final List<SplashOverlay.Row> rows = rows(card, null, false);
+		final List<String> t = texts(rows);
+		assertEquals("Fire Strike", t.get(0));
+		assertEquals("Casting", rows.get(0).tag);
+		assertTrue(t.contains("142 casts left"));
+		assertFalse(t.stream().anyMatch(s -> s.contains("Logout") || s.contains("Casting ")));
 	}
 
 	@Test

@@ -513,7 +513,7 @@ public interface CombatVitalsConfig extends Config
 			+ "threshold below, and back off above it. Switching the mode by hand wins until your gear next "
 			+ "crosses the threshold.",
 		section = targetSection,
-		position = 10
+		position = 30
 	)
 	default boolean autoSplash()
 	{
@@ -526,7 +526,7 @@ public interface CombatVitalsConfig extends Config
 		name = "Splash at bonus",
 		description = "Splashing mode switches on at this Magic attack bonus or lower (-40 by default).",
 		section = targetSection,
-		position = 10
+		position = 31
 	)
 	default int autoSplashThreshold()
 	{
@@ -617,7 +617,8 @@ public interface CombatVitalsConfig extends Config
 	@ConfigItem(
 		keyName = "castsMerge",
 		name = "Merge into splash card",
-		description = "While the Splashing mode card is showing, put the casts on it and hide this overlay.",
+		description = "Show the casts line on the combat card while Splashing mode is on. Off keeps that card to the "
+				+ "Magic bonus and hit chance; the casts are never shown on a second card.",
 		section = targetSection,
 		position = 16
 	)

@@ -114,26 +114,28 @@ class SplashWatcher
 		SplashTimer.clock(1000);
 	}
 
-	/** The latest read-out for the overlay, or null when nothing is being cast at an NPC. */
+	/**
+	 * The latest read-out for the one combat card. With Splashing mode on and an NPC being cast at it is
+	 * the splash result with the casts line merged in; otherwise it is the casts alone, when
+	 * {@link CastsVisibility} says they show (casting, or Always show). Null when there is nothing to draw.
+	 */
 	SplashReadout readout()
 	{
 		final SplashReadout r = readout;
-		if (!on() || r == null)
+		if (on() && r != null)
 		{
-			return null;
+			final boolean gone = r.isStopped() && !SplashTimer.lingers(System.currentTimeMillis() - r.stoppedAt,
+				config.splashLingerSeconds(), config.splashLingerForever());
+			return gone ? castsCard() : r;
 		}
-		if (r.isStopped() && !SplashTimer.lingers(System.currentTimeMillis() - r.stoppedAt,
-			config.splashLingerSeconds(), config.splashLingerForever()))
-		{
-			return null;
-		}
-		return r;
+		return castsCard();
 	}
 
-	/** The latest read-out for the standalone Casts left overlay, or null when it should not draw. */
-	CastsReadout castsReadout()
+	/** The casts-only card, or null when Casts left is off or {@link CastsVisibility} hides it. */
+	private SplashReadout castsCard()
 	{
-		return config.castsLeft() ? castsReadout : null;
+		final CastsReadout c = config.castsLeft() ? castsReadout : null;
+		return c == null ? null : SplashReadout.castsOnly(c, System.currentTimeMillis());
 	}
 
 	private boolean on()
@@ -335,7 +337,9 @@ class SplashWatcher
 	/** The splashing card: the splash result, with the casts line while casts are merged into it. */
 	private SplashReadout buildSplash(SplashTracker.Result splash, long now)
 	{
-		final CastsReadout merged = config.castsLeft() && config.castsMerge() ? castsFor(spellName, true) : null;
+		// Always counted, so the low-casts alert is paced; shown on the card only while castsMerge is on.
+		final CastsReadout counted = config.castsLeft() ? castsFor(spellName, true) : null;
+		final CastsReadout merged = config.castsMerge() ? counted : null;
 		final long idle = idleMillis();
 		final long logout = SplashTimer.STOP_MS;
 		if (merged == null)
@@ -366,7 +370,7 @@ class SplashWatcher
 			return null;
 		}
 		return CastsVisibility.visible(true, config.castsAlways(), casting, true, r.casts, config.castsOnlyBelow(),
-			readout != null, config.castsMerge()) ? r : null;
+			readout != null, true) ? r : null; // splash card up: it carries (or deliberately omits) the casts
 	}
 
 	/** Casts left for a spell; null when it is not in the table. Paces the low alert when {@code casting}. */
