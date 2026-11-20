@@ -499,7 +499,7 @@ final class LiveSection extends VitalsSidePanel.Column
 		}
 	}
 
-	/** The first rows of the pool show the goals (title, percent, bar, detail); the rest hide. */
+	/** The first rows of the pool show the goals (one bar each, its words inside, the detail in a tooltip); the rest hide. */
 	private void goals(VitalsSidePanel.Column parent, List<GoalRow> pool, List<LiveVitals.GoalLine> goals)
 	{
 		while (pool.size() < goals.size())

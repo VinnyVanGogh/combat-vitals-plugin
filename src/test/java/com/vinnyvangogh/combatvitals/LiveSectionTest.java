@@ -81,6 +81,9 @@ public class LiveSectionTest
 	{
 		SwingDriver.onEdt(() ->
 		{
+			// The toggle lives on the Live tab; an earlier look at the settings tabs may have left it.
+			panel.showMain(VitalsSidePanel.Main.LIVE);
+			ui.layout(WIDTH);
 			ui.find(javax.swing.JToggleButton.class, b -> ("live-view-" + v.name()).equals(b.getName()),
 				"view " + v).doClick();
 			ui.layout(WIDTH);
@@ -418,50 +421,78 @@ public class LiveSectionTest
 			LONG_SESSION));
 		for (LiveSection.View v : LiveSection.View.values())
 		{
+			// First the Live tab itself, while its goal bars, period cells and Overall bars are on screen:
+			// a hidden card's rows are skipped by visibleInPanel, so this is the only place they are checked.
 			view(v);
 			SwingDriver.onEdt(() ->
 			{
 				if (v == LiveSection.View.OVERALL)
 				{
 					ui.click("Show all 5");
+					ui.layout(WIDTH);
 				}
+				final int[] seen = assertRowsInsideTheEdge(v, "Live");
+				assertTrue(v + ": no bar was on screen to check", seen[0] > 0);
+				if (v != LiveSection.View.OVERALL)
+				{
+					assertTrue(v + ": no period cell was on screen to check", seen[1] > 0);
+					assertTrue(v + ": the long goal bar was not on screen to check", ui.all(JLabel.class).stream()
+						.anyMatch(l -> l instanceof MeterBar && visibleInPanel(l) && l.getText().startsWith("Runecrafting")));
+				}
+			});
+			// Then each settings tab, which swaps the Live tab out.
+			SwingDriver.onEdt(() ->
+			{
 				for (PanelLayout.Tab tab : PanelLayout.Tab.values())
 				{
 					panel.show(tab);
 					ui.layout(WIDTH);
 					openEverything();
 					ui.layout(WIDTH);
-					final int edge = WIDTH - panel.getInsets().right;
-					for (JLabel l : ui.all(JLabel.class))
-					{
-						if (l instanceof WrapLabel)
-						{
-							final int left = SwingUtilities.convertPoint(l.getParent(), l.getLocation(), panel).x;
-							final int right = left + l.getPreferredSize().width;
-							assertTrue(tab + ": '" + ((WrapLabel) l).plain() + "' ends at " + right + " past " + edge,
-								right <= edge);
-							assertTrue(tab + ": '" + ((WrapLabel) l).plain() + "' is cut short",
-								l.getHeight() >= l.getPreferredSize().height);
-						}
-						else if (visibleInPanel(l) && (l instanceof MeterBar
-							|| l.getParent().getClass().getSimpleName().equals("PeriodRow")))
-						{
-							// The goal and Overall bars and the session/total columns clip at their own edge: they must
-							// stay inside the panel, and a cut-short text must say all of itself in a tooltip.
-							final int left = SwingUtilities.convertPoint(l.getParent(), l.getLocation(), panel).x;
-							assertTrue(v + " " + tab + ": '" + l.getText() + "' ends at " + (left + l.getWidth())
-								+ " past " + edge, left + l.getWidth() <= edge);
-							final int wanted = l.getFontMetrics(l.getFont()).stringWidth(l.getText());
-							if (wanted > l.getWidth())
-							{
-								assertTrue(v + " " + tab + ": '" + l.getText() + "' is cut with no tooltip",
-									l.getToolTipText() != null && !l.getToolTipText().isEmpty());
-							}
-						}
-					}
+					assertRowsInsideTheEdge(v, tab.name());
 				}
 			});
 		}
+	}
+
+	/**
+	 * Checks every visible label: wrapping text stays inside the panel and is not cut, and the goal and Overall bars
+	 * and session/total cells, which clip at their own edge, stay inside the panel with a tooltip when cut short.
+	 *
+	 * @return {bars checked, period cells checked, bars or cells cut short that carry a tooltip}
+	 */
+	private int[] assertRowsInsideTheEdge(LiveSection.View v, String where)
+	{
+		final int[] seen = new int[3];
+		final int edge = WIDTH - panel.getInsets().right;
+		for (JLabel l : ui.all(JLabel.class))
+		{
+			if (l instanceof WrapLabel)
+			{
+				final int left = SwingUtilities.convertPoint(l.getParent(), l.getLocation(), panel).x;
+				final int right = left + l.getPreferredSize().width;
+				assertTrue(v + " " + where + ": '" + ((WrapLabel) l).plain() + "' ends at " + right + " past " + edge,
+					right <= edge);
+				assertTrue(v + " " + where + ": '" + ((WrapLabel) l).plain() + "' is cut short",
+					l.getHeight() >= l.getPreferredSize().height);
+			}
+			else if (visibleInPanel(l) && (l instanceof MeterBar
+				|| l.getParent().getClass().getSimpleName().equals("PeriodRow")))
+			{
+				seen[l instanceof MeterBar ? 0 : 1]++;
+				final int left = SwingUtilities.convertPoint(l.getParent(), l.getLocation(), panel).x;
+				assertTrue(v + " " + where + ": '" + l.getText() + "' ends at " + (left + l.getWidth())
+					+ " past " + edge, left + l.getWidth() <= edge);
+				final int wanted = l.getFontMetrics(l.getFont()).stringWidth(l.getText());
+				if (wanted > l.getWidth())
+				{
+					assertTrue(v + " " + where + ": '" + l.getText() + "' is cut with no tooltip",
+						l.getToolTipText() != null && !l.getToolTipText().isEmpty());
+					seen[2]++;
+				}
+			}
+		}
+		return seen;
 	}
 
 	/** Opens every folded card on screen, More settings first, so every label is laid out. */
