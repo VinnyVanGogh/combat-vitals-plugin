@@ -68,6 +68,12 @@ tasks.named('test') {
 	// The render and README shot tests draw to images, never to a screen,
 	// so they pass on a machine or CI runner with no display.
 	systemProperty 'java.awt.headless', 'true'
+	// RuneLite's FontManager writes its fonts to java.io.tmpdir; a sandboxed
+	// runner (or CI) with no writable system temp dir fails every Swing test
+	// with "Problem reading font data". Keep the temp files inside build/.
+	def testTmp = layout.buildDirectory.dir('test-tmp').get().asFile
+	systemProperty 'java.io.tmpdir', testTmp.absolutePath
+	doFirst { testTmp.mkdirs() }
 }
 
 // Regenerates the README's overlay pictures in docs/images/generated from the

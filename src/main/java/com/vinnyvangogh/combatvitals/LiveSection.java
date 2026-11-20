@@ -54,6 +54,11 @@ final class LiveSection extends VitalsSidePanel.Column
 	static final String SHOW_TOP = "Show top " + TOP;
 	/** Hidden setting: which of the three cards the Live tab shows, a {@link View} name. */
 	static final String VIEW_KEY = "sidebarLiveView";
+	/** Hidden setting the right-click Clear ticks; the plugin zeroes the session, lets the Skilling card go, and unticks it. */
+	static final String CLEAR_KEY = "liveCardClear";
+	/** The same setting as the Skilling tab's "Reset session" tick box. */
+	static final String RESET_KEY = "skillingSessionReset";
+	static final String PAUSED = " · Paused";
 
 	/** The secondary toggle under the Live tab: one card at a time, as in Group Ironman's live view. */
 	enum View
@@ -113,12 +118,44 @@ final class LiveSection extends VitalsSidePanel.Column
 	private final WrapLabel trainingRate = new WrapLabel("", PanelStyle.MUTED);
 	/** Goals in the skills a fight trains, the same lines as the Skilling card's. */
 	private final VitalsSidePanel.Column combatGoals = new VitalsSidePanel.Column();
-	private final List<WrapLabel> combatGoalPool = new ArrayList<>();
+	private final List<GoalRow> combatGoalPool = new ArrayList<>();
 	/** This session and Total, side by side in time: the session resets on an activity change, the total does not. */
 	private final VitalsSidePanel.Column combatPeriods = new VitalsSidePanel.Column();
-	private final List<WrapLabel> combatPeriodPool = new ArrayList<>();
+	private final List<PeriodRow> combatPeriodPool = new ArrayList<>();
 	private final VitalsSidePanel.Column skillPeriods = new VitalsSidePanel.Column();
-	private final List<WrapLabel> skillPeriodPool = new ArrayList<>();
+	private final List<PeriodRow> skillPeriodPool = new ArrayList<>();
+	/** "Active · running 14m", "Pauses in 0:42", "Session resets in 12:50", under the card's title. */
+	private final VitalsSidePanel.Column combatTimers = new VitalsSidePanel.Column();
+	private final List<WrapLabel> combatTimerPool = new ArrayList<>();
+	private final VitalsSidePanel.Column skillTimers = new VitalsSidePanel.Column();
+	private final List<WrapLabel> skillTimerPool = new ArrayList<>();
+	/** The Overall card's All time row. */
+	private final VitalsSidePanel.Column overallPeriods = new VitalsSidePanel.Column();
+	private final List<PeriodRow> overallPeriodPool = new ArrayList<>();
+	/** Right-click on any Live card: Reset session, Clear. */
+	private final javax.swing.JPopupMenu cardMenu = new javax.swing.JPopupMenu();
+	private final java.awt.event.MouseAdapter cardMenuTrigger = new java.awt.event.MouseAdapter()
+	{
+		@Override
+		public void mousePressed(java.awt.event.MouseEvent e)
+		{
+			popup(e);
+		}
+
+		@Override
+		public void mouseReleased(java.awt.event.MouseEvent e)
+		{
+			popup(e);
+		}
+
+		private void popup(java.awt.event.MouseEvent e)
+		{
+			if (e.isPopupTrigger())
+			{
+				cardMenu.show(e.getComponent(), e.getX(), e.getY());
+			}
+		}
+	};
 
 	// Total (Overall view): every skill gained since login
 	private final FoldCard totalCard = new FoldCard("Total since login", null, null, true);
@@ -142,7 +179,7 @@ final class LiveSection extends VitalsSidePanel.Column
 	private final List<WrapLabel> skillPool = new ArrayList<>();
 	/** The active skill's goals, each with what is left and the time to go. */
 	private final VitalsSidePanel.Column skillGoals = new VitalsSidePanel.Column();
-	private final List<WrapLabel> goalPool = new ArrayList<>();
+	private final List<GoalRow> goalPool = new ArrayList<>();
 
 	// This session
 	private final FoldCard sessionCard = new FoldCard("This session", null, null, true);
@@ -180,13 +217,60 @@ final class LiveSection extends VitalsSidePanel.Column
 		live.add(combatCard);
 		live.add(skillingCard);
 		live.add(sessionCard);
+		totalCard.body.add(overallPeriods);
 		totalCard.body.add(totalEmpty);
 		totalCard.body.add(totalLines);
 		live.add(totalCard);
+		buildCardMenu();
 		applyView(View.of(store.get(VIEW_KEY, String.class)));
 
 		refresh();
 		show(LiveVitals.LOGGED_OUT);
+	}
+
+	/**
+	 * Right-click on a Live card: Reset session zeroes This session's counts (the card stays); Clear also lets the
+	 * Skilling card go, so it is empty until you train again. Total and All time are never touched.
+	 */
+	private void buildCardMenu()
+	{
+		final javax.swing.JMenuItem reset = new javax.swing.JMenuItem(VitalsSidePanel.RESET_SESSION);
+		reset.setName("live-menu-reset");
+		reset.setToolTipText("Zero This session's counts. Total and All time stay.");
+		reset.addActionListener(e -> store.set(RESET_KEY, true));
+		final javax.swing.JMenuItem clear = new javax.swing.JMenuItem("Clear");
+		clear.setName("live-menu-clear");
+		clear.setToolTipText("Zero This session and empty the Skilling card until you train again. Total and All time stay.");
+		clear.addActionListener(e -> store.set(CLEAR_KEY, true));
+		cardMenu.add(reset);
+		cardMenu.add(clear);
+		popupOn(combatCard);
+		popupOn(skillingCard);
+		popupOn(sessionCard);
+		popupOn(totalCard);
+	}
+
+	/** Makes the right-click menu come up over a component and everything inside it; once per component. */
+	private void popupOn(Component c)
+	{
+		if (c instanceof JComponent && ((JComponent) c).getClientProperty(cardMenuTrigger) == null)
+		{
+			((JComponent) c).putClientProperty(cardMenuTrigger, Boolean.TRUE);
+			c.addMouseListener(cardMenuTrigger);
+		}
+		if (c instanceof java.awt.Container)
+		{
+			for (Component child : ((java.awt.Container) c).getComponents())
+			{
+				popupOn(child);
+			}
+		}
+	}
+
+	/** For tests: the right-click menu's items, to click. */
+	javax.swing.JPopupMenu cardMenu()
+	{
+		return cardMenu;
 	}
 
 	/** Combat / Skilling / Overall as a small segmented row; the choice is remembered. */
@@ -249,7 +333,7 @@ final class LiveSection extends VitalsSidePanel.Column
 			+ "Same as the right-click option on the card.");
 		splashSwitch.addActionListener(e -> store.set(SPLASH_KEY, splashSwitch.isSelected()));
 		for (Component c : new Component[]{splashSwitch, hitpoints, gap(), prayer, gap(), energyRow, targetBox, gap(),
-			training, trainingRate, combatPeriods, combatGoals})
+			training, trainingRate, combatTimers, combatPeriods, combatGoals})
 		{
 			combat.add(c);
 		}
@@ -281,7 +365,8 @@ final class LiveSection extends VitalsSidePanel.Column
 			statValues.put(STATS[i], value);
 			statGrid.add(tile);
 		}
-		for (Component c : new Component[]{title, gap(), skillXp, gap(), statGrid, gap(), skillChips, skillLines, skillPeriods, skillGoals})
+		for (Component c : new Component[]{title, skillTimers, gap(), skillXp, gap(), statGrid, gap(), skillChips, skillLines,
+			skillPeriods, skillGoals})
 		{
 			skilling.add(c);
 		}
@@ -360,10 +445,17 @@ final class LiveSection extends VitalsSidePanel.Column
 			showCombat(v.combat);
 			showSkilling(v.skilling);
 			showSession(v.session);
+			periods(overallPeriods, overallPeriodPool, v.overall);
+			visible(overallPeriods, !v.overall.isEmpty());
 			showTotals(v.totals);
 		}
 		if (changes != before)
 		{
+			// Rows added by this update are right-clickable too.
+			popupOn(combatCard);
+			popupOn(skillingCard);
+			popupOn(sessionCard);
+			popupOn(totalCard);
 			revalidate();
 			repaint();
 		}
@@ -389,9 +481,11 @@ final class LiveSection extends VitalsSidePanel.Column
 		visible(notInCombat, !fighting);
 		bar(training, c.training);
 		text(trainingRate, c.trainingRate);
-		lines(combatPeriods, combatPeriodPool, c.periods);
+		lines(combatTimers, combatTimerPool, c.timers);
+		visible(combatTimers, !c.timers.isEmpty());
+		periods(combatPeriods, combatPeriodPool, c.periods);
 		visible(combatPeriods, !c.periods.isEmpty());
-		lines(combatGoals, combatGoalPool, c.goals);
+		goals(combatGoals, combatGoalPool, c.goals);
 		visible(combatGoals, !c.goals.isEmpty());
 	}
 
@@ -431,7 +525,10 @@ final class LiveSection extends VitalsSidePanel.Column
 			changes++;
 		}
 		visible(skillIcon, s.header != null);
-		text(skillHeader, s.header == null ? NOT_SKILLING : s.header);
+		text(skillHeader, s.header == null ? NOT_SKILLING
+			: s.paused && s.title != null ? s.title + PAUSED : s.header);
+		lines(skillTimers, skillTimerPool, s.timers);
+		visible(skillTimers, !s.timers.isEmpty());
 		bar(skillXp, s.xp);
 		for (SessionRow.Kind kind : STATS)
 		{
@@ -442,9 +539,9 @@ final class LiveSection extends VitalsSidePanel.Column
 		visible(statGrid, !s.stats.isEmpty());
 		chips(s.chips);
 		lines(skillLines, skillPool, s.lines);
-		lines(skillPeriods, skillPeriodPool, s.header == null ? java.util.Collections.emptyList() : s.periods);
+		periods(skillPeriods, skillPeriodPool, s.header == null ? java.util.Collections.emptyList() : s.periods);
 		visible(skillPeriods, s.header != null && !s.periods.isEmpty());
-		lines(skillGoals, goalPool, s.header == null ? java.util.Collections.emptyList() : s.goals);
+		goals(skillGoals, goalPool, s.header == null ? java.util.Collections.emptyList() : s.goals);
 		visible(skillGoals, s.header != null && !s.goals.isEmpty());
 	}
 
@@ -469,11 +566,16 @@ final class LiveSection extends VitalsSidePanel.Column
 		text(showAll, gains.size() <= TOP ? null : allGains ? SHOW_TOP : "Show all " + gains.size());
 	}
 
-	/** One session row: the gain's line and its bar against the top skill's XP, or hidden for null. */
+	/** One Overall row: the gain's line inside its bar against the top skill's XP, details in the tooltip; hidden for null. */
 	private void gain(GainRow row, LiveVitals.Gain g, int top)
 	{
-		text(row.text, g == null ? null : g.text);
-		bar(row.bar, g == null ? null : new LiveVitals.Bar((double) g.xp / top, "", g.colour));
+		bar(row.bar, g == null ? null : new LiveVitals.Bar((double) g.xp / top, g.text, g.colour));
+		final String tip = g == null ? null : g.tip;
+		if (g != null && !g.tip.equals(row.bar.getToolTipText()))
+		{
+			row.bar.setToolTipText(tip);
+			changes++;
+		}
 		visible(row, g != null);
 	}
 
@@ -491,6 +593,218 @@ final class LiveSection extends VitalsSidePanel.Column
 		for (int i = 0; i < chipPool.size(); i++)
 		{
 			chip(chipPool.get(i), i < texts.size() ? texts.get(i) : null);
+		}
+	}
+
+	/** The first rows of the pool show the goals (one bar each, its words inside, the detail in a tooltip); the rest hide. */
+	private void goals(VitalsSidePanel.Column parent, List<GoalRow> pool, List<LiveVitals.GoalLine> goals)
+	{
+		while (pool.size() < goals.size())
+		{
+			final GoalRow row = new GoalRow();
+			row.setVisible(false);
+			pool.add(row);
+			parent.add(row);
+			changes++;
+		}
+		for (int i = 0; i < pool.size(); i++)
+		{
+			final GoalRow row = pool.get(i);
+			final LiveVitals.GoalLine g = i < goals.size() ? goals.get(i) : null;
+			if (g != null && row.set(g))
+			{
+				changes++;
+			}
+			visible(row, g != null);
+		}
+	}
+
+	/** The first rows of the pool show the periods (label left, value right); the rest hide. */
+	private void periods(VitalsSidePanel.Column parent, List<PeriodRow> pool, List<LiveVitals.Period> periods)
+	{
+		while (pool.size() < periods.size())
+		{
+			final PeriodRow row = new PeriodRow();
+			row.setVisible(false);
+			pool.add(row);
+			parent.add(row);
+			changes++;
+		}
+		for (int i = 0; i < pool.size(); i++)
+		{
+			final PeriodRow row = pool.get(i);
+			final LiveVitals.Period p = i < periods.size() ? periods.get(i) : null;
+			if (p != null && row.set(p))
+			{
+				changes++;
+			}
+			visible(row, p != null);
+		}
+	}
+
+	/** One goal: a single bar like the level bar, its words inside, and every detail in the tooltip. */
+	private static final class GoalRow extends VitalsSidePanel.Column
+	{
+		private final MeterBar bar = new MeterBar();
+		private LiveVitals.GoalLine shown;
+
+		GoalRow()
+		{
+			setBorder(new EmptyBorder(PanelStyle.S, 0, 0, 0));
+			add(bar);
+		}
+
+		/** False when already showing this goal. */
+		boolean set(LiveVitals.GoalLine g)
+		{
+			if (shown != null && shown.tooltip.equals(g.tooltip) && Objects.equals(shown.bar, g.bar))
+			{
+				return false;
+			}
+			shown = g;
+			bar.set(g.bar);
+			bar.setToolTipText(g.tooltip);
+			return true;
+		}
+
+		MeterBar bar()
+		{
+			return bar;
+		}
+	}
+
+	/**
+	 * "This session   +12.3k xp   23m   45.2k/h": a muted label and three right-aligned columns sized to the widest
+	 * text in the card, so every row's columns line up. A cell too long for the panel is cut with an ellipsis and the
+	 * row's tooltip has the whole line.
+	 */
+	private static final class PeriodRow extends JPanel
+	{
+		/** Label, xp, time, xp/h. */
+		private static final int COLUMNS = 4;
+		/** Space between columns, so one cell's text never runs into the next. */
+		private static final int COLUMN_GAP = 4;
+		private static final String XP_UNIT = " xp";
+		private final JLabel[] cells = new JLabel[COLUMNS];
+		private LiveVitals.Period shown;
+
+		PeriodRow()
+		{
+			super(null);
+			setOpaque(false);
+			setAlignmentX(LEFT_ALIGNMENT);
+			setBorder(new EmptyBorder(1, 0, 1, 0));
+			for (int i = 0; i < cells.length; i++)
+			{
+				cells[i] = new JLabel();
+				cells[i].setFont(PanelStyle.body());
+				cells[i].setForeground(i == 0 ? PanelStyle.MUTED : PanelStyle.TEXT);
+				cells[i].setHorizontalAlignment(i == 0 ? javax.swing.SwingConstants.LEFT : javax.swing.SwingConstants.RIGHT);
+				add(cells[i]);
+			}
+		}
+
+		@Override
+		public Dimension getPreferredSize()
+		{
+			final java.awt.Insets in = getInsets();
+			return new Dimension(10, cells[0].getPreferredSize().height + in.top + in.bottom);
+		}
+
+		@Override
+		public Dimension getMinimumSize()
+		{
+			return getPreferredSize();
+		}
+
+		@Override
+		public Dimension getMaximumSize()
+		{
+			return PanelStyle.fullWidth(this);
+		}
+
+		/**
+		 * Columns are as wide as the widest text in any visible row of the same card, so every row's columns line up
+		 * and nothing is cut while it fits. When the rows are wider than the panel, the label gives way first.
+		 */
+		@Override
+		public void doLayout()
+		{
+			final java.awt.Insets in = getInsets();
+			final int width = getWidth() - in.left - in.right;
+			final int height = getHeight() - in.top - in.bottom;
+			final int[] widths = columnWidths(width);
+			int x = in.left;
+			for (int i = 0; i < cells.length; i++)
+			{
+				final int gap = i == 0 ? 0 : COLUMN_GAP;
+				final int w = i == cells.length - 1 ? in.left + width - x - gap : widths[i];
+				cells[i].setBounds(x + gap, in.top, Math.max(0, w), height);
+				x += widths[i] + gap;
+			}
+		}
+
+		/** Label, xp, time, xp/h widths for a row {@code width} wide; the last column is flush right. */
+		private int[] columnWidths(int width)
+		{
+			final int[] want = new int[cells.length];
+			final java.awt.Container parent = getParent();
+			final java.awt.Component[] rows = parent == null ? new java.awt.Component[] {this} : parent.getComponents();
+			for (java.awt.Component c : rows)
+			{
+				if (c instanceof PeriodRow && c.isVisible())
+				{
+					for (int i = 0; i < want.length; i++)
+					{
+						want[i] = Math.max(want[i], ((PeriodRow) c).cells[i].getPreferredSize().width);
+					}
+				}
+			}
+			final int gaps = COLUMN_GAP * (want.length - 1);
+			int over = 0;
+			for (int w : want)
+			{
+				over += w;
+			}
+			over += gaps - width;
+			final int[] out = new int[want.length];
+			System.arraycopy(want, 0, out, 0, want.length);
+			if (over > 0)
+			{
+				// Too wide: the label gives way first, down to a third of the row, then the xp column.
+				final int cutLabel = Math.min(over, Math.max(0, want[0] - width / 3));
+				out[0] -= cutLabel;
+				over -= cutLabel;
+				out[1] -= Math.min(over, Math.max(0, want[1] / 2));
+			}
+			else
+			{
+				// Spare room goes between the label and the numbers, which stay together at the right edge.
+				out[0] += -over;
+			}
+			return out;
+		}
+
+		boolean set(LiveVitals.Period p)
+		{
+			if (shown != null && shown.label.equals(p.label) && shown.xp.equals(p.xp) && shown.time.equals(p.time)
+				&& shown.rate.equals(p.rate) && shown.tip.equals(p.tip))
+			{
+				return false;
+			}
+			shown = p;
+			cells[0].setText(p.label);
+			// The unit goes: the rate beside it is xp/h, and the tooltip says "xp" in full. It is the 12px that keep
+			// "+412.3k  2h 10m  190.2k/h" from being cut at the default sidebar width.
+			cells[1].setText(p.xp.endsWith(XP_UNIT) ? p.xp.substring(0, p.xp.length() - XP_UNIT.length()) : p.xp);
+			cells[2].setText(p.time);
+			cells[3].setText(p.rate);
+			setToolTipText(p.tip);
+			for (JLabel cell : cells)
+			{
+				cell.setToolTipText(p.tip);
+			}
+			return true;
 		}
 	}
 
@@ -558,16 +872,14 @@ final class LiveSection extends VitalsSidePanel.Column
 		}
 	}
 
-	/** One of This session's skills: its line, and a thin bar of its XP against the top skill's. */
+	/** One of the Overall card's skills: a single bar of its XP against the top skill's, its line inside it. */
 	private static final class GainRow extends VitalsSidePanel.Column
 	{
-		final WrapLabel text = new WrapLabel("", PanelStyle.TEXT);
-		final MeterBar bar = new MeterBar(MeterBar.THIN);
+		final MeterBar bar = new MeterBar();
 
 		GainRow()
 		{
 			setBorder(new EmptyBorder(0, 0, PanelStyle.S, 0));
-			add(text);
 			add(bar);
 		}
 	}
@@ -627,7 +939,7 @@ final class LiveSection extends VitalsSidePanel.Column
 		{
 			if (r.isVisible())
 			{
-				out.add(r.text.plain());
+				out.add(r.bar.bar().text);
 			}
 		}
 		return Collections.unmodifiableList(out);

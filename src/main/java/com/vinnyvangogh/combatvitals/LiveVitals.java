@@ -60,13 +60,93 @@ final class LiveVitals
 	 * "This session: +12.3k xp in 23m" and "Total: +40.1k xp in 1h 05m" for the skills of one card; the session
 	 * resets on a new activity, the total only at logout. Time is active time, paused stretches left out.
 	 */
-	static List<String> periods(SkillingSession session, SkillingSession total, Skill[] skills, long nowMillis)
+	static List<Period> periods(SkillingSession session, SkillingSession total, Skill[] skills, long nowMillis)
 	{
 		return Arrays.asList(period("This session", session, skills, nowMillis),
 			period("Total", total, skills, nowMillis));
 	}
 
-	private static String period(String label, SkillingSession s, Skill[] skills, long nowMillis)
+	/** Every skill's three rows, for the Overall card: the all-time row sits with the other totals. */
+	List<Period> overall = Collections.emptyList();
+
+	LiveVitals withOverall(List<Period> overall)
+	{
+		this.overall = overall;
+		return this;
+	}
+
+	/**
+	 * The row after "This session" and "Total": all time, kept across logins: xp, time trained and the average
+	 * xp/h over it. The tooltip adds the actions.
+	 */
+	static Period allTime(AllTime.Stats s)
+	{
+		if (s.isEmpty())
+		{
+			return Period.nothingYet("All time");
+		}
+		final String gained = "+" + SessionRow.shortNumber(s.xp) + " xp";
+		final String time = SessionRow.duration(s.millis);
+		final long perHour = s.millis >= Period.MIN_RATE_MILLIS ? s.xp * 3_600_000L / s.millis : -1;
+		final String tip = "All time: " + GoalMath.number(s.xp) + " xp, " + GoalMath.number(s.actions)
+			+ " actions in " + time + (perHour < 0 ? "" : ", " + GoalMath.number(perHour) + " xp/h")
+			+ ". Kept across sessions.";
+		return new Period("All time", gained, time, perHour < 0 ? "-" : SessionRow.shortNumber(perHour) + "/h", tip);
+	}
+
+	/**
+	 * One compact row in three aligned columns after its label: xp, time, xp/h. Empty cells are "" (nothing yet) or
+	 * "-" (no rate yet); {@link #tip} says it all in words, for the row's tooltip.
+	 */
+	static final class Period
+	{
+		/** The first minute has no rate to show; a rate over a shorter stretch would be noise. */
+		static final long MIN_RATE_MILLIS = 60_000;
+
+		final String label;
+		/** "+12.3k xp", or "nothing yet". */
+		final String xp;
+		/** "23m", or "". */
+		final String time;
+		/** "45.2k/h", "-" before a rate exists, "paused" while paused, or "". */
+		final String rate;
+		final String tip;
+
+		Period(String label, String xp, String time, String rate, String tip)
+		{
+			this.label = label;
+			this.xp = xp;
+			this.time = time;
+			this.rate = rate;
+			this.tip = tip;
+		}
+
+		/** A row with nothing in it yet. */
+		static Period nothingYet(String label)
+		{
+			return new Period(label, "nothing yet", "", "", label + ": nothing yet");
+		}
+	}
+
+	/** One unmet skill goal: a single bar with its words inside ({@code bar.text}), and every detail in a tooltip. */
+	static final class GoalLine
+	{
+		/** The goal in full, "Magic level 55". */
+		final String title;
+		/** Progress toward the goal; its text is "Magic 55 · 76% · ~54m". */
+		final Bar bar;
+		/** xp to go, actions left and the session and last-hour rates ({@link GoalMath#summary}). */
+		final String tooltip;
+
+		GoalLine(String title, Bar bar, String tooltip)
+		{
+			this.title = title;
+			this.bar = bar;
+			this.tooltip = tooltip;
+		}
+	}
+
+	private static Period period(String label, SkillingSession s, Skill[] skills, long nowMillis)
 	{
 		long xp = 0;
 		long millis = -1;
@@ -83,10 +163,15 @@ final class LiveVitals
 		}
 		if (millis < 0)
 		{
-			return label + ": nothing yet";
+			return Period.nothingYet(label);
 		}
-		return label + ": +" + SessionRow.shortNumber((int) Math.min(Integer.MAX_VALUE, xp)) + " xp in "
-			+ SessionRow.duration(millis) + (paused ? " (paused)" : "");
+		final String gained = "+" + SessionRow.shortNumber((int) Math.min(Integer.MAX_VALUE, xp)) + " xp";
+		final String time = SessionRow.duration(millis);
+		final long perHour = millis >= Period.MIN_RATE_MILLIS ? xp * 3_600_000L / millis : -1;
+		final String rate = perHour < 0 ? "-" : SessionRow.shortNumber(perHour) + "/h";
+		final String tip = label + ": " + gained + " in " + time + (paused ? " (paused)" : "")
+			+ (perHour < 0 ? "" : ", " + GoalMath.number(perHour) + " xp/h");
+		return new Period(label, gained, time, paused ? "paused" : rate, tip);
 	}
 
 	/** A bar with its words: fraction 0 to 1, or -1 while unknown (drawn empty). */
@@ -149,14 +234,23 @@ final class LiveVitals
 		}
 
 		/** Unmet goals in the skills this card tracks, one line each, as the Skilling card has them. */
-		List<String> goals = Collections.emptyList();
-		/** "This session: ..." and "Total: ..." lines, see {@link LiveVitals#periods}. */
-		List<String> periods = Collections.emptyList();
+		List<GoalLine> goals = Collections.emptyList();
+		/** The "This session" and "Total" rows, see {@link LiveVitals#periods}. */
+		List<Period> periods = Collections.emptyList();
 
-		Combat with(List<String> goals, List<String> periods)
+		/** "Active · running 14m", "Pauses in 0:42": the session's timers, see {@link CardTimers}. */
+		List<String> timers = Collections.emptyList();
+
+		Combat with(List<GoalLine> goals, List<Period> periods)
 		{
 			this.goals = goals;
 			this.periods = periods;
+			return this;
+		}
+
+		Combat withTimers(CardTimers timers)
+		{
+			this.timers = timers.lines;
 			return this;
 		}
 	}
@@ -178,7 +272,7 @@ final class LiveVitals
 		final List<String> lines;
 
 		/** The unmet goals in this skill, one line each ("Goal Mining level 90: 1,200 xp to go ..."); may be empty. */
-		final List<String> goals;
+		final List<GoalLine> goals;
 
 		Skilling(String header, Color colour, BufferedImage icon, Bar xp, Map<SessionRow.Kind, String> stats,
 			List<String> chips, List<String> lines)
@@ -187,7 +281,7 @@ final class LiveVitals
 		}
 
 		Skilling(String header, Color colour, BufferedImage icon, Bar xp, Map<SessionRow.Kind, String> stats,
-			List<String> chips, List<String> lines, List<String> goals)
+			List<String> chips, List<String> lines, List<GoalLine> goals)
 		{
 			this.goals = goals;
 			this.header = header;
@@ -200,27 +294,49 @@ final class LiveVitals
 		}
 
 		/** "This session: ..." and "Total: ..." lines for the active skill, see {@link LiveVitals#periods}. */
-		List<String> periods = Collections.emptyList();
+		List<Period> periods = Collections.emptyList();
 
-		Skilling withPeriods(List<String> periods)
+		Skilling withPeriods(List<Period> periods)
 		{
 			this.periods = periods;
 			return this;
 		}
+
+		/** "Woodcutting 62", the skill's name and level: what the card's title says once it is Paused. */
+		String title;
+		/** The work stopped or the clock paused: the card stays, marked Paused, until the user clears it. */
+		boolean paused;
+		/** "Paused · ran 14m", "Paused for 2:10", "Session resets in 12:50": see {@link CardTimers}. */
+		List<String> timers = Collections.emptyList();
+
+		Skilling withTimers(CardTimers timers)
+		{
+			this.paused = timers.paused;
+			this.timers = timers.lines;
+			return this;
+		}
 	}
 
-	/** One skill gained in this session: its line, its XP for ranking, and its colour for the bar. */
+	/** One skill gained in this session: its line (the words inside its bar), its XP for ranking, and its colour. */
 	static final class Gain
 	{
 		final String text;
 		final int xp;
 		final Color colour;
+		/** The row's tooltip: the line, and the rate when there is one. */
+		final String tip;
 
 		Gain(String text, int xp, Color colour)
+		{
+			this(text, xp, colour, text);
+		}
+
+		Gain(String text, int xp, Color colour, String tip)
 		{
 			this.text = text;
 			this.xp = xp;
 			this.colour = colour;
+			this.tip = tip;
 		}
 	}
 
@@ -293,7 +409,7 @@ final class LiveVitals
 	}
 
 	/** The same, with the active skill's goal lines under the readout. */
-	static Skilling skilling(SkillingReadout r, BufferedImage icon, List<String> goals)
+	static Skilling skilling(SkillingReadout r, BufferedImage icon, List<GoalLine> goals)
 	{
 		if (r == null)
 		{
@@ -311,8 +427,10 @@ final class LiveVitals
 		final boolean timers = r.getTrainingMethod() != null && r.getInventoryLabel() != null;
 		final List<String> chips = timers ? Arrays.asList(r.getInventoryLabel().split(" \\| "))
 			: Collections.emptyList();
-		return new Skilling(SkillingBadgeRenderer.headerText(r), r.getColour(), icon, xp, stats, chips,
+		final Skilling out = new Skilling(SkillingBadgeRenderer.headerText(r), r.getColour(), icon, xp, stats, chips,
 			lines(r, !timers), goals);
+		out.title = r.getSkill().getName() + " " + r.getReal();
+		return out;
 	}
 
 	/** The badge's lines under its XP and session rows: gear warning, inventory, containers. */
@@ -353,8 +471,12 @@ final class LiveVitals
 			{
 				line.append(", +").append(levels).append(levels == 1 ? " lvl" : " lvls");
 			}
-			line.append(" in ").append(SessionRow.duration(s.elapsed(skill, nowMillis)));
-			out.add(new Gain(line.toString(), gained, colours.apply(skill)));
+			final long elapsed = s.elapsed(skill, nowMillis);
+			line.append(" in ").append(SessionRow.duration(elapsed));
+			final String text = line.toString();
+			final String tip = elapsed >= Period.MIN_RATE_MILLIS
+				? text + ", " + GoalMath.number(gained * 3_600_000L / elapsed) + " xp/h" : text;
+			out.add(new Gain(text, gained, colours.apply(skill), tip));
 		}
 		out.sort(Comparator.comparingInt((Gain g) -> g.xp).reversed());
 		return out;

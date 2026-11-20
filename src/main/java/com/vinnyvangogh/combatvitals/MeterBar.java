@@ -8,11 +8,14 @@ import java.awt.geom.RoundRectangle2D;
 import java.util.Objects;
 import javax.swing.JLabel;
 import javax.swing.SwingConstants;
+import javax.swing.ToolTipManager;
 
 /**
  * One of the Live section's bars: a rounded track filled to its fraction in
  * its colour, the words centred inside it. {@link #THICK} for Hitpoints,
- * Prayer, the target and XP; {@link #THIN} under a session line, with no words.
+ * Prayer, the target, XP, goals and the Overall card's skills; {@link #THIN}
+ * with no words. Words too long for the bar are cut with an ellipsis and
+ * show in full as the tooltip.
  */
 final class MeterBar extends JLabel
 {
@@ -34,6 +37,21 @@ final class MeterBar extends JLabel
 		setForeground(PanelStyle.TEXT);
 		setHorizontalAlignment(SwingConstants.CENTER);
 		setOpaque(false);
+		// So a bar whose words do not fit can say them in a tooltip without being given one.
+		ToolTipManager.sharedInstance().registerComponent(this);
+	}
+
+	/** The tooltip set on the bar, else its whole text when the bar is too narrow to show it all. */
+	@Override
+	public String getToolTipText()
+	{
+		final String set = super.getToolTipText();
+		final String text = getText();
+		if (set != null || text == null || text.isEmpty() || getWidth() <= 0)
+		{
+			return set;
+		}
+		return getFontMetrics(getFont()).stringWidth(text) > getWidth() ? text : null;
 	}
 
 	/** Shows {@code next}; false when it is the bar already showing, so nothing is redrawn. */

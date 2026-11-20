@@ -123,6 +123,28 @@ final class GoalMath
 		return sb.toString();
 	}
 
+	/** "Magic 55", "Mining 5m xp": a skill goal short enough to sit inside a bar; other goals keep {@link #title}. */
+	static String shortTitle(Goal g)
+	{
+		switch (g.type)
+		{
+			case SKILL_LEVEL:
+				return g.label + " " + g.target;
+			case SKILL_XP:
+				return g.label + " " + SessionRow.shortNumber(g.target) + " xp";
+			default:
+				return title(g);
+		}
+	}
+
+	/** "Magic 55 · 76% · ~54m": the words inside a goal's bar; the time uses the session rate, else the last hour's. */
+	static String barText(Goal g, GoalBook.Progress p)
+	{
+		final String head = shortTitle(g) + " · " + p.percent + "%";
+		final double rate = p.sessionRate > 0 ? p.sessionRate : p.hourRate;
+		return rate > 0 ? head + " · ~" + etaText(etaSeconds(p.left, rate)) : head;
+	}
+
 	private static String rate(String name, long left, double perHour)
 	{
 		final String at = perHour > 0 ? " at " + number(Math.round(perHour)) + " xp/hr" : "";

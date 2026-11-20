@@ -81,6 +81,9 @@ public class LiveSectionTest
 	{
 		SwingDriver.onEdt(() ->
 		{
+			// The toggle lives on the Live tab; an earlier look at the settings tabs may have left it.
+			panel.showMain(VitalsSidePanel.Main.LIVE);
+			ui.layout(WIDTH);
 			ui.find(javax.swing.JToggleButton.class, b -> ("live-view-" + v.name()).equals(b.getName()),
 				"view " + v).doClick();
 			ui.layout(WIDTH);
@@ -188,6 +191,170 @@ public class LiveSectionTest
 			{
 			}));
 		assertEquals(LiveSection.View.OVERALL, SwingDriver.onEdt(() -> ui2(again).view()));
+	}
+
+	/** The Skilling card after the work stopped: the skill, Paused, its timers, and Total and All time rows. */
+	static LiveVitals.Skilling pausedChopping()
+	{
+		final LiveVitals.Skilling s = chopping();
+		s.title = "Woodcutting 72";
+		s.withTimers(new CardTimers(true,
+			Arrays.asList("Paused · ran 1h 05m", "Paused for 2:10", "Session resets in 12:50")));
+		return s.withPeriods(Arrays.asList(
+			new LiveVitals.Period("This session", "+86.2k xp", "1h 05m", "paused", "This session"),
+			new LiveVitals.Period("Total", "+86.2k xp", "1h 05m", "paused", "Total"),
+			LiveVitals.allTime(new AllTime.Stats(40 * 3_600_000L, 3_100_000, 5_200))));
+	}
+
+	/** Session, Total and All time rows as a real session reads: the widest values a card normally shows. */
+	static List<LiveVitals.Period> realisticPeriods()
+	{
+		return Arrays.asList(
+			new LiveVitals.Period("This session", "+412.3k xp", "2h 10m", "190.2k/h",
+				"This session: +412.3k xp in 2h 10m, 190,200 xp/h"),
+			new LiveVitals.Period("Total", "+1.24m xp", "12h 05m", "102.7k/h",
+				"Total: +1.24m xp in 12h 05m, 102,700 xp/h"),
+			LiveVitals.allTime(new AllTime.Stats(40 * 3_600_000L, 3_100_000, 5_200)));
+	}
+
+	/** The Skilling card while the work runs: "Active · running" and "Pauses in", with goals and all three rows. */
+	static LiveVitals.Skilling activeChopping(List<LiveVitals.GoalLine> goals, List<LiveVitals.Period> periods)
+	{
+		final LiveVitals.Skilling chop = chopping();
+		final LiveVitals.Skilling active = new LiveVitals.Skilling(chop.header, chop.colour, chop.icon, chop.xp,
+			chop.stats, chop.chips, chop.lines, goals).withPeriods(periods);
+		active.title = "Woodcutting 72";
+		return active.withTimers(new CardTimers(false, Arrays.asList("Active · running 1h 05m", "Pauses in 0:42")));
+	}
+
+	@Test
+	public void periodRowsShowTheirNumbersWholeWithAGapBetweenColumns()
+	{
+		live(new LiveVitals(true, fighting().with(Collections.emptyList(), realisticPeriods()),
+			activeChopping(Collections.emptyList(), realisticPeriods()), SESSION));
+		for (LiveSection.View v : new LiveSection.View[] {LiveSection.View.COMBAT, LiveSection.View.SKILLING})
+		{
+			view(v);
+			SwingDriver.onEdt(() ->
+			{
+				int rows = 0;
+				int[] right = null;
+				for (Component row : ui.all(Component.class))
+				{
+					if (!row.getClass().getSimpleName().equals("PeriodRow") || !visibleInPanel(row))
+					{
+						continue;
+					}
+					rows++;
+					final Component[] cells = ((Container) row).getComponents();
+					for (int i = 0; i < cells.length; i++)
+					{
+						final JLabel cell = (JLabel) cells[i];
+						final int wanted = cell.getFontMetrics(cell.getFont()).stringWidth(cell.getText());
+						assertTrue(v + ": '" + cell.getText() + "' is cut: needs " + wanted + ", has " + cell.getWidth()
+							+ " (row " + row.getWidth() + ", cells " + Arrays.toString(Arrays.stream(cells)
+								.mapToInt(Component::getWidth).toArray()) + ")",
+							wanted <= cell.getWidth());
+						if (i > 0)
+						{
+							assertTrue(v + ": '" + cell.getText() + "' runs into the cell before it",
+								cell.getX() - (cells[i - 1].getX() + cells[i - 1].getWidth()) >= 4);
+						}
+					}
+					// Every row's columns line up: the same right edge for each numeric cell.
+					final int[] edges = new int[cells.length];
+					for (int i = 0; i < cells.length; i++)
+					{
+						edges[i] = cells[i].getX() + cells[i].getWidth();
+					}
+					if (right != null)
+					{
+						assertEquals(v + ": rows' columns do not line up", Arrays.toString(right), Arrays.toString(edges));
+					}
+					right = edges;
+				}
+				assertTrue(v + ": expected the three period rows on screen, saw " + rows, rows == 3);
+			});
+		}
+	}
+
+	@Test
+	public void aStoppedSkillStaysOnTheCardMarkedPausedWithItsTimersAndTotals()
+	{
+		live(new LiveVitals(true, idleCombat(), pausedChopping(), SESSION));
+		view(LiveSection.View.SKILLING);
+		ui.assertShows("Woodcutting 72" + LiveSection.PAUSED);
+		ui.assertShows("Paused · ran 1h 05m");
+		ui.assertShows("Paused for 2:10");
+		ui.assertShows("Session resets in 12:50");
+		ui.assertShows("All time");
+		ui.assertShows("+3.1m");
+		ui.assertShows("1d 16h");
+		ui.assertHides(LiveSection.NOT_SKILLING);
+		shot("panel-live-skilling-paused.png");
+	}
+
+	@Test
+	public void anActiveCardShowsItsTimersAndNoPausedMark()
+	{
+		final LiveVitals.Skilling active = chopping();
+		active.title = "Woodcutting 72";
+		active.withTimers(new CardTimers(false, Arrays.asList("Active · running 1h 05m", "Pauses in 0:42")));
+		live(new LiveVitals(true, idleCombat(), active, SESSION));
+		view(LiveSection.View.SKILLING);
+		ui.assertShows("Woodcutting 72 (+3) 41s");
+		ui.assertHides(LiveSection.PAUSED.trim());
+		ui.assertShows("Active · running 1h 05m");
+		ui.assertShows("Pauses in 0:42");
+	}
+
+	@Test
+	public void theCombatAndOverallCardsHaveAllTimeToo()
+	{
+		final LiveVitals.Combat combat = idleCombat().with(Collections.emptyList(), Collections.singletonList(
+			LiveVitals.allTime(new AllTime.Stats(12 * 3_600_000L, 900_000, 3_000))));
+		live(new LiveVitals(true, combat, LiveVitals.skilling(null), SESSION, SESSION)
+			.withOverall(Collections.singletonList(LiveVitals.allTime(new AllTime.Stats(52 * 3_600_000L, 4_000_000, 8_000)))));
+		ui.assertShows("All time");
+		ui.assertShows("12h 00m");
+		view(LiveSection.View.OVERALL);
+		ui.assertShows("2d 4h");
+	}
+
+	@Test
+	public void rightClickResetSessionAndClearTickTheSettingsThePluginActsOn()
+	{
+		live(new LiveVitals(true, idleCombat(), pausedChopping(), SESSION));
+		final javax.swing.JPopupMenu menu = SwingDriver.onEdt(() -> section().cardMenu());
+		SwingDriver.onEdt(() -> item(menu, "live-menu-reset").doClick());
+		assertEquals(Boolean.TRUE, store.values.get(LiveSection.RESET_KEY));
+		SwingDriver.onEdt(() -> item(menu, "live-menu-clear").doClick());
+		assertEquals(Boolean.TRUE, store.values.get(LiveSection.CLEAR_KEY));
+	}
+
+	@Test
+	public void clearedCardGoesBackToNotSkilling()
+	{
+		live(new LiveVitals(true, idleCombat(), pausedChopping(), SESSION));
+		view(LiveSection.View.SKILLING);
+		ui.assertShows("Paused for 2:10");
+		// What the plugin sends once the user's Clear has emptied the card.
+		live(new LiveVitals(true, idleCombat(), LiveVitals.skilling(null), SESSION));
+		ui.assertShows(LiveSection.NOT_SKILLING);
+		ui.assertHides("Paused for 2:10");
+		ui.assertHides("Woodcutting 72" + LiveSection.PAUSED);
+	}
+
+	private static javax.swing.JMenuItem item(javax.swing.JPopupMenu menu, String name)
+	{
+		for (Component c : menu.getComponents())
+		{
+			if (name.equals(c.getName()))
+			{
+				return (javax.swing.JMenuItem) c;
+			}
+		}
+		throw new AssertionError("no menu item " + name);
 	}
 
 	private static LiveSection ui2(VitalsSidePanel p)
@@ -378,36 +545,126 @@ public class LiveSectionTest
 		assertTrue(muteY < liveY);
 	}
 
+	/** A goal whose words are far longer than the bar, to see it cut short with the whole story in a tooltip. */
+	private static LiveVitals.GoalLine longGoal()
+	{
+		return new LiveVitals.GoalLine("Runecrafting level 99",
+			new LiveVitals.Bar(0.4, "Runecrafting (Abyssal) 99 · 40% · ~12h 05m", Color.ORANGE),
+			"Runecrafting level 99: 3,000,000 xp to go (40%), 80,000 actions left");
+	}
+
+	private static List<LiveVitals.Period> longPeriods()
+	{
+		return Arrays.asList(
+			new LiveVitals.Period("This session", "+412.3k xp", "2h 10m", "190.2k/h",
+				"This session: +412.3k xp in 2h 10m, 190,200 xp/h"),
+			new LiveVitals.Period("Total", "+1.24m xp", "12h 05m", "123.4k/h",
+				"Total: +1.24m xp in 12h 05m, 123,400 xp/h"));
+	}
+
+	/** Whether the component and every parent up to the panel are visible, as a headless window has no "showing". */
+	private boolean visibleInPanel(Component c)
+	{
+		for (Component p = c; p != null && p != panel; p = p.getParent())
+		{
+			if (!p.isVisible())
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
 	@Test
 	public void noTextRunsPastThePanelsRightEdge()
 	{
-		live(new LiveVitals(true, fighting(), chopping(), LONG_SESSION));
-		view(LiveSection.View.OVERALL);
-		SwingDriver.onEdt(() ->
+		final LiveVitals.Skilling chop = chopping();
+		final LiveVitals.Skilling chopWithRows = new LiveVitals.Skilling(chop.header, chop.colour, chop.icon, chop.xp,
+			chop.stats, chop.chips, chop.lines, Collections.singletonList(longGoal())).withPeriods(longPeriods());
+		live(new LiveVitals(true, fighting().with(Collections.singletonList(longGoal()), longPeriods()), chopWithRows,
+			LONG_SESSION));
+		for (LiveSection.View v : LiveSection.View.values())
 		{
-			ui.click("Show all 5");
-			for (PanelLayout.Tab tab : PanelLayout.Tab.values())
+			// First the Live tab itself, while its goal bars, period cells and Overall bars are on screen:
+			// a hidden card's rows are skipped by visibleInPanel, so this is the only place they are checked.
+			view(v);
+			SwingDriver.onEdt(() ->
 			{
-				panel.show(tab);
-				ui.layout(WIDTH);
-				openEverything();
-				ui.layout(WIDTH);
-				final int edge = WIDTH - panel.getInsets().right;
-				for (JLabel l : ui.all(JLabel.class))
+				if (v == LiveSection.View.OVERALL)
 				{
-					if (!(l instanceof WrapLabel))
-					{
-						continue;
-					}
-					final int left = SwingUtilities.convertPoint(l.getParent(), l.getLocation(), panel).x;
-					final int right = left + l.getPreferredSize().width;
-					assertTrue(tab + ": '" + ((WrapLabel) l).plain() + "' ends at " + right + " past " + edge,
-						right <= edge);
-					assertTrue(tab + ": '" + ((WrapLabel) l).plain() + "' is cut short",
-						l.getHeight() >= l.getPreferredSize().height);
+					ui.click("Show all 5");
+					ui.layout(WIDTH);
+				}
+				final int[] seen = assertRowsInsideTheEdge(v, "Live");
+				assertTrue(v + ": no bar was on screen to check", seen[0] > 0);
+				if (v != LiveSection.View.OVERALL)
+				{
+					assertTrue(v + ": no period cell was on screen to check", seen[1] > 0);
+					assertTrue(v + ": the long goal bar was not on screen to check", ui.all(JLabel.class).stream()
+						.anyMatch(l -> l instanceof MeterBar && visibleInPanel(l) && l.getText().startsWith("Runecrafting")));
+				}
+			});
+			// Then each settings tab, which swaps the Live tab out.
+			SwingDriver.onEdt(() ->
+			{
+				for (PanelLayout.Tab tab : PanelLayout.Tab.values())
+				{
+					panel.show(tab);
+					ui.layout(WIDTH);
+					openEverything();
+					ui.layout(WIDTH);
+					assertRowsInsideTheEdge(v, tab.name());
+				}
+			});
+		}
+	}
+
+	/**
+	 * Checks every visible label: wrapping text stays inside the panel and is not cut, and the goal and Overall bars
+	 * and session/total cells, which clip at their own edge, stay inside the panel with a tooltip when cut short.
+	 *
+	 * @return {bars checked, period cells checked, bars or cells cut short that carry a tooltip}
+	 */
+	private int[] assertRowsInsideTheEdge(LiveSection.View v, String where)
+	{
+		final int[] seen = new int[3];
+		final int edge = WIDTH - panel.getInsets().right;
+		for (JLabel l : ui.all(JLabel.class))
+		{
+			if (l instanceof WrapLabel)
+			{
+				final int left = SwingUtilities.convertPoint(l.getParent(), l.getLocation(), panel).x;
+				final int right = left + l.getPreferredSize().width;
+				assertTrue(v + " " + where + ": '" + ((WrapLabel) l).plain() + "' ends at " + right + " past " + edge,
+					right <= edge);
+				assertTrue(v + " " + where + ": '" + ((WrapLabel) l).plain() + "' is cut short",
+					l.getHeight() >= l.getPreferredSize().height);
+			}
+			else if (visibleInPanel(l) && (l instanceof MeterBar
+				|| l.getParent().getClass().getSimpleName().equals("PeriodRow")))
+			{
+				seen[l instanceof MeterBar ? 0 : 1]++;
+				if (!(l instanceof MeterBar))
+				{
+					// One cell never overlaps the one before it, so the columns cannot run together.
+					final List<Component> row = Arrays.asList(l.getParent().getComponents());
+					final int at = row.indexOf(l);
+					assertTrue(v + " " + where + ": '" + l.getText() + "' overlaps the cell before it",
+						at <= 0 || l.getX() >= row.get(at - 1).getX() + row.get(at - 1).getWidth());
+				}
+				final int left = SwingUtilities.convertPoint(l.getParent(), l.getLocation(), panel).x;
+				assertTrue(v + " " + where + ": '" + l.getText() + "' ends at " + (left + l.getWidth())
+					+ " past " + edge, left + l.getWidth() <= edge);
+				final int wanted = l.getFontMetrics(l.getFont()).stringWidth(l.getText());
+				if (wanted > l.getWidth())
+				{
+					assertTrue(v + " " + where + ": '" + l.getText() + "' is cut with no tooltip",
+						l.getToolTipText() != null && !l.getToolTipText().isEmpty());
+					seen[2]++;
 				}
 			}
-		});
+		}
+		return seen;
 	}
 
 	/** Opens every folded card on screen, More settings first, so every label is laid out. */
