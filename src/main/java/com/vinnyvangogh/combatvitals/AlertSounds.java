@@ -118,6 +118,33 @@ final class AlertSounds
 		return plan.missingFile && hinted.add(type);
 	}
 
+	static final String FOLLOW_KEY = "alertFollowGameVolume";
+	static final String FOLLOW_RESET_KEY = "followGameVolumeReset";
+
+	/**
+	 * Follow game volume once shipped defaulting on, and RuneLite stored that default as if the
+	 * player had ticked it, so the later default change never reached them. Clears it once; after
+	 * the marker is set the player's own choice is never touched again.
+	 */
+	static void resetStaleFollowGameVolume(ConfigStore store)
+	{
+		if (Boolean.TRUE.equals(store.get(FOLLOW_RESET_KEY, Boolean.class)))
+		{
+			return;
+		}
+		if (Boolean.TRUE.equals(store.get(FOLLOW_KEY, Boolean.class)))
+		{
+			store.setRaw(FOLLOW_KEY, "false");
+		}
+		store.setRaw(FOLLOW_RESET_KEY, "true");
+	}
+
+	/** True when the game's sound effects are muted while following them, so every own alert is silent. */
+	static boolean silentByGameVolume(boolean followGame, int gameVolume)
+	{
+		return effectiveVolume(100, followGame, gameVolume) <= 0;
+	}
+
 	/** The game's sound effects volume runs 0 to 127. */
 	static final int GAME_VOLUME_MAX = 127;
 

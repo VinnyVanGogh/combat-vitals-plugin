@@ -599,6 +599,10 @@ public class CombatVitalsPlugin extends Plugin
 	 */
 	private void startSidePanel()
 	{
+		if (!config.followGameVolumeReset())
+		{
+			AlertSounds.resetStaleFollowGameVolume(ConfigStore.of(configManager, Runnable::run));
+		}
 		final Map<String, ConfigItemDescriptor> items = new HashMap<>();
 		for (ConfigItemDescriptor d : configManager.getConfigDescriptor(config).getItems())
 		{

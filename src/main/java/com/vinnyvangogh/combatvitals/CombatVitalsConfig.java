@@ -3096,6 +3096,18 @@ public interface CombatVitalsConfig extends Config
 
 	String LAST_SEEN_VERSION = "lastSeenVersion";
 
+	/** Set once the old default-on Follow game volume was cleared (AlertSounds); never shown. */
+	@ConfigItem(
+		keyName = "followGameVolumeReset",
+		name = "",
+		description = "",
+		hidden = true
+	)
+	default boolean followGameVolumeReset()
+	{
+		return false;
+	}
+
 	/** The sidebar's Live section is open ({@link LiveSection}); written by its header, never listed. */
 	@ConfigItem(
 		keyName = LiveSection.OPEN_KEY,
