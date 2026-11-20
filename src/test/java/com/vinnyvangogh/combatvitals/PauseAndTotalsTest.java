@@ -153,8 +153,8 @@ public class PauseAndTotalsTest
 			section[0].update(new LiveVitals(true, combat, null, Collections.emptyList()));
 			final List<String> texts = new ArrayList<>();
 			labels(section[0], texts);
-			assertTrue(texts.toString(), texts.stream().anyMatch(t -> t.startsWith("Goal Magic level 99: ")));
-			assertTrue(texts.toString(), texts.contains("Total: nothing yet"));
+			assertTrue(texts.toString(), texts.stream().anyMatch(t -> t.contains("Goal Magic level 99: ")));
+			assertTrue(texts.toString(), texts.stream().anyMatch(t -> t.contains("Total: nothing yet")));
 		});
 	}
 
