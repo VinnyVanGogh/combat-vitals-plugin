@@ -11,10 +11,12 @@ import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -432,6 +434,13 @@ public class CombatVitalsPlugin extends Plugin
 
 	/** The inventory as item id to quantity: now, and as it stood at the end of the last tick. */
 	private Map<Integer, Integer> inventoryNow = Collections.emptyMap();
+
+	/** Shooting star mining: stardust this session, and the star in the scene, if any. */
+	private final StarSession starSession = new StarSession();
+	private GameObject starObject;
+
+	/** Motherlode Mine: the sack, from the game's own varbits. */
+	private final MotherlodeSack motherlodeSack = new MotherlodeSack();
 	private Map<Integer, Integer> inventoryLastTick = Collections.emptyMap();
 
 	/**
@@ -1717,6 +1726,7 @@ public class CombatVitalsPlugin extends Plugin
 		}
 		inventoryNow = byId(ids, quantities);
 		agilityLaps.marksHeld(inventoryNow.getOrDefault(ItemID.GRACE, 0));
+		starSession.dustHeld(inventoryNow.getOrDefault(ItemID.STAR_DUST, 0));
 
 		final int caught = inventoryCatches.observe(ids, quantities);
 		if (caught != -1)
@@ -1760,6 +1770,10 @@ public class CombatVitalsPlugin extends Plugin
 	public void onGameObjectSpawned(GameObjectSpawned event)
 	{
 		gemstoneCrabWatcher.caveSpawned(event.getGameObject());
+		if (StarSession.tierOfObject(event.getGameObject().getId()) > 0)
+		{
+			starObject = event.getGameObject();
+		}
 		if (PumpChecks.isStove(event.getGameObject().getId()))
 		{
 			stove = event.getGameObject();
@@ -1777,6 +1791,10 @@ public class CombatVitalsPlugin extends Plugin
 	public void onGameObjectDespawned(GameObjectDespawned event)
 	{
 		gemstoneCrabWatcher.caveDespawned(event.getGameObject());
+		if (event.getGameObject() == starObject)
+		{
+			starObject = null;
+		}
 		if (event.getGameObject() == stove)
 		{
 			stove = null;
@@ -1838,6 +1856,10 @@ public class CombatVitalsPlugin extends Plugin
 	@Subscribe
 	public void onVarbitChanged(VarbitChanged event)
 	{
+		if (event.getVarbitId() == VarbitID.MOTHERLODE_SACK_TRANSMIT)
+		{
+			motherlodeSack.sackChanged(event.getValue());
+		}
 		if (event.getVarpId() != VarPlayerID.SA_ENERGY)
 		{
 			return;
@@ -2474,6 +2496,7 @@ public class CombatVitalsPlugin extends Plugin
 		final boolean animating = self.getAnimation() != -1
 			|| recentGain.gained(objectSkilling.skill(), client.getTickCount());
 		final Instant now = Instant.now();
+		starSession.tick(starObject != null && animating && objectSkilling.skill() == Skill.MINING);
 		switch (objectSkilling.tick(client.getTickCount(), at.getX(), at.getY(), at.getPlane(), animating))
 		{
 			case ENGAGE:
@@ -2804,6 +2827,14 @@ public class CombatVitalsPlugin extends Plugin
 	 */
 	private String inventoryLabel(Skill skill, int free, List<ContainerRow> containers)
 	{
+		if (skill == Skill.MINING)
+		{
+			final String mode = miningModeLabel();
+			if (mode != null)
+			{
+				return mode;
+			}
+		}
 		if (free < 0)
 		{
 			return null;
@@ -2811,6 +2842,40 @@ public class CombatVitalsPlugin extends Plugin
 		final String own = skill == Skill.AGILITY ? agilityLaps.label() : productionInputs.label(skill, inventoryNow);
 		return own != null ? own : ContainerRow.inventoryLabel(free, config.skillingInventoryCount(), containers,
 			config.skillingContainersAsInventory());
+	}
+
+	/** Motherlode Mine regions, as the base Motherlode Mine plugin lists them. */
+	private static final Set<Integer> MOTHERLODE_REGIONS = new HashSet<>(
+		Arrays.asList(14679, 14680, 14681, 14935, 14936, 14937, 15191, 15192, 15193));
+
+	/** Star distance, in tiles, within which the player counts as at the star. */
+	private static final int STAR_NEAR = 20;
+
+	/**
+	 * The Mining badge's line when the player is at a shooting star or in the
+	 * Motherlode Mine, in place of the inventory line; null anywhere else.
+	 */
+	private String miningModeLabel()
+	{
+		final Player self = client.getLocalPlayer();
+		if (self == null)
+		{
+			return null;
+		}
+		final WorldPoint at = self.getWorldLocation();
+		if (MOTHERLODE_REGIONS.contains(at.getRegionID()))
+		{
+			return motherlodeSack.label(inventoryNow.getOrDefault(ItemID.PAYDIRT, 0),
+				client.getVarbitValue(VarbitID.MOTHERLODE_BIGGERSACK) == 1,
+				inventoryNow.getOrDefault(ItemID.MOTHERLODE_NUGGET, 0));
+		}
+		final GameObject star = starObject;
+		if (star != null && star.getWorldLocation().getPlane() == at.getPlane()
+			&& star.getWorldLocation().distanceTo2D(at) <= STAR_NEAR)
+		{
+			return starSession.label(StarSession.tierOfObject(star.getId()), client.getRealSkillLevel(Skill.MINING));
+		}
+		return null;
 	}
 
 	/**

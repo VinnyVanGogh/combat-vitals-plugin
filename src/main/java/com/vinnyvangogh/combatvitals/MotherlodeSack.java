@@ -64,6 +64,20 @@ final class MotherlodeSack
 		return Math.min(100, Math.max(0, sack) * 100 / capacity(upgraded));
 	}
 
+	/** "Sack 45/81 | carrying 12 pay-dirt | 3 deposits | 2 nuggets", with a warning when a deposit would overflow. */
+	String label(int inventoryPaydirt, boolean upgraded, int nuggets)
+	{
+		final StringBuilder sb = new StringBuilder("Sack ").append(sack()).append('/').append(capacity(upgraded));
+		if (wouldOverflow(sack(), inventoryPaydirt, upgraded))
+		{
+			sb.append(" (full)");
+		}
+		sb.append(" | carrying ").append(inventoryPaydirt).append(" pay-dirt");
+		sb.append(" | ").append(deposits).append(deposits == 1 ? " deposit" : " deposits");
+		sb.append(" | ").append(nuggets).append(nuggets == 1 ? " nugget" : " nuggets");
+		return sb.toString();
+	}
+
 	void reset()
 	{
 		sack = -1;
