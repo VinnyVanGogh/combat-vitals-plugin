@@ -54,6 +54,12 @@ public class VitalsSidePanelShots
 				ui.layout(WIDTH);
 				shot(ui, "panel-live-" + v.name().toLowerCase() + ".png");
 			}
+			// The same Skilling card after the work stopped: it stays, marked Paused, with its timers and All time.
+			panel.live(new LiveVitals(true, LiveSectionTest.idleCombat(), LiveSectionTest.pausedChopping(),
+				LiveSectionTest.SESSION));
+			live.applyView(LiveSection.View.SKILLING);
+			ui.layout(WIDTH);
+			shot(ui, "panel-live-skilling-paused.png");
 			panel.display(VitalsSidePanel.Main.PRESETS);
 			ui.layout(WIDTH);
 			ui.click("Skiller");

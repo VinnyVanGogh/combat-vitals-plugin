@@ -258,3 +258,6 @@ pauseAfterIdleSeconds int
 # 2026-11-19: Auto-detect splashing (RUNELITE-469).
 autoSplash boolean
 autoSplashThreshold int
+# 2026-11-20: Paused Live cards, all-time stats, idle session reset (RUNELITE-486).
+sessionIdleResetMinutes int
+liveCardClear boolean

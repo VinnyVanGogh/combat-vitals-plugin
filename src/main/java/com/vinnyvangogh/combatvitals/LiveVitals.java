@@ -66,6 +66,34 @@ final class LiveVitals
 			period("Total", total, skills, nowMillis));
 	}
 
+	/** Every skill's three rows, for the Overall card: the all-time row sits with the other totals. */
+	List<Period> overall = Collections.emptyList();
+
+	LiveVitals withOverall(List<Period> overall)
+	{
+		this.overall = overall;
+		return this;
+	}
+
+	/**
+	 * The row after "This session" and "Total": all time, kept across logins: xp, time trained and the average
+	 * xp/h over it. The tooltip adds the actions.
+	 */
+	static Period allTime(AllTime.Stats s)
+	{
+		if (s.isEmpty())
+		{
+			return Period.nothingYet("All time");
+		}
+		final String gained = "+" + SessionRow.shortNumber(s.xp) + " xp";
+		final String time = SessionRow.duration(s.millis);
+		final long perHour = s.millis >= Period.MIN_RATE_MILLIS ? s.xp * 3_600_000L / s.millis : -1;
+		final String tip = "All time: " + GoalMath.number(s.xp) + " xp, " + GoalMath.number(s.actions)
+			+ " actions in " + time + (perHour < 0 ? "" : ", " + GoalMath.number(perHour) + " xp/h")
+			+ ". Kept across sessions.";
+		return new Period("All time", gained, time, perHour < 0 ? "-" : SessionRow.shortNumber(perHour) + "/h", tip);
+	}
+
 	/**
 	 * One compact row in three aligned columns after its label: xp, time, xp/h. Empty cells are "" (nothing yet) or
 	 * "-" (no rate yet); {@link #tip} says it all in words, for the row's tooltip.
@@ -210,10 +238,19 @@ final class LiveVitals
 		/** The "This session" and "Total" rows, see {@link LiveVitals#periods}. */
 		List<Period> periods = Collections.emptyList();
 
+		/** "Active · running 14m", "Pauses in 0:42": the session's timers, see {@link CardTimers}. */
+		List<String> timers = Collections.emptyList();
+
 		Combat with(List<GoalLine> goals, List<Period> periods)
 		{
 			this.goals = goals;
 			this.periods = periods;
+			return this;
+		}
+
+		Combat withTimers(CardTimers timers)
+		{
+			this.timers = timers.lines;
 			return this;
 		}
 	}
@@ -262,6 +299,20 @@ final class LiveVitals
 		Skilling withPeriods(List<Period> periods)
 		{
 			this.periods = periods;
+			return this;
+		}
+
+		/** "Woodcutting 62", the skill's name and level: what the card's title says once it is Paused. */
+		String title;
+		/** The work stopped or the clock paused: the card stays, marked Paused, until the user clears it. */
+		boolean paused;
+		/** "Paused · ran 14m", "Paused for 2:10", "Session resets in 12:50": see {@link CardTimers}. */
+		List<String> timers = Collections.emptyList();
+
+		Skilling withTimers(CardTimers timers)
+		{
+			this.paused = timers.paused;
+			this.timers = timers.lines;
 			return this;
 		}
 	}
@@ -376,8 +427,10 @@ final class LiveVitals
 		final boolean timers = r.getTrainingMethod() != null && r.getInventoryLabel() != null;
 		final List<String> chips = timers ? Arrays.asList(r.getInventoryLabel().split(" \\| "))
 			: Collections.emptyList();
-		return new Skilling(SkillingBadgeRenderer.headerText(r), r.getColour(), icon, xp, stats, chips,
+		final Skilling out = new Skilling(SkillingBadgeRenderer.headerText(r), r.getColour(), icon, xp, stats, chips,
 			lines(r, !timers), goals);
+		out.title = r.getSkill().getName() + " " + r.getReal();
+		return out;
 	}
 
 	/** The badge's lines under its XP and session rows: gear warning, inventory, containers. */

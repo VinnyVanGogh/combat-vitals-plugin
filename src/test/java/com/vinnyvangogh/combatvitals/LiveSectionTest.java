@@ -193,6 +193,98 @@ public class LiveSectionTest
 		assertEquals(LiveSection.View.OVERALL, SwingDriver.onEdt(() -> ui2(again).view()));
 	}
 
+	/** The Skilling card after the work stopped: the skill, Paused, its timers, and Total and All time rows. */
+	static LiveVitals.Skilling pausedChopping()
+	{
+		final LiveVitals.Skilling s = chopping();
+		s.title = "Woodcutting 72";
+		s.withTimers(new CardTimers(true,
+			Arrays.asList("Paused · ran 1h 05m", "Paused for 2:10", "Session resets in 12:50")));
+		return s.withPeriods(Arrays.asList(
+			new LiveVitals.Period("This session", "+86.2k xp", "1h 05m", "paused", "This session"),
+			new LiveVitals.Period("Total", "+86.2k xp", "1h 05m", "paused", "Total"),
+			LiveVitals.allTime(new AllTime.Stats(40 * 3_600_000L, 3_100_000, 5_200))));
+	}
+
+	@Test
+	public void aStoppedSkillStaysOnTheCardMarkedPausedWithItsTimersAndTotals()
+	{
+		live(new LiveVitals(true, idleCombat(), pausedChopping(), SESSION));
+		view(LiveSection.View.SKILLING);
+		ui.assertShows("Woodcutting 72" + LiveSection.PAUSED);
+		ui.assertShows("Paused · ran 1h 05m");
+		ui.assertShows("Paused for 2:10");
+		ui.assertShows("Session resets in 12:50");
+		ui.assertShows("All time");
+		ui.assertShows("+3.1m xp");
+		ui.assertShows("40h 00m");
+		ui.assertHides(LiveSection.NOT_SKILLING);
+		shot("panel-live-skilling-paused.png");
+	}
+
+	@Test
+	public void anActiveCardShowsItsTimersAndNoPausedMark()
+	{
+		final LiveVitals.Skilling active = chopping();
+		active.title = "Woodcutting 72";
+		active.withTimers(new CardTimers(false, Arrays.asList("Active · running 1h 05m", "Pauses in 0:42")));
+		live(new LiveVitals(true, idleCombat(), active, SESSION));
+		view(LiveSection.View.SKILLING);
+		ui.assertShows("Woodcutting 72 (+3) 41s");
+		ui.assertHides(LiveSection.PAUSED.trim());
+		ui.assertShows("Active · running 1h 05m");
+		ui.assertShows("Pauses in 0:42");
+	}
+
+	@Test
+	public void theCombatAndOverallCardsHaveAllTimeToo()
+	{
+		final LiveVitals.Combat combat = idleCombat().with(Collections.emptyList(), Collections.singletonList(
+			LiveVitals.allTime(new AllTime.Stats(12 * 3_600_000L, 900_000, 3_000))));
+		live(new LiveVitals(true, combat, LiveVitals.skilling(null), SESSION, SESSION)
+			.withOverall(Collections.singletonList(LiveVitals.allTime(new AllTime.Stats(52 * 3_600_000L, 4_000_000, 8_000)))));
+		ui.assertShows("All time");
+		ui.assertShows("12h 00m");
+		view(LiveSection.View.OVERALL);
+		ui.assertShows("52h 00m");
+	}
+
+	@Test
+	public void rightClickResetSessionAndClearTickTheSettingsThePluginActsOn()
+	{
+		live(new LiveVitals(true, idleCombat(), pausedChopping(), SESSION));
+		final javax.swing.JPopupMenu menu = SwingDriver.onEdt(() -> section().cardMenu());
+		SwingDriver.onEdt(() -> item(menu, "live-menu-reset").doClick());
+		assertEquals(Boolean.TRUE, store.values.get(LiveSection.RESET_KEY));
+		SwingDriver.onEdt(() -> item(menu, "live-menu-clear").doClick());
+		assertEquals(Boolean.TRUE, store.values.get(LiveSection.CLEAR_KEY));
+	}
+
+	@Test
+	public void clearedCardGoesBackToNotSkilling()
+	{
+		live(new LiveVitals(true, idleCombat(), pausedChopping(), SESSION));
+		view(LiveSection.View.SKILLING);
+		ui.assertShows("Paused for 2:10");
+		// What the plugin sends once the user's Clear has emptied the card.
+		live(new LiveVitals(true, idleCombat(), LiveVitals.skilling(null), SESSION));
+		ui.assertShows(LiveSection.NOT_SKILLING);
+		ui.assertHides("Paused for 2:10");
+		ui.assertHides("Woodcutting 72" + LiveSection.PAUSED);
+	}
+
+	private static javax.swing.JMenuItem item(javax.swing.JPopupMenu menu, String name)
+	{
+		for (Component c : menu.getComponents())
+		{
+			if (name.equals(c.getName()))
+			{
+				return (javax.swing.JMenuItem) c;
+			}
+		}
+		throw new AssertionError("no menu item " + name);
+	}
+
 	private static LiveSection ui2(VitalsSidePanel p)
 	{
 		return new SwingDriver(p).find(LiveSection.class, s -> true, "the Live section");

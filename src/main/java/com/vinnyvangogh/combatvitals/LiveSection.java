@@ -54,6 +54,11 @@ final class LiveSection extends VitalsSidePanel.Column
 	static final String SHOW_TOP = "Show top " + TOP;
 	/** Hidden setting: which of the three cards the Live tab shows, a {@link View} name. */
 	static final String VIEW_KEY = "sidebarLiveView";
+	/** Hidden setting the right-click Clear ticks; the plugin zeroes the session, lets the Skilling card go, and unticks it. */
+	static final String CLEAR_KEY = "liveCardClear";
+	/** The same setting as the Skilling tab's "Reset session" tick box. */
+	static final String RESET_KEY = "skillingSessionReset";
+	static final String PAUSED = " · Paused";
 
 	/** The secondary toggle under the Live tab: one card at a time, as in Group Ironman's live view. */
 	enum View
@@ -119,6 +124,38 @@ final class LiveSection extends VitalsSidePanel.Column
 	private final List<PeriodRow> combatPeriodPool = new ArrayList<>();
 	private final VitalsSidePanel.Column skillPeriods = new VitalsSidePanel.Column();
 	private final List<PeriodRow> skillPeriodPool = new ArrayList<>();
+	/** "Active · running 14m", "Pauses in 0:42", "Session resets in 12:50", under the card's title. */
+	private final VitalsSidePanel.Column combatTimers = new VitalsSidePanel.Column();
+	private final List<WrapLabel> combatTimerPool = new ArrayList<>();
+	private final VitalsSidePanel.Column skillTimers = new VitalsSidePanel.Column();
+	private final List<WrapLabel> skillTimerPool = new ArrayList<>();
+	/** The Overall card's All time row. */
+	private final VitalsSidePanel.Column overallPeriods = new VitalsSidePanel.Column();
+	private final List<PeriodRow> overallPeriodPool = new ArrayList<>();
+	/** Right-click on any Live card: Reset session, Clear. */
+	private final javax.swing.JPopupMenu cardMenu = new javax.swing.JPopupMenu();
+	private final java.awt.event.MouseAdapter cardMenuTrigger = new java.awt.event.MouseAdapter()
+	{
+		@Override
+		public void mousePressed(java.awt.event.MouseEvent e)
+		{
+			popup(e);
+		}
+
+		@Override
+		public void mouseReleased(java.awt.event.MouseEvent e)
+		{
+			popup(e);
+		}
+
+		private void popup(java.awt.event.MouseEvent e)
+		{
+			if (e.isPopupTrigger())
+			{
+				cardMenu.show(e.getComponent(), e.getX(), e.getY());
+			}
+		}
+	};
 
 	// Total (Overall view): every skill gained since login
 	private final FoldCard totalCard = new FoldCard("Total since login", null, null, true);
@@ -180,13 +217,60 @@ final class LiveSection extends VitalsSidePanel.Column
 		live.add(combatCard);
 		live.add(skillingCard);
 		live.add(sessionCard);
+		totalCard.body.add(overallPeriods);
 		totalCard.body.add(totalEmpty);
 		totalCard.body.add(totalLines);
 		live.add(totalCard);
+		buildCardMenu();
 		applyView(View.of(store.get(VIEW_KEY, String.class)));
 
 		refresh();
 		show(LiveVitals.LOGGED_OUT);
+	}
+
+	/**
+	 * Right-click on a Live card: Reset session zeroes This session's counts (the card stays); Clear also lets the
+	 * Skilling card go, so it is empty until you train again. Total and All time are never touched.
+	 */
+	private void buildCardMenu()
+	{
+		final javax.swing.JMenuItem reset = new javax.swing.JMenuItem(VitalsSidePanel.RESET_SESSION);
+		reset.setName("live-menu-reset");
+		reset.setToolTipText("Zero This session's counts. Total and All time stay.");
+		reset.addActionListener(e -> store.set(RESET_KEY, true));
+		final javax.swing.JMenuItem clear = new javax.swing.JMenuItem("Clear");
+		clear.setName("live-menu-clear");
+		clear.setToolTipText("Zero This session and empty the Skilling card until you train again. Total and All time stay.");
+		clear.addActionListener(e -> store.set(CLEAR_KEY, true));
+		cardMenu.add(reset);
+		cardMenu.add(clear);
+		popupOn(combatCard);
+		popupOn(skillingCard);
+		popupOn(sessionCard);
+		popupOn(totalCard);
+	}
+
+	/** Makes the right-click menu come up over a component and everything inside it; once per component. */
+	private void popupOn(Component c)
+	{
+		if (c instanceof JComponent && ((JComponent) c).getClientProperty(cardMenuTrigger) == null)
+		{
+			((JComponent) c).putClientProperty(cardMenuTrigger, Boolean.TRUE);
+			c.addMouseListener(cardMenuTrigger);
+		}
+		if (c instanceof java.awt.Container)
+		{
+			for (Component child : ((java.awt.Container) c).getComponents())
+			{
+				popupOn(child);
+			}
+		}
+	}
+
+	/** For tests: the right-click menu's items, to click. */
+	javax.swing.JPopupMenu cardMenu()
+	{
+		return cardMenu;
 	}
 
 	/** Combat / Skilling / Overall as a small segmented row; the choice is remembered. */
@@ -249,7 +333,7 @@ final class LiveSection extends VitalsSidePanel.Column
 			+ "Same as the right-click option on the card.");
 		splashSwitch.addActionListener(e -> store.set(SPLASH_KEY, splashSwitch.isSelected()));
 		for (Component c : new Component[]{splashSwitch, hitpoints, gap(), prayer, gap(), energyRow, targetBox, gap(),
-			training, trainingRate, combatPeriods, combatGoals})
+			training, trainingRate, combatTimers, combatPeriods, combatGoals})
 		{
 			combat.add(c);
 		}
@@ -281,7 +365,8 @@ final class LiveSection extends VitalsSidePanel.Column
 			statValues.put(STATS[i], value);
 			statGrid.add(tile);
 		}
-		for (Component c : new Component[]{title, gap(), skillXp, gap(), statGrid, gap(), skillChips, skillLines, skillPeriods, skillGoals})
+		for (Component c : new Component[]{title, skillTimers, gap(), skillXp, gap(), statGrid, gap(), skillChips, skillLines,
+			skillPeriods, skillGoals})
 		{
 			skilling.add(c);
 		}
@@ -360,10 +445,17 @@ final class LiveSection extends VitalsSidePanel.Column
 			showCombat(v.combat);
 			showSkilling(v.skilling);
 			showSession(v.session);
+			periods(overallPeriods, overallPeriodPool, v.overall);
+			visible(overallPeriods, !v.overall.isEmpty());
 			showTotals(v.totals);
 		}
 		if (changes != before)
 		{
+			// Rows added by this update are right-clickable too.
+			popupOn(combatCard);
+			popupOn(skillingCard);
+			popupOn(sessionCard);
+			popupOn(totalCard);
 			revalidate();
 			repaint();
 		}
@@ -389,6 +481,8 @@ final class LiveSection extends VitalsSidePanel.Column
 		visible(notInCombat, !fighting);
 		bar(training, c.training);
 		text(trainingRate, c.trainingRate);
+		lines(combatTimers, combatTimerPool, c.timers);
+		visible(combatTimers, !c.timers.isEmpty());
 		periods(combatPeriods, combatPeriodPool, c.periods);
 		visible(combatPeriods, !c.periods.isEmpty());
 		goals(combatGoals, combatGoalPool, c.goals);
@@ -431,7 +525,10 @@ final class LiveSection extends VitalsSidePanel.Column
 			changes++;
 		}
 		visible(skillIcon, s.header != null);
-		text(skillHeader, s.header == null ? NOT_SKILLING : s.header);
+		text(skillHeader, s.header == null ? NOT_SKILLING
+			: s.paused && s.title != null ? s.title + PAUSED : s.header);
+		lines(skillTimers, skillTimerPool, s.timers);
+		visible(skillTimers, !s.timers.isEmpty());
 		bar(skillXp, s.xp);
 		for (SessionRow.Kind kind : STATS)
 		{
