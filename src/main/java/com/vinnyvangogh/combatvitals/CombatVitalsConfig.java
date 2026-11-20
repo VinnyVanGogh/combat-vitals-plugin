@@ -1231,6 +1231,20 @@ public interface CombatVitalsConfig extends Config
 		return false;
 	}
 
+	@Range(min = 10, max = 600)
+	@ConfigItem(
+		keyName = "pauseAfterIdleSeconds",
+		name = "Idle pause (s)",
+		description = "Pause after this many idle seconds (10 to 600). The session timer and the XP and action rates pause when no experience has come in for "
+			+ "this long, and resume with the next gain. Paused time is left out of the rates.",
+		section = skillingSection,
+		position = 22
+	)
+	default int pauseAfterIdleSeconds()
+	{
+		return 60;
+	}
+
 	@ConfigItem(
 		keyName = "skillingSessionReset",
 		name = "Reset session",

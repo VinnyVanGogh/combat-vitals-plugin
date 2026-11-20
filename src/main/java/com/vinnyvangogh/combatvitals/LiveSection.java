@@ -107,6 +107,20 @@ final class LiveSection extends VitalsSidePanel.Column
 	private final WrapLabel notInCombat = new WrapLabel(NOT_IN_COMBAT, PanelStyle.MUTED);
 	private final MeterBar training = new MeterBar();
 	private final WrapLabel trainingRate = new WrapLabel("", PanelStyle.MUTED);
+	/** Goals in the skills a fight trains, the same lines as the Skilling card's. */
+	private final VitalsSidePanel.Column combatGoals = new VitalsSidePanel.Column();
+	private final List<WrapLabel> combatGoalPool = new ArrayList<>();
+	/** This session and Total, side by side in time: the session resets on an activity change, the total does not. */
+	private final VitalsSidePanel.Column combatPeriods = new VitalsSidePanel.Column();
+	private final List<WrapLabel> combatPeriodPool = new ArrayList<>();
+	private final VitalsSidePanel.Column skillPeriods = new VitalsSidePanel.Column();
+	private final List<WrapLabel> skillPeriodPool = new ArrayList<>();
+
+	// Total (Overall view): every skill gained since login
+	private final FoldCard totalCard = new FoldCard("Total since login", null, null, true);
+	private final WrapLabel totalEmpty = new WrapLabel(NOTHING_YET, PanelStyle.MUTED);
+	private final VitalsSidePanel.Column totalLines = new VitalsSidePanel.Column();
+	private final List<GainRow> totalPool = new ArrayList<>();
 
 	// Skilling
 	private final FoldCard skillingCard = new FoldCard("Skilling", null, SkillColours.DEFAULT, true);
@@ -162,6 +176,9 @@ final class LiveSection extends VitalsSidePanel.Column
 		live.add(combatCard);
 		live.add(skillingCard);
 		live.add(sessionCard);
+		totalCard.body.add(totalEmpty);
+		totalCard.body.add(totalLines);
+		live.add(totalCard);
 		applyView(View.of(store.get(VIEW_KEY, String.class)));
 
 		refresh();
@@ -198,6 +215,7 @@ final class LiveSection extends VitalsSidePanel.Column
 		combatCard.setVisible(v == View.COMBAT);
 		skillingCard.setVisible(v == View.SKILLING);
 		sessionCard.setVisible(v == View.OVERALL);
+		totalCard.setVisible(v == View.OVERALL);
 		viewButtons.get(v).setSelected(true);
 		revalidate();
 		repaint();
@@ -218,7 +236,7 @@ final class LiveSection extends VitalsSidePanel.Column
 		targetBox.add(notInCombat);
 		targetBox.add(target);
 		for (Component c : new Component[]{hitpoints, gap(), prayer, gap(), energyRow, targetBox, gap(), training,
-			trainingRate})
+			trainingRate, combatPeriods, combatGoals})
 		{
 			combat.add(c);
 		}
@@ -250,7 +268,7 @@ final class LiveSection extends VitalsSidePanel.Column
 			statValues.put(STATS[i], value);
 			statGrid.add(tile);
 		}
-		for (Component c : new Component[]{title, gap(), skillXp, gap(), statGrid, gap(), skillChips, skillLines, skillGoals})
+		for (Component c : new Component[]{title, gap(), skillXp, gap(), statGrid, gap(), skillChips, skillLines, skillPeriods, skillGoals})
 		{
 			skilling.add(c);
 		}
@@ -328,6 +346,7 @@ final class LiveSection extends VitalsSidePanel.Column
 			showCombat(v.combat);
 			showSkilling(v.skilling);
 			showSession(v.session);
+			showTotals(v.totals);
 		}
 		if (changes != before)
 		{
@@ -356,6 +375,29 @@ final class LiveSection extends VitalsSidePanel.Column
 		visible(notInCombat, !fighting);
 		bar(training, c.training);
 		text(trainingRate, c.trainingRate);
+		lines(combatPeriods, combatPeriodPool, c.periods);
+		visible(combatPeriods, !c.periods.isEmpty());
+		lines(combatGoals, combatGoalPool, c.goals);
+		visible(combatGoals, !c.goals.isEmpty());
+	}
+
+	/** Every skill gained since login, most XP first, with no fold: the session list's twin for the Overall view. */
+	private void showTotals(List<LiveVitals.Gain> gains)
+	{
+		visible(totalEmpty, gains.isEmpty());
+		while (totalPool.size() < gains.size())
+		{
+			final GainRow row = new GainRow();
+			row.setVisible(false);
+			totalPool.add(row);
+			totalLines.add(row);
+			changes++;
+		}
+		final int top = gains.isEmpty() ? 1 : Math.max(1, gains.get(0).xp);
+		for (int i = 0; i < totalPool.size(); i++)
+		{
+			gain(totalPool.get(i), i < gains.size() ? gains.get(i) : null, top);
+		}
 	}
 
 	private void showSkilling(LiveVitals.Skilling s)
@@ -386,6 +428,8 @@ final class LiveSection extends VitalsSidePanel.Column
 		visible(statGrid, !s.stats.isEmpty());
 		chips(s.chips);
 		lines(skillLines, skillPool, s.lines);
+		lines(skillPeriods, skillPeriodPool, s.header == null ? java.util.Collections.emptyList() : s.periods);
+		visible(skillPeriods, s.header != null && !s.periods.isEmpty());
 		lines(skillGoals, goalPool, s.header == null ? java.util.Collections.emptyList() : s.goals);
 		visible(skillGoals, s.header != null && !s.goals.isEmpty());
 	}

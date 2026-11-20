@@ -253,3 +253,4 @@ highlightPheasantControl boolean
 highlightBeeHive boolean
 highlightEnchantmentRitual boolean
 highlightFriendlyEnt boolean
+pauseAfterIdleSeconds int

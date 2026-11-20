@@ -462,6 +462,8 @@ public class CombatVitalsPlugin extends Plugin
 
 	/** This login's counts and rates; outlives a hop, not a logout. */
 	private final SkillingSession session = new SkillingSession();
+	/** The same gains, never reset by an activity change or Reset session: the Total next to This session. Cleared at logout. */
+	private final SkillingSession totalSession = new SkillingSession();
 
 	/** Status Bars as last read, refreshed each tick for the pillar overlay. */
 	private volatile SidePillars.StatusBars statusBars = SidePillars.StatusBars.OFF;
@@ -773,6 +775,7 @@ public class CombatVitalsPlugin extends Plugin
 		combat.clear();
 		clearSkilling();
 		session.clear();
+		totalSession.clear();
 		stockPlugin = null;
 		badgeBounds = null;
 		statusBarsPlugin = null;
@@ -906,6 +909,7 @@ public class CombatVitalsPlugin extends Plugin
 			case LOGIN_SCREEN:
 				// Logging out ends the session's counts; a hop does not.
 				session.clear();
+				totalSession.clear();
 				sessionActivity.clear();
 				goalsHub.loggedOut();
 				goalsChanged();
@@ -1298,7 +1302,11 @@ public class CombatVitalsPlugin extends Plugin
 	{
 		activityAlerts.xp(skill, xp);
 		skillingEvents.stat(skill, xp, level, tick);
+		final long idle = config.pauseAfterIdleSeconds() * 1000L;
+		session.setIdleMillis(idle);
+		totalSession.setIdleMillis(idle);
 		session.xp(skill, xp, System.currentTimeMillis());
+		totalSession.xp(skill, xp, System.currentTimeMillis());
 		xpSkilling.xp(skill, xp);
 		trainingSession.xp(skill, xp);
 		recentGain.xp(skill, xp, tick);
@@ -2196,17 +2204,24 @@ public class CombatVitalsPlugin extends Plugin
 		final long now = System.currentTimeMillis();
 		return new LiveVitals(true,
 			VitalsHalves.combat(config) ? liveCombat(now) : null,
-			VitalsHalves.skilling(config) ? liveSkilling() : null,
-			LiveVitals.session(session, now, this::skillColour));
+			VitalsHalves.skilling(config) ? liveSkilling(now) : null,
+			LiveVitals.session(session, now, this::skillColour),
+			LiveVitals.session(totalSession, now, this::skillColour));
 	}
 
+	/** Every skill a fight trains, Hitpoints included, by the game's names: the Combat card's goal skills. */
+	private static final Skill[] COMBAT_GOAL_SKILLS = {Skill.ATTACK, Skill.STRENGTH, Skill.DEFENCE, Skill.RANGED,
+		Skill.MAGIC, Skill.HITPOINTS, Skill.PRAYER};
+
 	/** The badge's readout for the Skilling card, with the skill's small icon for its title. */
-	private LiveVitals.Skilling liveSkilling()
+	private LiveVitals.Skilling liveSkilling(long now)
 	{
 		final SkillingReadout r = skillingReadout;
 		return LiveVitals.skilling(r, r == null ? null : skillIconManager.getSkillImage(r.getSkill(), true),
 			r == null ? java.util.Collections.emptyList()
-				: goalsHub.book().skillLines(r.getSkill().getName(), System.currentTimeMillis() / 1000));
+				: goalsHub.book().skillLines(r.getSkill().getName(), now / 1000))
+			.withPeriods(r == null ? java.util.Collections.emptyList()
+				: LiveVitals.periods(session, totalSession, new Skill[]{r.getSkill()}, now));
 	}
 
 	/** Your vitals, the target as the overhead readout has it, and the combat skill gained in last. */
@@ -2224,7 +2239,19 @@ public class CombatVitalsPlugin extends Plugin
 			target == null ? null : target.getName(),
 			LiveVitals.target(target, config.percentageDecimals()),
 			skill == null ? null : LiveVitals.training(skill, xp, skillColour(skill)),
-			skill == null ? null : LiveVitals.trainingRate(xp, session.xpPerHour(skill, now)));
+			skill == null ? null : LiveVitals.trainingRate(xp, session.xpPerHour(skill, now)))
+			.with(goalsHub.book().skillLines(combatGoalNames(), now / 1000),
+				LiveVitals.periods(session, totalSession, LiveVitals.COMBAT_SKILLS, now));
+	}
+
+	private static java.util.List<String> combatGoalNames()
+	{
+		final java.util.List<String> names = new java.util.ArrayList<>();
+		for (Skill s : COMBAT_GOAL_SKILLS)
+		{
+			names.add(s.getName());
+		}
+		return names;
 	}
 
 	/**

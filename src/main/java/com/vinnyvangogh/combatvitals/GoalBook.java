@@ -212,10 +212,16 @@ final class GoalBook
 	/** One line per unmet skill goal in {@code skill}, for the Skilling tab. */
 	synchronized List<String> skillLines(String skill, long nowSeconds)
 	{
+		return skillLines(java.util.Collections.singleton(skill), nowSeconds);
+	}
+
+	/** One line per unmet skill goal in any of {@code skills} (the game's names), for the Combat tab. */
+	synchronized List<String> skillLines(java.util.Collection<String> skills, long nowSeconds)
+	{
 		final List<String> out = new ArrayList<>();
 		for (Goal g : goals)
 		{
-			if (g.skill() && g.label.equals(skill) && !g.reached)
+			if (g.skill() && skills.contains(g.label) && !g.reached)
 			{
 				out.add("Goal " + GoalMath.title(g) + ": " + GoalMath.summary(progress(g, nowSeconds)));
 			}

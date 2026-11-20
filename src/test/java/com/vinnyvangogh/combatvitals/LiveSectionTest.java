@@ -135,7 +135,7 @@ public class LiveSectionTest
 	@Test
 	public void showsAFight()
 	{
-		live(new LiveVitals(true, fighting(), LiveVitals.skilling(null), SESSION));
+		live(new LiveVitals(true, fighting(), LiveVitals.skilling(null), SESSION, SESSION));
 		ui.assertShows("Hitpoints 72/99");
 		ui.assertShows("Prayer 43/70");
 		ui.assertShows("Run 64%");
