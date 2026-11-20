@@ -241,3 +241,15 @@ gemstoneCrabArrow boolean
 gemstoneCrabAlertSpawn Notification
 gemstoneCrabAlertBurrow Notification
 gemstoneCrabAlertGo Notification
+# 2026-11-19: Forestry highlights (task-7387091e).
+forestryHighlights boolean
+forestryHighlightColour Color
+highlightRisingRoots boolean
+highlightStrugglingSapling boolean
+highlightFloweringBush boolean
+highlightLeprechaun boolean
+highlightPoachers boolean
+highlightPheasantControl boolean
+highlightBeeHive boolean
+highlightEnchantmentRitual boolean
+highlightFriendlyEnt boolean
