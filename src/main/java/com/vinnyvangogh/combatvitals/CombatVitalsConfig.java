@@ -3082,6 +3082,18 @@ public interface CombatVitalsConfig extends Config
 		return true;
 	}
 
+	@ConfigItem(
+		keyName = "replayUpdateNotes",
+		name = "Show what's new again",
+		description = "Turn on to post the update notes in the game chat again, now or on your next login. It switches itself off.",
+		section = advancedSection,
+		position = 4
+	)
+	default boolean replayUpdateNotes()
+	{
+		return false;
+	}
+
 	/** The last version whose update notes were handled; written by the plugin, never shown. */
 	@ConfigItem(
 		keyName = LAST_SEEN_VERSION,

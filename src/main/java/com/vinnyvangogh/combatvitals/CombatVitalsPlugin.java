@@ -22,6 +22,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import javax.inject.Inject;
+import javax.inject.Named;
 import javax.swing.SwingUtilities;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -278,6 +279,11 @@ public class CombatVitalsPlugin extends Plugin
 
 	/** Whether this start found the player logged in: with no stored version, a fresh install (UpdateNotes). */
 	private boolean startedLoggedIn;
+
+	/** RuneLite's developer mode (a dev build started with --developer-mode): update notes show every login. */
+	@Inject
+	@Named("developerMode")
+	private boolean developerMode;
 
 	@Inject
 	private NextSpotOverlay nextSpotOverlay;
@@ -691,13 +697,39 @@ public class CombatVitalsPlugin extends Plugin
 	 */
 	private void postUpdateNotes()
 	{
+		// A development build keeps the version it was first run at, so the stored
+		// version would hide the notes for good: show them on every login there.
+		if (developerMode && config.showUpdateNotes())
+		{
+			postLines(UpdateNotes.all());
+			return;
+		}
 		final String lastSeen = config.lastSeenVersion();
 		if (!UpdateNotes.needsRecord(lastSeen))
 		{
 			return;
 		}
 		configManager.setConfiguration(CombatVitalsConfig.GROUP, CombatVitalsConfig.LAST_SEEN_VERSION, UpdateNotes.VERSION);
-		final List<String> lines = UpdateNotes.toShow(lastSeen, config.showUpdateNotes(), startedLoggedIn);
+		postLines(UpdateNotes.toShow(lastSeen, config.showUpdateNotes(), startedLoggedIn));
+	}
+
+	/** The "Show what's new again" setting: posts the notes now when logged in, and switches itself off. Client thread. */
+	private void replayUpdateNotes()
+	{
+		configManager.setConfiguration(CombatVitalsConfig.GROUP, "replayUpdateNotes", false);
+		if (client.getGameState() == GameState.LOGGED_IN)
+		{
+			postLines(UpdateNotes.all());
+		}
+		else
+		{
+			// Not logged in: nothing can be posted yet, so make the next login do it.
+			configManager.setConfiguration(CombatVitalsConfig.GROUP, CombatVitalsConfig.LAST_SEEN_VERSION, "");
+		}
+	}
+
+	private void postLines(List<String> lines)
+	{
 		for (int i = 0; i < lines.size(); i++)
 		{
 			consoleLine(i == 0 ? ChatColorType.HIGHLIGHT : ChatColorType.NORMAL, lines.get(i));
@@ -826,6 +858,10 @@ public class CombatVitalsPlugin extends Plugin
 		if (!CombatVitalsConfig.GROUP.equals(event.getGroup()))
 		{
 			return;
+		}
+		if ("replayUpdateNotes".equals(event.getKey()) && config.replayUpdateNotes())
+		{
+			clientThread.invoke(this::replayUpdateNotes);
 		}
 		splashOverlay.showMode(config.splashMode());
 		if ("splashMode".equals(event.getKey()) && !autoSwitching)
