@@ -229,6 +229,28 @@ final class GoalBook
 		return out;
 	}
 
+	/** The same unmet skill goals as compact rows (title, progress bar, one detail line) for the Live cards. */
+	synchronized List<LiveVitals.GoalLine> skillGoals(java.util.Collection<String> skills, long nowSeconds)
+	{
+		final List<LiveVitals.GoalLine> out = new ArrayList<>();
+		for (Goal g : goals)
+		{
+			if (g.skill() && skills.contains(g.label) && !g.reached)
+			{
+				final Progress p = progress(g, nowSeconds);
+				out.add(new LiveVitals.GoalLine(GoalMath.title(g),
+					new LiveVitals.Bar(Math.max(0, Math.min(1.0, p.percent / 100.0)), p.percent + "%",
+						PanelStyle.ACCENT), GoalMath.compact(p)));
+			}
+		}
+		return out;
+	}
+
+	synchronized List<LiveVitals.GoalLine> skillGoals(String skill, long nowSeconds)
+	{
+		return skillGoals(java.util.Collections.singleton(skill), nowSeconds);
+	}
+
 	/** The current value of a goal: live experience for a skill goal, else what is counted. */
 	synchronized long value(Goal g)
 	{

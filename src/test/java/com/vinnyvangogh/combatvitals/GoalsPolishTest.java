@@ -262,13 +262,16 @@ public class GoalsPolishTest
 	{
 		final LiveVitals.Skilling s = new LiveVitals.Skilling("Mining 72", java.awt.Color.GREEN, null, null,
 			Collections.emptyMap(), Collections.emptyList(), Collections.emptyList(),
-			Collections.singletonList("Goal Mining level 80: 5,000 xp to go (50%)"));
+			Collections.singletonList(new LiveVitals.GoalLine("Mining level 80",
+				new LiveVitals.Bar(0.5, "50%", java.awt.Color.ORANGE), "5,000 xp to go · 2h 05m")));
 		final LiveSection[] section = new LiveSection[1];
 		SwingDriver.onEdt(() ->
 		{
 			section[0] = new LiveSection(PanelFixture.store());
 			section[0].update(new LiveVitals(true, null, s, Collections.emptyList()));
-			assertTrue(texts(section[0]).stream().anyMatch(t -> t.contains("Goal Mining level 80: 5,000 xp to go (50%)")));
+			assertTrue(texts(section[0]).stream().anyMatch(t -> t.equals("Mining level 80")));
+			assertTrue(texts(section[0]).stream().anyMatch(t -> t.equals("5,000 xp to go · 2h 05m")));
+			assertTrue(texts(section[0]).stream().noneMatch(t -> t.startsWith("Goal ")));
 		});
 	}
 

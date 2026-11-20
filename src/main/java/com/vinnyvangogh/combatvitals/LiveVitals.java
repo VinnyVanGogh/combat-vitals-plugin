@@ -60,13 +60,43 @@ final class LiveVitals
 	 * "This session: +12.3k xp in 23m" and "Total: +40.1k xp in 1h 05m" for the skills of one card; the session
 	 * resets on a new activity, the total only at logout. Time is active time, paused stretches left out.
 	 */
-	static List<String> periods(SkillingSession session, SkillingSession total, Skill[] skills, long nowMillis)
+	static List<Period> periods(SkillingSession session, SkillingSession total, Skill[] skills, long nowMillis)
 	{
 		return Arrays.asList(period("This session", session, skills, nowMillis),
 			period("Total", total, skills, nowMillis));
 	}
 
-	private static String period(String label, SkillingSession s, Skill[] skills, long nowMillis)
+	/** One compact row: a muted label and its value ("+12.3k xp · 23m"), not a sentence. */
+	static final class Period
+	{
+		final String label;
+		final String value;
+
+		Period(String label, String value)
+		{
+			this.label = label;
+			this.value = value;
+		}
+	}
+
+	/** One unmet skill goal as a compact row: its title, a progress bar, and one short detail line. */
+	static final class GoalLine
+	{
+		final String title;
+		/** Progress toward the goal, text "45%". */
+		final Bar bar;
+		/** "1,200 xp to go · 2h 05m", short enough for one line. */
+		final String detail;
+
+		GoalLine(String title, Bar bar, String detail)
+		{
+			this.title = title;
+			this.bar = bar;
+			this.detail = detail;
+		}
+	}
+
+	private static Period period(String label, SkillingSession s, Skill[] skills, long nowMillis)
 	{
 		long xp = 0;
 		long millis = -1;
@@ -83,10 +113,10 @@ final class LiveVitals
 		}
 		if (millis < 0)
 		{
-			return label + ": nothing yet";
+			return new Period(label, "nothing yet");
 		}
-		return label + ": +" + SessionRow.shortNumber((int) Math.min(Integer.MAX_VALUE, xp)) + " xp in "
-			+ SessionRow.duration(millis) + (paused ? " (paused)" : "");
+		return new Period(label, "+" + SessionRow.shortNumber((int) Math.min(Integer.MAX_VALUE, xp)) + " xp · "
+			+ SessionRow.duration(millis) + (paused ? " (paused)" : ""));
 	}
 
 	/** A bar with its words: fraction 0 to 1, or -1 while unknown (drawn empty). */
@@ -149,11 +179,11 @@ final class LiveVitals
 		}
 
 		/** Unmet goals in the skills this card tracks, one line each, as the Skilling card has them. */
-		List<String> goals = Collections.emptyList();
-		/** "This session: ..." and "Total: ..." lines, see {@link LiveVitals#periods}. */
-		List<String> periods = Collections.emptyList();
+		List<GoalLine> goals = Collections.emptyList();
+		/** The "This session" and "Total" rows, see {@link LiveVitals#periods}. */
+		List<Period> periods = Collections.emptyList();
 
-		Combat with(List<String> goals, List<String> periods)
+		Combat with(List<GoalLine> goals, List<Period> periods)
 		{
 			this.goals = goals;
 			this.periods = periods;
@@ -178,7 +208,7 @@ final class LiveVitals
 		final List<String> lines;
 
 		/** The unmet goals in this skill, one line each ("Goal Mining level 90: 1,200 xp to go ..."); may be empty. */
-		final List<String> goals;
+		final List<GoalLine> goals;
 
 		Skilling(String header, Color colour, BufferedImage icon, Bar xp, Map<SessionRow.Kind, String> stats,
 			List<String> chips, List<String> lines)
@@ -187,7 +217,7 @@ final class LiveVitals
 		}
 
 		Skilling(String header, Color colour, BufferedImage icon, Bar xp, Map<SessionRow.Kind, String> stats,
-			List<String> chips, List<String> lines, List<String> goals)
+			List<String> chips, List<String> lines, List<GoalLine> goals)
 		{
 			this.goals = goals;
 			this.header = header;
@@ -200,9 +230,9 @@ final class LiveVitals
 		}
 
 		/** "This session: ..." and "Total: ..." lines for the active skill, see {@link LiveVitals#periods}. */
-		List<String> periods = Collections.emptyList();
+		List<Period> periods = Collections.emptyList();
 
-		Skilling withPeriods(List<String> periods)
+		Skilling withPeriods(List<Period> periods)
 		{
 			this.periods = periods;
 			return this;
@@ -293,7 +323,7 @@ final class LiveVitals
 	}
 
 	/** The same, with the active skill's goal lines under the readout. */
-	static Skilling skilling(SkillingReadout r, BufferedImage icon, List<String> goals)
+	static Skilling skilling(SkillingReadout r, BufferedImage icon, List<GoalLine> goals)
 	{
 		if (r == null)
 		{

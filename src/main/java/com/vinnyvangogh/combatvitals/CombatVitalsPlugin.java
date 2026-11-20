@@ -2266,7 +2266,7 @@ public class CombatVitalsPlugin extends Plugin
 		final SkillingReadout r = skillingReadout;
 		return LiveVitals.skilling(r, r == null ? null : skillIconManager.getSkillImage(r.getSkill(), true),
 			r == null ? java.util.Collections.emptyList()
-				: goalsHub.book().skillLines(r.getSkill().getName(), now / 1000))
+				: goalsHub.book().skillGoals(r.getSkill().getName(), now / 1000))
 			.withPeriods(r == null ? java.util.Collections.emptyList()
 				: LiveVitals.periods(session, totalSession, new Skill[]{r.getSkill()}, now));
 	}
@@ -2288,7 +2288,7 @@ public class CombatVitalsPlugin extends Plugin
 			LiveVitals.target(target, config.percentageDecimals()),
 			skill == null ? null : LiveVitals.training(skill, xp, skillColour(skill)),
 			skill == null ? null : LiveVitals.trainingRate(xp, session.xpPerHour(skill, now)))
-			.with(goalsHub.book().skillLines(combatGoalNames(), now / 1000),
+			.with(goalsHub.book().skillGoals(combatGoalNames(), now / 1000),
 				LiveVitals.periods(session, totalSession, LiveVitals.COMBAT_SKILLS, now));
 	}
 

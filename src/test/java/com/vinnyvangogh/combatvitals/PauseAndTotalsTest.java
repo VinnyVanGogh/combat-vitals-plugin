@@ -111,9 +111,11 @@ public class PauseAndTotalsTest
 		final SkillingSession session = mining(30);
 		final SkillingSession total = mining(30);
 		session.reset();
-		final List<String> lines = LiveVitals.periods(session, total, new Skill[]{Skill.MINING}, 400 * SECOND);
-		assertEquals("This session: nothing yet", lines.get(0));
-		assertEquals("Total: +50 xp in 30s (paused)", lines.get(1));
+		final List<LiveVitals.Period> lines = LiveVitals.periods(session, total, new Skill[]{Skill.MINING}, 400 * SECOND);
+		assertEquals("This session", lines.get(0).label);
+		assertEquals("nothing yet", lines.get(0).value);
+		assertEquals("Total", lines.get(1).label);
+		assertEquals("+50 xp · 30s (paused)", lines.get(1).value);
 	}
 
 	private static void labels(Component c, List<String> out)
@@ -139,13 +141,15 @@ public class PauseAndTotalsTest
 		book.onXp("Mining", 100_000, 0);
 		book.addSkill("Magic", true, 99, 0);
 		book.addSkill("Mining", true, 99, 0);
-		final List<String> lines = book.skillLines(Arrays.asList("Attack", "Magic"), 10);
+		final List<LiveVitals.GoalLine> lines = book.skillGoals(Arrays.asList("Attack", "Magic"), 10);
 		assertEquals(1, lines.size());
-		assertTrue(lines.get(0), lines.get(0).startsWith("Goal Magic level 99: "));
+		assertEquals("Magic level 99", lines.get(0).title);
+		assertTrue(lines.get(0).detail, lines.get(0).detail.contains(" xp to go"));
 
 		final LiveVitals.Bar bar = new LiveVitals.Bar(0.5, "Hitpoints 50/99", Color.RED);
 		final LiveVitals.Combat combat = new LiveVitals.Combat(bar, bar, null, null, null, null, null)
-			.with(lines, Arrays.asList("This session: nothing yet", "Total: nothing yet"));
+			.with(lines, Arrays.asList(new LiveVitals.Period("This session", "nothing yet"),
+				new LiveVitals.Period("Total", "nothing yet")));
 		final LiveSection[] section = new LiveSection[1];
 		SwingDriver.onEdt(() ->
 		{
@@ -153,8 +157,9 @@ public class PauseAndTotalsTest
 			section[0].update(new LiveVitals(true, combat, null, Collections.emptyList()));
 			final List<String> texts = new ArrayList<>();
 			labels(section[0], texts);
-			assertTrue(texts.toString(), texts.stream().anyMatch(t -> t.contains("Goal Magic level 99: ")));
-			assertTrue(texts.toString(), texts.stream().anyMatch(t -> t.contains("Total: nothing yet")));
+			assertTrue(texts.toString(), texts.stream().anyMatch(t -> t.equals("Magic level 99")));
+			assertTrue(texts.toString(), texts.stream().anyMatch(t -> t.equals("Total")));
+			assertTrue(texts.toString(), texts.stream().anyMatch(t -> t.equals("nothing yet")));
 		});
 	}
 

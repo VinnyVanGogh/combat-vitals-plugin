@@ -123,6 +123,14 @@ final class GoalMath
 		return sb.toString();
 	}
 
+	/** "1,200 xp to go · 2h 05m": the live cards' one-line detail; the time uses the session rate, else the last hour's. */
+	static String compact(GoalBook.Progress p)
+	{
+		final String left = number(p.left) + " xp to go";
+		final double rate = p.sessionRate > 0 ? p.sessionRate : p.hourRate;
+		return rate > 0 ? left + " · " + etaText(etaSeconds(p.left, rate)) : left;
+	}
+
 	private static String rate(String name, long left, double perHour)
 	{
 		final String at = perHour > 0 ? " at " + number(Math.round(perHour)) + " xp/hr" : "";

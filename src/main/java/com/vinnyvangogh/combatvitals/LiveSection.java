@@ -113,12 +113,12 @@ final class LiveSection extends VitalsSidePanel.Column
 	private final WrapLabel trainingRate = new WrapLabel("", PanelStyle.MUTED);
 	/** Goals in the skills a fight trains, the same lines as the Skilling card's. */
 	private final VitalsSidePanel.Column combatGoals = new VitalsSidePanel.Column();
-	private final List<WrapLabel> combatGoalPool = new ArrayList<>();
+	private final List<GoalRow> combatGoalPool = new ArrayList<>();
 	/** This session and Total, side by side in time: the session resets on an activity change, the total does not. */
 	private final VitalsSidePanel.Column combatPeriods = new VitalsSidePanel.Column();
-	private final List<WrapLabel> combatPeriodPool = new ArrayList<>();
+	private final List<PeriodRow> combatPeriodPool = new ArrayList<>();
 	private final VitalsSidePanel.Column skillPeriods = new VitalsSidePanel.Column();
-	private final List<WrapLabel> skillPeriodPool = new ArrayList<>();
+	private final List<PeriodRow> skillPeriodPool = new ArrayList<>();
 
 	// Total (Overall view): every skill gained since login
 	private final FoldCard totalCard = new FoldCard("Total since login", null, null, true);
@@ -142,7 +142,7 @@ final class LiveSection extends VitalsSidePanel.Column
 	private final List<WrapLabel> skillPool = new ArrayList<>();
 	/** The active skill's goals, each with what is left and the time to go. */
 	private final VitalsSidePanel.Column skillGoals = new VitalsSidePanel.Column();
-	private final List<WrapLabel> goalPool = new ArrayList<>();
+	private final List<GoalRow> goalPool = new ArrayList<>();
 
 	// This session
 	private final FoldCard sessionCard = new FoldCard("This session", null, null, true);
@@ -389,9 +389,9 @@ final class LiveSection extends VitalsSidePanel.Column
 		visible(notInCombat, !fighting);
 		bar(training, c.training);
 		text(trainingRate, c.trainingRate);
-		lines(combatPeriods, combatPeriodPool, c.periods);
+		periods(combatPeriods, combatPeriodPool, c.periods);
 		visible(combatPeriods, !c.periods.isEmpty());
-		lines(combatGoals, combatGoalPool, c.goals);
+		goals(combatGoals, combatGoalPool, c.goals);
 		visible(combatGoals, !c.goals.isEmpty());
 	}
 
@@ -442,9 +442,9 @@ final class LiveSection extends VitalsSidePanel.Column
 		visible(statGrid, !s.stats.isEmpty());
 		chips(s.chips);
 		lines(skillLines, skillPool, s.lines);
-		lines(skillPeriods, skillPeriodPool, s.header == null ? java.util.Collections.emptyList() : s.periods);
+		periods(skillPeriods, skillPeriodPool, s.header == null ? java.util.Collections.emptyList() : s.periods);
 		visible(skillPeriods, s.header != null && !s.periods.isEmpty());
-		lines(skillGoals, goalPool, s.header == null ? java.util.Collections.emptyList() : s.goals);
+		goals(skillGoals, goalPool, s.header == null ? java.util.Collections.emptyList() : s.goals);
 		visible(skillGoals, s.header != null && !s.goals.isEmpty());
 	}
 
@@ -491,6 +491,144 @@ final class LiveSection extends VitalsSidePanel.Column
 		for (int i = 0; i < chipPool.size(); i++)
 		{
 			chip(chipPool.get(i), i < texts.size() ? texts.get(i) : null);
+		}
+	}
+
+	/** The first rows of the pool show the goals (title, percent, bar, detail); the rest hide. */
+	private void goals(VitalsSidePanel.Column parent, List<GoalRow> pool, List<LiveVitals.GoalLine> goals)
+	{
+		while (pool.size() < goals.size())
+		{
+			final GoalRow row = new GoalRow();
+			row.setVisible(false);
+			pool.add(row);
+			parent.add(row);
+			changes++;
+		}
+		for (int i = 0; i < pool.size(); i++)
+		{
+			final GoalRow row = pool.get(i);
+			final LiveVitals.GoalLine g = i < goals.size() ? goals.get(i) : null;
+			if (g != null && row.set(g))
+			{
+				changes++;
+			}
+			visible(row, g != null);
+		}
+	}
+
+	/** The first rows of the pool show the periods (label left, value right); the rest hide. */
+	private void periods(VitalsSidePanel.Column parent, List<PeriodRow> pool, List<LiveVitals.Period> periods)
+	{
+		while (pool.size() < periods.size())
+		{
+			final PeriodRow row = new PeriodRow();
+			row.setVisible(false);
+			pool.add(row);
+			parent.add(row);
+			changes++;
+		}
+		for (int i = 0; i < pool.size(); i++)
+		{
+			final PeriodRow row = pool.get(i);
+			final LiveVitals.Period p = i < periods.size() ? periods.get(i) : null;
+			if (p != null && row.set(p))
+			{
+				changes++;
+			}
+			visible(row, p != null);
+		}
+	}
+
+	/** One goal: its title with the percent at the right, a thin bar, and one muted detail line. */
+	private static final class GoalRow extends VitalsSidePanel.Column
+	{
+		private final JLabel title = new JLabel();
+		private final JLabel percent = new JLabel();
+		private final MeterBar bar = new MeterBar(MeterBar.THIN);
+		private final JLabel detail = new JLabel();
+		private LiveVitals.GoalLine shown;
+
+		GoalRow()
+		{
+			setBorder(new EmptyBorder(PanelStyle.S, 0, 0, 0));
+			title.setFont(PanelStyle.body());
+			title.setForeground(PanelStyle.TEXT);
+			percent.setFont(PanelStyle.body());
+			percent.setForeground(PanelStyle.SOFT);
+			detail.setFont(PanelStyle.body());
+			detail.setForeground(PanelStyle.MUTED);
+			final JPanel top = new JPanel(new BorderLayout(PanelStyle.S, 0));
+			top.setOpaque(false);
+			top.add(title, BorderLayout.CENTER);
+			top.add(percent, BorderLayout.EAST);
+			add(top);
+			add(bar);
+			add(detail);
+		}
+
+		/** False when already showing this goal. */
+		boolean set(LiveVitals.GoalLine g)
+		{
+			final boolean same = shown != null && shown.title.equals(g.title) && shown.detail.equals(g.detail)
+				&& Objects.equals(shown.bar, g.bar);
+			if (same)
+			{
+				return false;
+			}
+			shown = g;
+			title.setText(g.title);
+			percent.setText(g.bar.text);
+			bar.set(g.bar);
+			detail.setText(g.detail);
+			detail.setToolTipText(g.title + ": " + g.detail);
+			return true;
+		}
+
+		String plain()
+		{
+			return shown == null ? "" : shown.title + " " + shown.bar.text + " " + shown.detail;
+		}
+	}
+
+	/** "This session   +12.3k xp · 23m": a muted label and its value on one line. */
+	private static final class PeriodRow extends JPanel
+	{
+		private final JLabel label = new JLabel();
+		private final JLabel value = new JLabel();
+		private LiveVitals.Period shown;
+
+		PeriodRow()
+		{
+			super(new BorderLayout(PanelStyle.S, 0));
+			setOpaque(false);
+			setAlignmentX(LEFT_ALIGNMENT);
+			setBorder(new EmptyBorder(1, 0, 1, 0));
+			label.setFont(PanelStyle.body());
+			label.setForeground(PanelStyle.MUTED);
+			value.setFont(PanelStyle.body());
+			value.setForeground(PanelStyle.TEXT);
+			value.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
+			add(label, BorderLayout.WEST);
+			add(value, BorderLayout.CENTER);
+		}
+
+		@Override
+		public Dimension getMaximumSize()
+		{
+			return PanelStyle.fullWidth(this);
+		}
+
+		boolean set(LiveVitals.Period p)
+		{
+			if (shown != null && shown.label.equals(p.label) && shown.value.equals(p.value))
+			{
+				return false;
+			}
+			shown = p;
+			label.setText(p.label);
+			value.setText(p.value);
+			return true;
 		}
 	}
 
