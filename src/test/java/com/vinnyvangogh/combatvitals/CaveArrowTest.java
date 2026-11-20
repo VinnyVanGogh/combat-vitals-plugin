@@ -28,10 +28,24 @@ public class CaveArrowTest
 	}
 
 	@Test
+	public void walkingAnyDistanceToTheCaveNeverHidesIt()
+	{
+		final CaveArrow a = new CaveArrow();
+		assertTrue(a.update(false, true, 100, 100, 0));
+		// Run 200 tiles, two tiles a tick.
+		for (int i = 1; i <= 100; i++)
+		{
+			assertTrue(a.update(false, true, 100 + 2 * i, 100, 0));
+		}
+		assertTrue(a.shown());
+	}
+
+	@Test
 	public void goingThroughTheCaveHidesItAndItDoesNotComeBack()
 	{
 		final CaveArrow a = new CaveArrow();
 		a.update(false, true, 100, 100, 0);
+		a.update(false, true, 102, 100, 0);
 		assertFalse(a.update(false, true, 140, 160, 0));
 		assertFalse(a.update(false, true, 140, 161, 0));
 		// A new shell later is a new burrow.

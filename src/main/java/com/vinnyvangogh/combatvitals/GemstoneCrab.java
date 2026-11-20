@@ -62,9 +62,24 @@ final class GemstoneCrab
 			this.shellMs = shellMs;
 		}
 
+		/** The bar's percent, or, when it cannot be read, the percent the timer says is left; -1 with no crab. */
 		int percent()
 		{
-			return fraction < 0 ? -1 : (int) Math.round(fraction * 100);
+			if (fraction >= 0)
+			{
+				return (int) Math.round(fraction * 100);
+			}
+			if (phase != Phase.CRAB || remainingMs < 0)
+			{
+				return -1;
+			}
+			return (int) Math.round(Math.min(1.0, (double) remainingMs / FIGHT_MS) * 100);
+		}
+
+		/** True when {@link #percent()} comes from the timer, not the bar. */
+		boolean percentEstimated()
+		{
+			return fraction < 0 && percent() >= 0;
 		}
 	}
 
