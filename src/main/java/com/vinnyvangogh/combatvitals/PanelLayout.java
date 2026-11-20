@@ -140,7 +140,8 @@ final class PanelLayout
 
 	/** In the settings list only: the panel says where to find them. */
 	static final List<String> ADVANCED = Collections.unmodifiableList(Arrays.asList(
-		"opponentTimeout", "hideWhenHpHud", "hideWhenStockEnabled", "showUpdateNotes"));
+		"opponentTimeout", "hideWhenHpHud", "hideWhenStockEnabled", "showUpdateNotes",
+		"replayUpdateNotes"));
 
 	private static AlertRow row(ActivityAlerts.Type type, String label, String suffix, String toggle, String extra)
 	{
