@@ -8,15 +8,21 @@ import java.awt.Graphics2D;
 import java.text.NumberFormat;
 import java.util.List;
 import java.util.Locale;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
+import javax.swing.JFormattedTextField;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.border.EmptyBorder;
+import javax.swing.text.DefaultFormatter;
+import net.runelite.api.Experience;
 import net.runelite.api.Skill;
 
 /**
@@ -31,23 +37,116 @@ final class GoalsPage extends VitalsSidePanel.Column
 	private static final Goal.Type[] TYPES = {Goal.Type.SKILL_LEVEL, Goal.Type.SKILL_XP, Goal.Type.ITEM,
 		Goal.Type.BOSS_KC, Goal.Type.DAILY, Goal.Type.WEEKLY};
 
+	/** Levels above the current one a new skill goal starts at. */
+	static final int DEFAULT_LEVELS_AHEAD = 5;
+
 	private final GoalBook book;
+	private final java.util.function.Function<Skill, java.awt.image.BufferedImage> icons;
 	private final JComboBox<String> kind = new JComboBox<>(KINDS);
 	private final JComboBox<Skill> skill = new JComboBox<>(skills());
 	private final JTextField name = new JTextField();
-	private final JSpinner target = new JSpinner(new SpinnerNumberModel(99, 1, 2_000_000_000, 1));
+	private final JSpinner target = new JSpinner(new SpinnerNumberModel(6, 1, 2_000_000_000, 1));
+	private final JLabel problem = new JLabel(" ");
 	private final VitalsSidePanel.Column list = new VitalsSidePanel.Column();
 
 	GoalsPage(GoalBook book)
 	{
+		this(book, null);
+	}
+
+	/** {@code icons} gives a skill's small icon for the dropdown; null or a null image shows the name alone. */
+	GoalsPage(GoalBook book, java.util.function.Function<Skill, java.awt.image.BufferedImage> icons)
+	{
 		this.book = book;
+		this.icons = icons;
 		add(VitalsSidePanel.text("Your own goals, kept per account. Skill goals follow your experience and show "
-			+ "the time to go at this session's rate.", PanelStyle.MUTED));
+			+ "what is left, the time to go at this session's rate and at the last hour's, and the actions left.",
+			PanelStyle.MUTED));
 		add(form());
 		add(list);
-		kind.addActionListener(e -> syncForm());
+		skill.setRenderer(new SkillRenderer());
+		commitAsYouType();
+		kind.addActionListener(e ->
+		{
+			syncForm();
+			defaultTarget();
+		});
+		skill.addActionListener(e -> defaultTarget());
 		syncForm();
+		defaultTarget();
 		refresh();
+	}
+
+	/** Makes the number box take each valid keystroke, so what is typed is what Add goal reads. */
+	private void commitAsYouType()
+	{
+		final JFormattedTextField field = ((JSpinner.DefaultEditor) target.getEditor()).getTextField();
+		if (field.getFormatter() instanceof DefaultFormatter)
+		{
+			((DefaultFormatter) field.getFormatter()).setCommitsOnValidEdit(true);
+		}
+	}
+
+	/**
+	 * A new skill goal starts about five levels above the current one, capped at 99; for an experience goal
+	 * it is the experience that level takes. Other kinds keep whatever was typed.
+	 */
+	void defaultTarget()
+	{
+		final Skill s = (Skill) skill.getSelectedItem();
+		if (kind.getSelectedIndex() > 1 || s == null)
+		{
+			return;
+		}
+		final int level = Experience.getLevelForXp((int) Math.min(Integer.MAX_VALUE, book.xp(s.getName())));
+		final int goal = GoalMath.defaultLevel(level, DEFAULT_LEVELS_AHEAD);
+		target.setValue(kind.getSelectedIndex() == 0 ? goal : Experience.getXpForLevel(goal));
+		problem.setText(" ");
+	}
+
+	/** The skill's name as the game spells it ("Attack"), with its icon. */
+	private final class SkillRenderer extends DefaultListCellRenderer
+	{
+		@Override
+		public java.awt.Component getListCellRendererComponent(JList<?> list, Object value, int index,
+			boolean selected, boolean focus)
+		{
+			final JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, selected, focus);
+			if (value instanceof Skill)
+			{
+				final Skill s = (Skill) value;
+				label.setText(s.getName());
+				final java.awt.image.BufferedImage image = icons == null ? null : icons.apply(s);
+				label.setIcon(image == null ? null : new ImageIcon(image));
+			}
+			return label;
+		}
+	}
+
+	/** Test hook: the form's boxes. */
+	JComboBox<Skill> skillBox()
+	{
+		return skill;
+	}
+
+	JSpinner targetBox()
+	{
+		return target;
+	}
+
+	JComboBox<String> kindBox()
+	{
+		return kind;
+	}
+
+	String problemText()
+	{
+		return problem.getText();
+	}
+
+	void clickAdd()
+	{
+		add();
 	}
 
 	private static Skill[] skills()
@@ -80,6 +179,9 @@ final class GoalsPage extends VitalsSidePanel.Column
 		add.setFocusable(false);
 		add.addActionListener(e -> add());
 		card.add(add);
+		problem.setFont(PanelStyle.body());
+		problem.setForeground(PanelStyle.SOFT);
+		card.add(problem);
 		return card;
 	}
 
@@ -94,7 +196,18 @@ final class GoalsPage extends VitalsSidePanel.Column
 	private void add()
 	{
 		final Goal.Type type = TYPES[kind.getSelectedIndex()];
+		// Read what is typed, even if the box has not committed it yet; a number that does not parse adds nothing.
+		try
+		{
+			target.commitEdit();
+		}
+		catch (java.text.ParseException e)
+		{
+			problem.setText("Type a whole number for the target.");
+			return;
+		}
 		final long goal = ((Number) target.getValue()).longValue();
+		problem.setText(" ");
 		final long now = System.currentTimeMillis() / 1000;
 		if (type == Goal.Type.SKILL_LEVEL || type == Goal.Type.SKILL_XP)
 		{
@@ -162,7 +275,15 @@ final class GoalsPage extends VitalsSidePanel.Column
 		card.add(head);
 
 		card.add(new Bar(GoalMath.fraction(g.baseline, value, goalValue)));
-		card.add(VitalsSidePanel.text(detail(g, value, goalValue, now), PanelStyle.SOFT));
+		final GoalBook.Progress progress = g.reached ? null : book.progress(g, now);
+		if (progress == null)
+		{
+			card.add(VitalsSidePanel.text(detail(g, value, goalValue, now), PanelStyle.SOFT));
+		}
+		else
+		{
+			card.add(progressRows(progress));
+		}
 
 		if (!g.skill() && g.type != Goal.Type.BOSS_KC)
 		{
@@ -186,23 +307,44 @@ final class GoalsPage extends VitalsSidePanel.Column
 		return card;
 	}
 
+	/** The progress section of a skill goal: one labelled row per figure. */
+	private static JPanel progressRows(GoalBook.Progress p)
+	{
+		final VitalsSidePanel.Column rows = new VitalsSidePanel.Column();
+		rows.add(row("XP to go", number(p.left)));
+		rows.add(row("Done", p.percent + "%"));
+		rows.add(row("At session rate", eta(p.left, p.sessionRate)));
+		rows.add(row("At last hour's rate", eta(p.left, p.hourRate)));
+		rows.add(row("Actions left", p.actionsLeft < 0 ? "no action yet"
+			: number(p.actionsLeft) + " (" + number(Math.round(p.actionXp)) + " xp each)"));
+		return rows;
+	}
+
+	private static String eta(long left, double perHour)
+	{
+		return GoalMath.etaText(GoalMath.etaSeconds(left, perHour))
+			+ (perHour > 0 ? " (" + number(Math.round(perHour)) + " xp/hr)" : "");
+	}
+
+	private static JComponent row(String label, String value)
+	{
+		final JPanel row = new JPanel(new BorderLayout(4, 0));
+		row.setOpaque(false);
+		final JLabel l = new JLabel(label);
+		l.setFont(PanelStyle.body());
+		l.setForeground(PanelStyle.MUTED);
+		final JLabel v = new JLabel(value);
+		v.setFont(PanelStyle.body());
+		v.setForeground(PanelStyle.TEXT);
+		row.add(l, BorderLayout.WEST);
+		row.add(v, BorderLayout.EAST);
+		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 18));
+		return row;
+	}
+
 	private static String title(Goal g)
 	{
-		switch (g.type)
-		{
-			case SKILL_LEVEL:
-				return g.label + " level " + g.target;
-			case SKILL_XP:
-				return g.label + " " + number(g.target) + " xp";
-			case BOSS_KC:
-				return g.label + " x" + number(g.target);
-			case ITEM:
-				return g.label + " x" + number(g.target);
-			case DAILY:
-				return "Daily: " + g.label;
-			default:
-				return "Weekly: " + g.label;
-		}
+		return GoalMath.title(g);
 	}
 
 	private String detail(Goal g, long value, long goalValue, long now)

@@ -1,6 +1,7 @@
 package com.vinnyvangogh.combatvitals;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -44,10 +45,6 @@ class SplashWatcher
 	/** How long a hand-cast spell counts as casting at that NPC. */
 	static final int MANUAL_TICKS = 8;
 
-	/** COMBAT_WEAPON_CATEGORY values of weapons that can autocast: Staff and Bladed staff. */
-	private static final int WEAPON_STAFF = 18;
-	private static final int WEAPON_BLADED_STAFF = 21;
-
 	private static final Prayer[] MAGIC_PRAYERS = {
 		Prayer.AUGURY, Prayer.MYSTIC_VIGOUR, Prayer.MYSTIC_MIGHT, Prayer.MYSTIC_LORE, Prayer.MYSTIC_WILL};
 	/** The wiki's prayer multipliers, in {@link #MAGIC_PRAYERS} order. */
@@ -69,14 +66,26 @@ class SplashWatcher
 	private final SplashTimer timer = new SplashTimer();
 	private final Map<Integer, String> names = new HashMap<>();
 
+	private final SplashAuto auto = new SplashAuto();
+	private int autoGearHash;
+	private int autoBonus;
+	private Boolean autoSwitch;
+
 	private volatile SplashReadout readout;
+	private volatile CastsReadout castsReadout;
+	/** The last spell seen being cast, for Always show when none is picked in settings. */
+	private String lastSpell;
 	private int manualNpcIndex = -1;
+	/** The NPC the player last clicked Attack on; autocast only counts as casting at that NPC. */
+	private int attackNpcIndex = -1;
 	private int manualSpell;
 	private String manualSpellName;
 	private int manualTicks;
 	private String spellName;
 	private boolean lowArmed = true;
 	private String lowAlert;
+	private String stopSoonAlert;
+	private String stoppedAlert;
 
 	@Inject
 	SplashWatcher(Client client, ItemManager itemManager, CombatVitalsConfig config)
@@ -86,10 +95,47 @@ class SplashWatcher
 		this.config = config;
 	}
 
-	/** The latest read-out for the overlay, or null when nothing is being cast at an NPC. */
+	/**
+	 * Runs the first-cast work once at start-up (class loading, the spell tables, the regexes, String.format)
+	 * so the first attack does it off the hot path instead of on the client thread. Touches no client state.
+	 */
+	void warm()
+	{
+		final SplashTracker.Input in = new SplashTracker.Input(1, 1, 1, 1, "warm", 0, 1, 1.0);
+		new SplashTracker(Collections.emptyMap()).step(in, 0);
+		final int[] cost = SpellCasts.cost("Fire Strike");
+		if (cost != null)
+		{
+			final SpellCasts.Supply supply = new SpellCasts.Supply();
+			supply.item("staff of fire");
+			SplashReadout.castsText(SpellCasts.casts(cost, supply));
+		}
+		SplashTracker.percent(0.5);
+		SplashTimer.clock(1000);
+	}
+
+	/**
+	 * The latest read-out for the one combat card. With Splashing mode on and an NPC being cast at it is
+	 * the splash result with the casts line merged in; otherwise it is the casts alone, when
+	 * {@link CastsVisibility} says they show (casting, or Always show). Null when there is nothing to draw.
+	 */
 	SplashReadout readout()
 	{
-		return on() ? readout : null;
+		final SplashReadout r = readout;
+		if (on() && r != null)
+		{
+			final boolean gone = r.isStopped() && !SplashTimer.lingers(System.currentTimeMillis() - r.stoppedAt,
+				config.splashLingerSeconds(), config.splashLingerForever());
+			return gone ? castsCard() : r;
+		}
+		return castsCard();
+	}
+
+	/** The casts-only card, or null when Casts left is off or {@link CastsVisibility} hides it. */
+	private SplashReadout castsCard()
+	{
+		final CastsReadout c = config.castsLeft() ? castsReadout : null;
+		return c == null ? null : SplashReadout.castsOnly(c, System.currentTimeMillis());
 	}
 
 	private boolean on()
@@ -100,11 +146,24 @@ class SplashWatcher
 	void reset()
 	{
 		readout = null;
+		castsReadout = null;
+		lastSpell = null;
 		manualNpcIndex = -1;
+		attackNpcIndex = -1;
 		lowArmed = true;
 		lowAlert = null;
+		stopSoonAlert = null;
+		stoppedAlert = null;
 		tracker.reset();
 		timer.reset();
+	}
+
+	/** Logout or shutdown: forget what auto-detect saw. */
+	void resetAuto()
+	{
+		auto.reset();
+		autoGearHash = 0;
+		autoSwitch = null;
 	}
 
 	/** The low-casts alert text due this tick, once, or null. */
@@ -117,7 +176,20 @@ class SplashWatcher
 
 	void onMenuOptionClicked(MenuOptionClicked event)
 	{
-		if (!on() || event.getMenuAction() != MenuAction.WIDGET_TARGET_ON_NPC)
+		if (!on())
+		{
+			return;
+		}
+		if (isNpcOption(event.getMenuAction()))
+		{
+			final NPC clicked = event.getMenuEntry().getNpc();
+			if (clicked != null)
+			{
+				attackNpcIndex = attackClick(event.getMenuOption(), clicked.getIndex(), attackNpcIndex);
+			}
+			return;
+		}
+		if (event.getMenuAction() != MenuAction.WIDGET_TARGET_ON_NPC)
 		{
 			return;
 		}
@@ -133,12 +205,41 @@ class SplashWatcher
 		manualTicks = MANUAL_TICKS;
 	}
 
+	private static boolean isNpcOption(MenuAction action)
+	{
+		switch (action)
+		{
+			case NPC_FIRST_OPTION:
+			case NPC_SECOND_OPTION:
+			case NPC_THIRD_OPTION:
+			case NPC_FOURTH_OPTION:
+			case NPC_FIFTH_OPTION:
+				return true;
+			default:
+				return false;
+		}
+	}
+
+	/**
+	 * The attack target after a click on an NPC option: that NPC for Attack; none if it was the target and
+	 * the click was Talk-to, Pickpocket, Trade or anything else; otherwise unchanged.
+	 */
+	static int attackClick(String option, int npcIndex, int current)
+	{
+		if ("Attack".equalsIgnoreCase(option))
+		{
+			return npcIndex;
+		}
+		return current == npcIndex ? -1 : current;
+	}
+
 	/**
 	 * Reads this tick. Returns the setup-changed alert text, or null; the
 	 * plugin sends it, so the sidebar mute and "Mute alert sounds" apply.
 	 */
 	String tick()
 	{
+		autoDetect();
 		if (!on())
 		{
 			reset();
@@ -148,57 +249,196 @@ class SplashWatcher
 		{
 			manualTicks--;
 		}
-		final SplashTracker.Input in = read();
-		if (in == null)
+		final boolean casting = CastsVisibility.casting(
+			client.getVarbitValue(VarbitID.AUTOCAST_SET) == 1,
+			client.getVarbitValue(VarbitID.COMBAT_WEAPON_CATEGORY), manualTicks);
+		spellName = casting ? castingSpell() : null;
+		if (spellName != null)
+		{
+			lastSpell = spellName;
+		}
+
+		String changed = null;
+		final boolean splashing = config.splashMode();
+		if (!splashing)
 		{
 			readout = null;
+		}
+		final SplashTracker.Input in = splashing ? read() : null;
+		final long now = System.currentTimeMillis();
+		final SplashReadout shown = readout;
+		if (in != null || shown != null && !shown.isStopped())
+		{
+			afk(idleMillis());
+		}
+		if (in == null)
+		{
+			if (shown != null && !shown.isStopped())
+			{
+				readout = shown.stopped(now);
+			}
 			tracker.idle();
 			timer.idle();
-			return null;
 		}
-		final long now = System.currentTimeMillis();
-		timer.cast(now);
-		final SplashTracker.Result splash = tracker.step(in, config.splashMaxChance());
-		final boolean splashing = config.splashMode();
-		readout = build(splashing ? splash : null, now);
-		return splashing ? splash.changed : null;
+		else
+		{
+			timer.cast(now);
+			final SplashTracker.Result splash = tracker.step(in, config.splashMaxChance());
+			readout = buildSplash(splash, now);
+			changed = splash.changed;
+		}
+		castsReadout = buildCasts(casting);
+		return changed;
 	}
 
-	private SplashReadout build(SplashTracker.Result splash, long now)
+	/** Reads the worn Magic bonus and queues a Splashing mode switch when auto-detect wants one. */
+	private void autoDetect()
 	{
-		String castsText = null;
-		int casts = -2;
-		boolean low = false;
-		int[] items = new int[0];
-		int[] costs = new int[0];
-		final int[] cost = SpellCasts.cost(spellName);
-		if (config.castsLeft() && cost != null)
+		if (!config.autoSplash() || client.getLocalPlayer() == null || client.getItemContainer(InventoryID.WORN) == null)
 		{
-			final SpellCasts.Result r = SpellCasts.casts(cost, supply());
-			casts = r.casts;
-			castsText = SplashReadout.castsText(r);
-			final int warnAt = config.castsWarnAt();
-			low = warnAt > 0 && casts != SpellCasts.INFINITE && casts <= warnAt;
-			pace(low, casts);
-			items = new int[cost.length];
-			costs = new int[cost.length];
-			int n = 0;
-			for (int i = 0; i < cost.length; i++)
-			{
-				if (cost[i] > 0)
-				{
-					items[n] = RUNE_ITEMS[i];
-					costs[n++] = cost[i];
-				}
-			}
-			items = Arrays.copyOf(items, n);
-			costs = Arrays.copyOf(costs, n);
+			return;
 		}
-		final long idle = Math.min(client.getKeyboardIdleTicks(), client.getMouseIdleTicks())
+		final int[] gear = worn();
+		final int hash = Arrays.hashCode(gear);
+		if (hash != autoGearHash)
+		{
+			autoGearHash = hash;
+			autoBonus = magicBonus(gear);
+		}
+		autoSwitch = auto.step(autoBonus, config.autoSplashThreshold(), config.splashMode());
+	}
+
+	/** The Splashing mode auto-detect wants set now (once), or null. */
+	Boolean takeAutoSwitch()
+	{
+		final Boolean sw = autoSwitch;
+		autoSwitch = null;
+		return sw;
+	}
+
+	/** The player flipped Splashing mode by hand: auto-detect leaves it until the gear crosses the threshold. */
+	void manualSwitch()
+	{
+		auto.manualSwitch();
+	}
+
+	/** The spell being cast: a hand-cast one when no autocast is on, else the autocast spell. */
+	private String castingSpell()
+	{
+		final boolean auto = client.getVarbitValue(VarbitID.AUTOCAST_SET) == 1
+			&& CastsVisibility.casting(true, client.getVarbitValue(VarbitID.COMBAT_WEAPON_CATEGORY), 0);
+		if (manualTicks > 0 && !auto)
+		{
+			return manualSpellName;
+		}
+		return SpellCasts.autocastName(client.getVarbitValue(VarbitID.AUTOCAST_SPELL));
+	}
+
+	/** The splashing card: the splash result, with the casts line while casts are merged into it. */
+	private SplashReadout buildSplash(SplashTracker.Result splash, long now)
+	{
+		// Always counted, so the low-casts alert is paced; shown on the card only while castsMerge is on.
+		final CastsReadout counted = config.castsLeft() ? castsFor(spellName, true) : null;
+		final CastsReadout merged = config.castsMerge() ? counted : null;
+		final long idle = idleMillis();
+		final long logout = SplashTimer.STOP_MS;
+		if (merged == null)
+		{
+			return new SplashReadout(splash, spellName, null, -2, false, new int[0], new int[0], idle, logout,
+				timer.elapsed(now), now);
+		}
+		return new SplashReadout(splash, spellName, merged.castsText, merged.casts, merged.low, merged.runeItems,
+			merged.runeCosts, idle, logout, timer.elapsed(now), now);
+	}
+
+	/**
+	 * The standalone overlay's read-out, or null when {@link CastsVisibility}
+	 * says it should not draw. The low-casts alert is paced here, from the
+	 * casts of what is being cast, so it fires whichever overlay is shown.
+	 */
+	private CastsReadout buildCasts(boolean casting)
+	{
+		if (!config.castsLeft())
+		{
+			return null;
+		}
+		final String spell = CastsVisibility.spell(casting, spellName, config.castsAlways(), config.castsSpell(),
+			lastSpell);
+		final CastsReadout r = castsFor(spell, casting);
+		if (r == null)
+		{
+			return null;
+		}
+		return CastsVisibility.visible(true, config.castsAlways(), casting, true, r.casts, config.castsOnlyBelow(),
+			readout != null, true) ? r : null; // splash card up: it carries (or deliberately omits) the casts
+	}
+
+	/** Casts left for a spell; null when it is not in the table. Paces the low alert when {@code casting}. */
+	private CastsReadout castsFor(String spell, boolean casting)
+	{
+		final int[] cost = SpellCasts.cost(spell);
+		if (cost == null)
+		{
+			return null;
+		}
+		final SpellCasts.Result r = SpellCasts.casts(cost, supply());
+		final int warnAt = config.castsWarnAt();
+		final boolean low = warnAt > 0 && r.casts != SpellCasts.INFINITE && r.casts <= warnAt;
+		if (casting && spell.equals(spellName))
+		{
+			pace(low, r.casts);
+		}
+		int[] items = new int[cost.length];
+		int[] costs = new int[cost.length];
+		int n = 0;
+		for (int i = 0; i < cost.length; i++)
+		{
+			if (cost[i] > 0)
+			{
+				items[n] = RUNE_ITEMS[i];
+				costs[n++] = cost[i];
+			}
+		}
+		return new CastsReadout(spell, SplashReadout.castsText(r), r.casts, low, Arrays.copyOf(items, n),
+			Arrays.copyOf(costs, n));
+	}
+
+	/** Milliseconds since the last mouse or keyboard input the client saw. */
+	private long idleMillis()
+	{
+		return Math.min(client.getKeyboardIdleTicks(), client.getMouseIdleTicks())
 			* (long) Constants.CLIENT_TICK_LENGTH;
-		final long logout = client.getIdleTimeout() * (long) Constants.CLIENT_TICK_LENGTH;
-		return new SplashReadout(splash, spellName, castsText, casts, low, items, costs, idle, logout,
-			timer.elapsed(now), now);
+	}
+
+	private void afk(long idleMillis)
+	{
+		final int due = timer.afk(idleMillis, config.splashWarnSeconds() * 1000L);
+		if (due == SplashTimer.STOPS_SOON)
+		{
+			stopSoonAlert = "Splashing stops by itself in "
+				+ SplashTimer.clock(SplashTimer.logoutLeft(idleMillis, SplashTimer.STOP_MS))
+				+ ": click or press a key to keep it going.";
+		}
+		else if (due == SplashTimer.STOPPED)
+		{
+			stoppedAlert = "Splashing has stopped: no input for 20 minutes.";
+		}
+	}
+
+	/** The stops-soon alert text due this tick, once, or null. */
+	String takeStopSoonAlert()
+	{
+		final String text = stopSoonAlert;
+		stopSoonAlert = null;
+		return text;
+	}
+
+	/** The stopped alert text due this tick, once, or null. */
+	String takeStoppedAlert()
+	{
+		final String text = stoppedAlert;
+		stoppedAlert = null;
+		return text;
 	}
 
 	/** Fires the low-casts alert once as the count drops to the warn level, and again after a refill. */
@@ -230,9 +470,10 @@ class SplashWatcher
 		}
 		final NPC npc = (NPC) target;
 		// The autocast flag can stay set while a melee weapon is wielded: only a staff makes it a cast.
-		final int weaponCategory = client.getVarbitValue(VarbitID.COMBAT_WEAPON_CATEGORY);
-		final boolean auto = client.getVarbitValue(VarbitID.AUTOCAST_SET) == 1
-			&& (weaponCategory == WEAPON_STAFF || weaponCategory == WEAPON_BLADED_STAFF);
+		// Talking to or pickpocketing an NPC also sets the interacting target: only an attacked one counts.
+		final boolean auto = CastsVisibility.casting(client.getVarbitValue(VarbitID.AUTOCAST_SET) == 1,
+			client.getVarbitValue(VarbitID.COMBAT_WEAPON_CATEGORY), 0)
+			&& attackNpcIndex == npc.getIndex();
 		final boolean manual = manualTicks > 0 && manualNpcIndex == npc.getIndex();
 		if (!auto && !manual)
 		{
@@ -240,7 +481,6 @@ class SplashWatcher
 		}
 		final int autoSpell = client.getVarbitValue(VarbitID.AUTOCAST_SPELL);
 		final int spell = manual && !auto ? 100_000 + manualSpell : autoSpell;
-		spellName = manual && !auto ? manualSpellName : SpellCasts.autocastName(autoSpell);
 		final String name = npc.getName() == null ? "this NPC" : Text.removeTags(npc.getName());
 		final int[] gear = worn();
 		return new SplashTracker.Input(spell, Arrays.hashCode(gear), npc.getIndex(), npc.getId(), name,

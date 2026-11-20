@@ -129,6 +129,19 @@ public interface CombatVitalsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "overheadOnlyAfterDamage",
+		name = "Only after damage",
+		description = "Show the readout over a target (or over you) only for a few seconds after it takes a hit, "
+			+ "like the game's own health bar. Off: it stays up for as long as it is shown today.",
+		section = displaySection,
+		position = 9
+	)
+	default boolean overheadOnlyAfterDamage()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "displayMode",
 		name = "Display",
 		description = "Show hitpoints, a percentage, or both.",
@@ -494,6 +507,33 @@ public interface CombatVitalsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "autoSplash",
+		name = "Auto-detect splashing",
+		description = "Switch Splashing mode on by itself while your worn Magic attack bonus is at or under the "
+			+ "threshold below, and back off above it. Switching the mode by hand wins until your gear next "
+			+ "crosses the threshold.",
+		section = targetSection,
+		position = 30
+	)
+	default boolean autoSplash()
+	{
+		return true;
+	}
+
+	@Range(min = -200, max = 200)
+	@ConfigItem(
+		keyName = "autoSplashThreshold",
+		name = "Splash at bonus",
+		description = "Splashing mode switches on at this Magic attack bonus or lower (-40 by default).",
+		section = targetSection,
+		position = 31
+	)
+	default int autoSplashThreshold()
+	{
+		return -40;
+	}
+
+	@ConfigItem(
 		keyName = "splashAlertBroke",
 		name = "Splash: setup broke",
 		description = "Splashing mode: notify when you change your gear (anything worn), your spell, or the "
@@ -522,14 +562,67 @@ public interface CombatVitalsConfig extends Config
 	@ConfigItem(
 		keyName = "castsLeft",
 		name = "Show casts left",
-		description = "While you cast a combat spell at an NPC (autocast, or a spell clicked on it), show how many "
-			+ "casts you have left from the runes in your inventory and rune pouch, counting combination runes "
-			+ "and a worn staff or charged tome of fire or water that stands in for a rune. Shown on the same "
-			+ "card as Splashing mode, with the idle logout and session clocks. Information only.",
+		description = "Show an overlay with the spell, the runes it costs and how many casts you have left, from "
+			+ "the runes in your inventory and rune pouch, counting combination runes and a worn staff or "
+			+ "charged tome of fire or water that stands in for a rune. By default it shows while you autocast "
+			+ "with a staff, or for a few seconds after you cast a spell by hand. Information only.",
 		section = targetSection,
 		position = 12
 	)
 	default boolean castsLeft()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "castsAlways",
+		name = "Always show",
+		description = "Keep the overlay up all the time instead of only while you cast, for the spell you pick "
+			+ "below, or the last spell you cast if none is picked. Replaces a separate casts plugin.",
+		section = targetSection,
+		position = 13
+	)
+	default boolean castsAlways()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "castsSpell",
+		name = "Always show: spell",
+		description = "The spell to count when Always show is on and you are not casting, by name, e.g. Fire "
+			+ "Surge or Ice Barrage. Leave empty for the last spell you cast.",
+		section = targetSection,
+		position = 14
+	)
+	default String castsSpell()
+	{
+		return "";
+	}
+
+	@Range(min = 0, max = 10000)
+	@ConfigItem(
+		keyName = "castsOnlyBelow",
+		name = "Show only below",
+		description = "Show the overlay only when you have fewer than this many casts left. 0 shows it always. "
+			+ "Unlimited casts never show while this is set. The low-casts alert is not affected.",
+		section = targetSection,
+		position = 15
+	)
+	default int castsOnlyBelow()
+	{
+		return 0;
+	}
+
+	@ConfigItem(
+		keyName = "castsMerge",
+		name = "Merge into splash card",
+		description = "Show the casts line on the combat card while Splashing mode is on. Off keeps that card to the "
+				+ "Magic bonus and hit chance; the casts are never shown on a second card.",
+		section = targetSection,
+		position = 16
+	)
+	default boolean castsMerge()
 	{
 		return true;
 	}
@@ -541,7 +634,7 @@ public interface CombatVitalsConfig extends Config
 		description = "Turn the casts red and send the alert below when you have this many casts or fewer left. "
 			+ "0 turns the warning off.",
 		section = targetSection,
-		position = 13
+		position = 17
 	)
 	default int castsWarnAt()
 	{
@@ -554,9 +647,154 @@ public interface CombatVitalsConfig extends Config
 		description = "Notify when your casts drop to the warn level. It fires once, and again after you restock "
 			+ "above it. Follows the sidebar mute and Mute alert sounds.",
 		section = targetSection,
-		position = 14
+		position = 18
 	)
 	default Notification castsAlertLow()
+	{
+		return Notification.ON;
+	}
+
+	@Range(min = 0, max = 300)
+	@ConfigItem(
+		keyName = "splashLingerSeconds",
+		name = "Card stays (s)",
+		description = "How many seconds the splashing card stays up, dimmed with 'Stopped Xs ago', after you stop "
+			+ "casting. 0 hides it at once.",
+		section = targetSection,
+		position = 19
+	)
+	default int splashLingerSeconds()
+	{
+		return 30;
+	}
+
+	@ConfigItem(
+		keyName = "splashLingerForever",
+		name = "Keep until new activity",
+		description = "Keep the dimmed splashing card up after you stop until you start casting again, "
+			+ "instead of for the seconds above.",
+		section = targetSection,
+		position = 20
+	)
+	default boolean splashLingerForever()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "splashAlertStopSoon",
+		name = "Splash: stops soon",
+		description = "Notify a little before splashing stops by itself: the OSRS wiki says the player stops "
+			+ "attacking after 20 minutes without input. Any mouse or keyboard input restarts the count. "
+			+ "Information only: nothing is clicked for you.",
+		section = targetSection,
+		position = 21
+	)
+	default Notification splashAlertStopSoon()
+	{
+		return Notification.ON;
+	}
+
+	@Range(min = 5, max = 600)
+	@ConfigItem(
+		keyName = "splashWarnSeconds",
+		name = "Splash: warn (s)",
+		description = "How long before splashing stops by itself the alert above fires.",
+		section = targetSection,
+		position = 22
+	)
+	default int splashWarnSeconds()
+	{
+		return 60;
+	}
+
+	@ConfigItem(
+		keyName = "splashAlertStopped",
+		name = "Splash: stopped",
+		description = "Notify when the 20 minutes without input have passed and splashing has stopped.",
+		section = targetSection,
+		position = 23
+	)
+	default Notification splashAlertStopped()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "gemstoneCrab",
+		name = "Gemstone Crab mode",
+		description = "At the Gemstone Crab: show its health and how long until it burrows (its health bar is a "
+			+ "timer of about ten minutes, not damage), then how long its shell stays. Information only.",
+		section = targetSection,
+		position = 24
+	)
+	default boolean gemstoneCrab()
+	{
+		return true;
+	}
+
+	@Range(min = 0, max = 120)
+	@ConfigItem(
+		keyName = "gemstoneCrabWarnSeconds",
+		name = "Crab: warn at (s)",
+		description = "The about-to-burrow alert and the cave arrow start this many seconds before the crab "
+			+ "burrows. At 0 the arrow and the alert wait for the burrow itself.",
+		section = targetSection,
+		position = 25
+	)
+	default int gemstoneCrabWarnSeconds()
+	{
+		return 30;
+	}
+
+	@ConfigItem(
+		keyName = "gemstoneCrabArrow",
+		name = "Crab: cave arrow",
+		description = "Draw an arrow and an outline over the cave to crawl through, from the burrow warning until "
+			+ "the shell is gone. Drawing only: nothing is clicked for you.",
+		section = targetSection,
+		position = 26
+	)
+	default boolean gemstoneCrabArrow()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "gemstoneCrabAlertSpawn",
+		name = "Crab: spawned",
+		description = "Notify when a Gemstone Crab appears, once per crab. Follows the sidebar mute and Mute "
+			+ "alert sounds.",
+		section = targetSection,
+		position = 27
+	)
+	default Notification gemstoneCrabAlertSpawn()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "gemstoneCrabAlertBurrow",
+		name = "Crab: about to burrow",
+		description = "Notify once when the crab is about to burrow (the warn-before setting). Follows the "
+			+ "sidebar mute and Mute alert sounds.",
+		section = targetSection,
+		position = 28
+	)
+	default Notification gemstoneCrabAlertBurrow()
+	{
+		return Notification.ON;
+	}
+
+	@ConfigItem(
+		keyName = "gemstoneCrabAlertGo",
+		name = "Crab: go through the cave",
+		description = "Notify once when the crab has burrowed and the cave is ready to crawl through. Follows "
+			+ "the sidebar mute and Mute alert sounds.",
+		section = targetSection,
+		position = 29
+	)
+	default Notification gemstoneCrabAlertGo()
 	{
 		return Notification.ON;
 	}
@@ -1019,6 +1257,20 @@ public interface CombatVitalsConfig extends Config
 	default boolean skillingRates()
 	{
 		return false;
+	}
+
+	@Range(min = 10, max = 600)
+	@ConfigItem(
+		keyName = "pauseAfterIdleSeconds",
+		name = "Idle pause (s)",
+		description = "Pause after this many idle seconds (10 to 600). The session timer and the XP and action rates pause when no experience has come in for "
+			+ "this long, and resume with the next gain. Paused time is left out of the rates.",
+		section = skillingSection,
+		position = 22
+	)
+	default int pauseAfterIdleSeconds()
+	{
+		return 60;
 	}
 
 	@ConfigItem(
@@ -1716,6 +1968,141 @@ public interface CombatVitalsConfig extends Config
 	default boolean autoResetSession()
 	{
 		return false;
+	}
+
+	@ConfigItem(
+		keyName = "forestryHighlights",
+		name = "Highlight Forestry events",
+		description = "Outline the parts of a Forestry event in the game view (glowing roots, the sapling, the "
+			+ "flowering bush, the leprechaun and the rest), as RuneLite's Woodcutting plugin does. Not covered "
+			+ "yet: mulch ingredients, fox trap, pheasant nest, ritual circle and the leprechaun's rainbow, so keep "
+			+ "RuneLite's Woodcutting plugin on for those for now.",
+		section = skillingSection,
+		position = 42
+	)
+	default boolean forestryHighlights()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "forestryHighlightColour",
+		name = "Highlight colour",
+		description = "The outline colour for Forestry event highlights.",
+		section = skillingSection,
+		position = 43
+	)
+	default Color forestryHighlightColour()
+	{
+		return new Color(0x00FF7F);
+	}
+
+	@ConfigItem(
+		keyName = "highlightRisingRoots",
+		name = "Rising Roots",
+		description = "Highlight the glowing roots.",
+		section = skillingSection,
+		position = 44
+	)
+	default boolean highlightRisingRoots()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "highlightStrugglingSapling",
+		name = "Struggling Sapling",
+		description = "Highlight the sapling.",
+		section = skillingSection,
+		position = 45
+	)
+	default boolean highlightStrugglingSapling()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "highlightFloweringBush",
+		name = "Flowering Bush",
+		description = "Highlight the flowering bush.",
+		section = skillingSection,
+		position = 46
+	)
+	default boolean highlightFloweringBush()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "highlightLeprechaun",
+		name = "Leprechaun",
+		description = "Highlight the Woodcutting leprechaun.",
+		section = skillingSection,
+		position = 47
+	)
+	default boolean highlightLeprechaun()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "highlightPoachers",
+		name = "Poachers",
+		description = "Highlight the poachers.",
+		section = skillingSection,
+		position = 48
+	)
+	default boolean highlightPoachers()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "highlightPheasantControl",
+		name = "Pheasant Control",
+		description = "Highlight the pheasant control event.",
+		section = skillingSection,
+		position = 49
+	)
+	default boolean highlightPheasantControl()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "highlightBeeHive",
+		name = "Bee Hive",
+		description = "Highlight the bee hive.",
+		section = skillingSection,
+		position = 50
+	)
+	default boolean highlightBeeHive()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "highlightEnchantmentRitual",
+		name = "Enchantment Ritual",
+		description = "Highlight the ritual.",
+		section = skillingSection,
+		position = 51
+	)
+	default boolean highlightEnchantmentRitual()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "highlightFriendlyEnt",
+		name = "Friendly Ent",
+		description = "Highlight the friendly ent.",
+		section = skillingSection,
+		position = 52
+	)
+	default boolean highlightFriendlyEnt()
+	{
+		return true;
 	}
 
 	String SOUND_HELP = " RuneLite: your RuneLite notification sound, as before. Soft chime, Music box, Retro blip: "
@@ -2755,5 +3142,29 @@ public interface CombatVitalsConfig extends Config
 	default boolean sidebarGuidesHidden()
 	{
 		return false;
+	}
+
+	/** The sidebar's last open tab, a {@link VitalsSidePanel.Main} name; written there, never listed. */
+	@ConfigItem(
+		keyName = VitalsSidePanel.TAB_KEY,
+		name = "",
+		description = "",
+		hidden = true
+	)
+	default String sidebarTab()
+	{
+		return "";
+	}
+
+	/** Which card the Live tab shows, a {@link LiveSection.View} name; written there, never listed. */
+	@ConfigItem(
+		keyName = LiveSection.VIEW_KEY,
+		name = "",
+		description = "",
+		hidden = true
+	)
+	default String sidebarLiveView()
+	{
+		return "";
 	}
 }

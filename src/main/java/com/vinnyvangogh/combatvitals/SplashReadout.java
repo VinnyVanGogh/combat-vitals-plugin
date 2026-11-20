@@ -25,10 +25,21 @@ final class SplashReadout
 	final long logoutMillis;
 	final long sessionMillis;
 	final long tickMillis;
+	/** When the casting stopped (wall clock), or -1 while it goes on: the card is then a dimmed afterimage. */
+	final long stoppedAt;
 
 	SplashReadout(SplashTracker.Result splash, String spell, String castsText, int casts, boolean castsLow,
 		int[] runeItems, int[] runeCosts, long idleMillis, long logoutMillis, long sessionMillis, long tickMillis)
 	{
+		this(splash, spell, castsText, casts, castsLow, runeItems, runeCosts, idleMillis, logoutMillis,
+			sessionMillis, tickMillis, -1);
+	}
+
+	private SplashReadout(SplashTracker.Result splash, String spell, String castsText, int casts, boolean castsLow,
+		int[] runeItems, int[] runeCosts, long idleMillis, long logoutMillis, long sessionMillis, long tickMillis,
+		long stoppedAt)
+	{
+		this.stoppedAt = stoppedAt;
 		this.splash = splash;
 		this.spell = spell;
 		this.castsText = castsText;
@@ -40,6 +51,24 @@ final class SplashReadout
 		this.logoutMillis = logoutMillis;
 		this.sessionMillis = sessionMillis;
 		this.tickMillis = tickMillis;
+	}
+
+	/** A card of the casts alone: no Magic read-out and no clocks, which belong to Splashing mode. */
+	static SplashReadout castsOnly(CastsReadout c, long now)
+	{
+		return new SplashReadout(null, c.spell, c.castsText, c.casts, c.low, c.runeItems, c.runeCosts, -1, 0, -1, now);
+	}
+
+	/** This card as an afterimage of casting that stopped at {@code at}. */
+	SplashReadout stopped(long at)
+	{
+		return new SplashReadout(splash, spell, castsText, casts, castsLow, runeItems, runeCosts, idleMillis,
+			logoutMillis, sessionMillis, tickMillis, at);
+	}
+
+	boolean isStopped()
+	{
+		return stoppedAt >= 0;
 	}
 
 	/** The idle logout line as of {@code now}, or null. */

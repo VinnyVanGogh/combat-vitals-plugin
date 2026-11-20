@@ -29,6 +29,10 @@ final class SkillingSession
 	/** The XP the session's gains are counted from: the first reading, or the total at a reset. */
 	private final int[] baseXp = new int[lastXp.length];
 	private final long[] lastGain = new long[lastXp.length];
+	/** Idle time already left out, from gaps between gains longer than {@link #idleMillis}. */
+	private final long[] pausedMillis = new long[lastXp.length];
+	/** How long without a gain pauses the clock; 0 or less never pauses. */
+	private long idleMillis = 60_000;
 
 	SkillingSession()
 	{
@@ -57,6 +61,11 @@ final class SkillingSession
 		else
 		{
 			xpSinceFirst[i] += xp - previous;
+			// A gap longer than the idle limit was paused from the limit on; it is not part of the session's time.
+			if (idleMillis > 0 && nowMillis - lastGain[i] > idleMillis)
+			{
+				pausedMillis[i] += nowMillis - lastGain[i] - idleMillis;
+			}
 		}
 		actions[i]++;
 		lastGain[i] = nowMillis;
@@ -94,16 +103,41 @@ final class SkillingSession
 		return latest;
 	}
 
+	/** The average experience of one action this session (the badge's actions), or 0 before the first. */
+	double xpPerAction(Skill skill)
+	{
+		final int i = skill.ordinal();
+		return actions[i] == 0 ? 0 : (double) (lastXp[i] - baseXp[i]) / actions[i];
+	}
+
 	int actions(Skill skill)
 	{
 		return actions[skill.ordinal()];
 	}
 
-	/** Milliseconds since this session's first gain in the skill, or -1 before it. */
+	/** Sets how long without a gain pauses the clock; takes effect for the open gap too. */
+	void setIdleMillis(long idleMillis)
+	{
+		this.idleMillis = idleMillis;
+	}
+
+	/** True while the skill's clock is paused: its last gain is older than the idle limit. */
+	boolean paused(Skill skill, long nowMillis)
+	{
+		final int i = skill.ordinal();
+		return actions[i] > 0 && idleMillis > 0 && nowMillis - lastGain[i] > idleMillis;
+	}
+
+	/** Milliseconds of active time since this session's first gain in the skill, paused time left out; -1 before it. */
 	long elapsed(Skill skill, long nowMillis)
 	{
 		final int i = skill.ordinal();
-		return actions[i] == 0 ? -1 : Math.max(0, nowMillis - firstGain[i]);
+		if (actions[i] == 0)
+		{
+			return -1;
+		}
+		final long open = idleMillis > 0 ? Math.max(0, nowMillis - lastGain[i] - idleMillis) : 0;
+		return Math.max(0, nowMillis - firstGain[i] - pausedMillis[i] - open);
 	}
 
 	/** XP per hour since the first gain, or -1 until {@link #MIN_RATE_MILLIS} has passed. */
@@ -122,7 +156,7 @@ final class SkillingSession
 
 	private int perHour(long amount, int i, long nowMillis)
 	{
-		final long elapsed = nowMillis - firstGain[i];
+		final long elapsed = elapsed(Skill.values()[i], nowMillis);
 		if (actions[i] == 0 || elapsed < MIN_RATE_MILLIS)
 		{
 			return -1;
@@ -137,6 +171,7 @@ final class SkillingSession
 		Arrays.fill(firstGain, 0);
 		Arrays.fill(xpSinceFirst, 0);
 		Arrays.fill(lastGain, 0);
+		Arrays.fill(pausedMillis, 0);
 		System.arraycopy(lastXp, 0, baseXp, 0, lastXp.length);
 	}
 

@@ -39,12 +39,54 @@ final class LiveVitals
 	/** "Fishing: +12.3k xp, +1 lvl in 23m", one per skill gained in this session, the most XP first. */
 	final List<Gain> session;
 
+	/** The same skills over the whole login, which an activity change does not reset; empty until a gain. */
+	final List<Gain> totals;
+
 	LiveVitals(boolean loggedIn, Combat combat, Skilling skilling, List<Gain> session)
+	{
+		this(loggedIn, combat, skilling, session, Collections.emptyList());
+	}
+
+	LiveVitals(boolean loggedIn, Combat combat, Skilling skilling, List<Gain> session, List<Gain> totals)
 	{
 		this.loggedIn = loggedIn;
 		this.combat = combat;
 		this.skilling = skilling;
 		this.session = session;
+		this.totals = totals;
+	}
+
+	/**
+	 * "This session: +12.3k xp in 23m" and "Total: +40.1k xp in 1h 05m" for the skills of one card; the session
+	 * resets on a new activity, the total only at logout. Time is active time, paused stretches left out.
+	 */
+	static List<String> periods(SkillingSession session, SkillingSession total, Skill[] skills, long nowMillis)
+	{
+		return Arrays.asList(period("This session", session, skills, nowMillis),
+			period("Total", total, skills, nowMillis));
+	}
+
+	private static String period(String label, SkillingSession s, Skill[] skills, long nowMillis)
+	{
+		long xp = 0;
+		long millis = -1;
+		boolean paused = false;
+		for (Skill skill : skills)
+		{
+			if (s.actions(skill) == 0)
+			{
+				continue;
+			}
+			xp += s.xpGained(skill);
+			millis = Math.max(millis, s.elapsed(skill, nowMillis));
+			paused |= s.paused(skill, nowMillis);
+		}
+		if (millis < 0)
+		{
+			return label + ": nothing yet";
+		}
+		return label + ": +" + SessionRow.shortNumber((int) Math.min(Integer.MAX_VALUE, xp)) + " xp in "
+			+ SessionRow.duration(millis) + (paused ? " (paused)" : "");
 	}
 
 	/** A bar with its words: fraction 0 to 1, or -1 while unknown (drawn empty). */
@@ -105,6 +147,18 @@ final class LiveVitals
 			this.training = training;
 			this.trainingRate = trainingRate;
 		}
+
+		/** Unmet goals in the skills this card tracks, one line each, as the Skilling card has them. */
+		List<String> goals = Collections.emptyList();
+		/** "This session: ..." and "Total: ..." lines, see {@link LiveVitals#periods}. */
+		List<String> periods = Collections.emptyList();
+
+		Combat with(List<String> goals, List<String> periods)
+		{
+			this.goals = goals;
+			this.periods = periods;
+			return this;
+		}
 	}
 
 	static final class Skilling
@@ -123,9 +177,19 @@ final class LiveVitals
 		/** Gear warning, the inventory line and each container's, as the badge has them. */
 		final List<String> lines;
 
+		/** The unmet goals in this skill, one line each ("Goal Mining level 90: 1,200 xp to go ..."); may be empty. */
+		final List<String> goals;
+
 		Skilling(String header, Color colour, BufferedImage icon, Bar xp, Map<SessionRow.Kind, String> stats,
 			List<String> chips, List<String> lines)
 		{
+			this(header, colour, icon, xp, stats, chips, lines, Collections.emptyList());
+		}
+
+		Skilling(String header, Color colour, BufferedImage icon, Bar xp, Map<SessionRow.Kind, String> stats,
+			List<String> chips, List<String> lines, List<String> goals)
+		{
+			this.goals = goals;
 			this.header = header;
 			this.colour = colour;
 			this.icon = icon;
@@ -133,6 +197,15 @@ final class LiveVitals
 			this.stats = stats;
 			this.chips = chips;
 			this.lines = lines;
+		}
+
+		/** "This session: ..." and "Total: ..." lines for the active skill, see {@link LiveVitals#periods}. */
+		List<String> periods = Collections.emptyList();
+
+		Skilling withPeriods(List<String> periods)
+		{
+			this.periods = periods;
+			return this;
 		}
 	}
 
@@ -162,6 +235,12 @@ final class LiveVitals
 	{
 		return new Bar(max <= 0 ? -1 : Math.max(0, Math.min(1.0, (double) current / max)),
 			name + " " + current + "/" + max, colour);
+	}
+
+	/** "Run 64% on | Spec 100%": the run toggle, on or off, is said beside the run energy. */
+	static String energy(int runHundredths, int specTenths, boolean running)
+	{
+		return "Run " + runHundredths / 100 + "% " + (running ? "on" : "off") + " | Spec " + specTenths / 10 + "%";
 	}
 
 	/** "Run 64% | Spec 100%"; run energy in hundredths and spec in tenths of a percent, as the client gives them. */
@@ -210,6 +289,12 @@ final class LiveVitals
 	/** The same, with the skill's icon for the card's title. */
 	static Skilling skilling(SkillingReadout r, BufferedImage icon)
 	{
+		return skilling(r, icon, Collections.emptyList());
+	}
+
+	/** The same, with the active skill's goal lines under the readout. */
+	static Skilling skilling(SkillingReadout r, BufferedImage icon, List<String> goals)
+	{
 		if (r == null)
 		{
 			return new Skilling(null, SkillColours.DEFAULT, null, null, Collections.emptyMap(),
@@ -227,7 +312,7 @@ final class LiveVitals
 		final List<String> chips = timers ? Arrays.asList(r.getInventoryLabel().split(" \\| "))
 			: Collections.emptyList();
 		return new Skilling(SkillingBadgeRenderer.headerText(r), r.getColour(), icon, xp, stats, chips,
-			lines(r, !timers));
+			lines(r, !timers), goals);
 	}
 
 	/** The badge's lines under its XP and session rows: gear warning, inventory, containers. */

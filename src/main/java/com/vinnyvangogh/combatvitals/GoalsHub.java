@@ -9,6 +9,7 @@ import javax.inject.Singleton;
 import javax.swing.SwingUtilities;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
+import net.runelite.api.GameState;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.NPC;
@@ -38,6 +39,8 @@ final class GoalsHub
 	static final String KEY = "goals";
 	/** The book is checked for a new day or week this often, in game ticks. */
 	private static final int ROLLOVER_TICKS = 100;
+	/** An unread goal list is read again this often, in game ticks, until the profile answers. */
+	private static final int RETRY_TICKS = 5;
 
 	private final Client client;
 	private final ClientThread clientThread;
@@ -112,12 +115,24 @@ final class GoalsHub
 		return count < 0 ? new ArrayList<>() : book.onKillCount(boss, count);
 	}
 
-	void tick(int tickCount)
+	/**
+	 * Per game tick. While no stored goals have been read (LOGGED_IN can come before the account's profile is
+	 * ready, and the read then comes back empty) the load is retried every few ticks. Returns true when the
+	 * book changed under the page, so it is redrawn.
+	 */
+	boolean tick(int tickCount)
 	{
+		boolean changed = false;
+		if (tickCount % RETRY_TICKS == 0 && book.needsLoad() && client.getGameState() == GameState.LOGGED_IN
+			&& client.getAccountHash() != -1)
+		{
+			changed = book.loadFor(client.getAccountHash()) && !book.goals().isEmpty();
+		}
 		if (tickCount % ROLLOVER_TICKS == 0)
 		{
 			book.rollover(now());
 		}
+		return changed;
 	}
 
 	/** The sentence a reached goal is announced with. */
@@ -157,9 +172,16 @@ final class GoalsHub
 		final int[] melee = new int[3];
 		if (worn != null)
 		{
-			for (Item item : worn.getItems())
+			final Item[] items = worn.getItems();
+			for (int slot = 0; slot < items.length; slot++)
 			{
-				addGear(s, melee, item.getId());
+				addGear(s, melee, items[slot].getId());
+				if (slot < MaxHitPage.SLOTS && items[slot].getId() > 0)
+				{
+					s.itemIds[slot] = items[slot].getId();
+					s.itemNames[slot] = itemManager.getItemComposition(items[slot].getId()).getName();
+					s.itemIcons[slot] = itemManager.getImage(items[slot].getId());
+				}
 			}
 		}
 		s.attackBonus = Math.max(melee[0], Math.max(melee[1], melee[2]));

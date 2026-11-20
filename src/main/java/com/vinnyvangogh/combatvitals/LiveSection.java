@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Objects;
 import javax.swing.AbstractButton;
 import javax.swing.Box;
+import javax.swing.ButtonGroup;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -51,12 +52,43 @@ final class LiveSection extends VitalsSidePanel.Column
 	/** How many of the session's skills show before Show all. */
 	static final int TOP = 3;
 	static final String SHOW_TOP = "Show top " + TOP;
+	/** Hidden setting: which of the three cards the Live tab shows, a {@link View} name. */
+	static final String VIEW_KEY = "sidebarLiveView";
+
+	/** The secondary toggle under the Live tab: one card at a time, as in Group Ironman's live view. */
+	enum View
+	{
+		COMBAT("Combat"), SKILLING("Skilling"), OVERALL("Overall");
+
+		final String label;
+
+		View(String label)
+		{
+			this.label = label;
+		}
+
+		static View of(String name)
+		{
+			for (View v : values())
+			{
+				if (v.name().equals(name))
+				{
+					return v;
+				}
+			}
+			return COMBAT;
+		}
+	}
 
 	/** The 2x2 grid's tiles, in reading order, and their captions. */
 	private static final SessionRow.Kind[] STATS = {SessionRow.Kind.XP_RATE, SessionRow.Kind.ACTION_RATE,
 		SessionRow.Kind.TIME_TO_LEVEL, SessionRow.Kind.COUNT};
 	private static final String[] CAPTIONS = {"XP / hour", "Actions / hour", "To level", "Done"};
 
+	/** The Splashing mode setting, switched here beside the vitals as well as on the Targets tab. */
+	static final String SPLASH_KEY = "splashMode";
+
+	private final javax.swing.JCheckBox splashSwitch = new javax.swing.JCheckBox("Splashing mode (AFK Magic)");
 	private final ConfigStore store;
 	private final FoldCard.Header header = new FoldCard.Header(TITLE, null);
 	private final VitalsSidePanel.Column body = new VitalsSidePanel.Column();
@@ -79,6 +111,20 @@ final class LiveSection extends VitalsSidePanel.Column
 	private final WrapLabel notInCombat = new WrapLabel(NOT_IN_COMBAT, PanelStyle.MUTED);
 	private final MeterBar training = new MeterBar();
 	private final WrapLabel trainingRate = new WrapLabel("", PanelStyle.MUTED);
+	/** Goals in the skills a fight trains, the same lines as the Skilling card's. */
+	private final VitalsSidePanel.Column combatGoals = new VitalsSidePanel.Column();
+	private final List<WrapLabel> combatGoalPool = new ArrayList<>();
+	/** This session and Total, side by side in time: the session resets on an activity change, the total does not. */
+	private final VitalsSidePanel.Column combatPeriods = new VitalsSidePanel.Column();
+	private final List<WrapLabel> combatPeriodPool = new ArrayList<>();
+	private final VitalsSidePanel.Column skillPeriods = new VitalsSidePanel.Column();
+	private final List<WrapLabel> skillPeriodPool = new ArrayList<>();
+
+	// Total (Overall view): every skill gained since login
+	private final FoldCard totalCard = new FoldCard("Total since login", null, null, true);
+	private final WrapLabel totalEmpty = new WrapLabel(NOTHING_YET, PanelStyle.MUTED);
+	private final VitalsSidePanel.Column totalLines = new VitalsSidePanel.Column();
+	private final List<GainRow> totalPool = new ArrayList<>();
 
 	// Skilling
 	private final FoldCard skillingCard = new FoldCard("Skilling", null, SkillColours.DEFAULT, true);
@@ -94,6 +140,9 @@ final class LiveSection extends VitalsSidePanel.Column
 	private final List<Chip> chipPool = new ArrayList<>();
 	private final VitalsSidePanel.Column skillLines = new VitalsSidePanel.Column();
 	private final List<WrapLabel> skillPool = new ArrayList<>();
+	/** The active skill's goals, each with what is left and the time to go. */
+	private final VitalsSidePanel.Column skillGoals = new VitalsSidePanel.Column();
+	private final List<WrapLabel> goalPool = new ArrayList<>();
 
 	// This session
 	private final FoldCard sessionCard = new FoldCard("This session", null, null, true);
@@ -103,6 +152,8 @@ final class LiveSection extends VitalsSidePanel.Column
 	private final JButton showAll = VitalsSidePanel.linkButton("", null);
 	private boolean allGains;
 
+	private final Map<View, VitalsSidePanel.Segment> viewButtons = new EnumMap<>(View.class);
+	private View view = View.COMBAT;
 	private LiveVitals last = LiveVitals.LOGGED_OUT;
 	private volatile boolean open = true;
 	/** Text, bar and visibility changes made, for the tests that check an update redraws only what changed. */
@@ -125,12 +176,58 @@ final class LiveSection extends VitalsSidePanel.Column
 		buildCombat();
 		buildSkilling();
 		buildSession();
+		live.add(viewBar());
 		live.add(combatCard);
 		live.add(skillingCard);
 		live.add(sessionCard);
+		totalCard.body.add(totalEmpty);
+		totalCard.body.add(totalLines);
+		live.add(totalCard);
+		applyView(View.of(store.get(VIEW_KEY, String.class)));
 
 		refresh();
 		show(LiveVitals.LOGGED_OUT);
+	}
+
+	/** Combat / Skilling / Overall as a small segmented row; the choice is remembered. */
+	private JComponent viewBar()
+	{
+		final JPanel bar = new JPanel(new GridLayout(1, 0, 0, 0));
+		bar.setOpaque(false);
+		bar.setBorder(new EmptyBorder(0, 0, PanelStyle.S, 0));
+		final ButtonGroup group = new ButtonGroup();
+		for (View v : View.values())
+		{
+			final VitalsSidePanel.Segment b = new VitalsSidePanel.Segment(v.label);
+			b.setName("live-view-" + v.name());
+			b.addActionListener(e ->
+			{
+				applyView(v);
+				store.set(VIEW_KEY, v.name());
+			});
+			group.add(b);
+			viewButtons.put(v, b);
+			bar.add(b);
+		}
+		return bar;
+	}
+
+	/** Shows only the chosen view's card. */
+	void applyView(View v)
+	{
+		view = v;
+		combatCard.setVisible(v == View.COMBAT);
+		skillingCard.setVisible(v == View.SKILLING);
+		sessionCard.setVisible(v == View.OVERALL);
+		totalCard.setVisible(v == View.OVERALL);
+		viewButtons.get(v).setSelected(true);
+		revalidate();
+		repaint();
+	}
+
+	View view()
+	{
+		return view;
 	}
 
 	private void buildCombat()
@@ -142,8 +239,17 @@ final class LiveSection extends VitalsSidePanel.Column
 		targetBox.add(targetName);
 		targetBox.add(notInCombat);
 		targetBox.add(target);
-		for (Component c : new Component[]{hitpoints, gap(), prayer, gap(), energyRow, targetBox, gap(), training,
-			trainingRate})
+		// The same setting as the Targets tab and the card's right-click, so all three agree.
+		splashSwitch.setName("live-splash-mode");
+		splashSwitch.setFont(PanelStyle.body());
+		splashSwitch.setForeground(PanelStyle.TEXT);
+		splashSwitch.setOpaque(false);
+		splashSwitch.setFocusable(false);
+		splashSwitch.setToolTipText("Splashing mode: show your Magic bonus and hit chance on the combat card. "
+			+ "Same as the right-click option on the card.");
+		splashSwitch.addActionListener(e -> store.set(SPLASH_KEY, splashSwitch.isSelected()));
+		for (Component c : new Component[]{splashSwitch, hitpoints, gap(), prayer, gap(), energyRow, targetBox, gap(),
+			training, trainingRate, combatPeriods, combatGoals})
 		{
 			combat.add(c);
 		}
@@ -175,7 +281,7 @@ final class LiveSection extends VitalsSidePanel.Column
 			statValues.put(STATS[i], value);
 			statGrid.add(tile);
 		}
-		for (Component c : new Component[]{title, gap(), skillXp, gap(), statGrid, gap(), skillChips, skillLines})
+		for (Component c : new Component[]{title, gap(), skillXp, gap(), statGrid, gap(), skillChips, skillLines, skillPeriods, skillGoals})
 		{
 			skilling.add(c);
 		}
@@ -211,6 +317,7 @@ final class LiveSection extends VitalsSidePanel.Column
 	void refresh()
 	{
 		setOpen(!Boolean.FALSE.equals(store.get(OPEN_KEY, Boolean.class)), false);
+		splashSwitch.setSelected(Boolean.TRUE.equals(store.get(SPLASH_KEY, Boolean.class)));
 	}
 
 	private void setOpen(boolean open, boolean remember)
@@ -253,6 +360,7 @@ final class LiveSection extends VitalsSidePanel.Column
 			showCombat(v.combat);
 			showSkilling(v.skilling);
 			showSession(v.session);
+			showTotals(v.totals);
 		}
 		if (changes != before)
 		{
@@ -281,6 +389,29 @@ final class LiveSection extends VitalsSidePanel.Column
 		visible(notInCombat, !fighting);
 		bar(training, c.training);
 		text(trainingRate, c.trainingRate);
+		lines(combatPeriods, combatPeriodPool, c.periods);
+		visible(combatPeriods, !c.periods.isEmpty());
+		lines(combatGoals, combatGoalPool, c.goals);
+		visible(combatGoals, !c.goals.isEmpty());
+	}
+
+	/** Every skill gained since login, most XP first, with no fold: the session list's twin for the Overall view. */
+	private void showTotals(List<LiveVitals.Gain> gains)
+	{
+		visible(totalEmpty, gains.isEmpty());
+		while (totalPool.size() < gains.size())
+		{
+			final GainRow row = new GainRow();
+			row.setVisible(false);
+			totalPool.add(row);
+			totalLines.add(row);
+			changes++;
+		}
+		final int top = gains.isEmpty() ? 1 : Math.max(1, gains.get(0).xp);
+		for (int i = 0; i < totalPool.size(); i++)
+		{
+			gain(totalPool.get(i), i < gains.size() ? gains.get(i) : null, top);
+		}
 	}
 
 	private void showSkilling(LiveVitals.Skilling s)
@@ -311,6 +442,10 @@ final class LiveSection extends VitalsSidePanel.Column
 		visible(statGrid, !s.stats.isEmpty());
 		chips(s.chips);
 		lines(skillLines, skillPool, s.lines);
+		lines(skillPeriods, skillPeriodPool, s.header == null ? java.util.Collections.emptyList() : s.periods);
+		visible(skillPeriods, s.header != null && !s.periods.isEmpty());
+		lines(skillGoals, goalPool, s.header == null ? java.util.Collections.emptyList() : s.goals);
+		visible(skillGoals, s.header != null && !s.goals.isEmpty());
 	}
 
 	/** The three skills with the most XP gained; the rest only after Show all. */
