@@ -877,8 +877,12 @@ public class CombatVitalsPlugin extends Plugin
 		}
 		if (config.skillingSessionReset())
 		{
-			session.reset();
-			agilityLaps.clear();
+			// On the client thread, where the tick reads the session.
+			clientThread.invoke(() ->
+			{
+				session.reset();
+				agilityLaps.clear();
+			});
 			configManager.setConfiguration(CombatVitalsConfig.GROUP, "skillingSessionReset", false);
 		}
 		if (config.liveCardClear())

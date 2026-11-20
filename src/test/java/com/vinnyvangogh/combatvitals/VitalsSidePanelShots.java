@@ -52,14 +52,14 @@ public class VitalsSidePanelShots
 			{
 				live.applyView(v);
 				ui.layout(WIDTH);
-				shot(ui, "panel-live-" + v.name().toLowerCase() + ".png");
+				liveShot(ui, panel, live, "panel-live-" + v.name().toLowerCase() + ".png");
 			}
 			// The same Skilling card after the work stopped: it stays, marked Paused, with its timers and All time.
 			panel.live(new LiveVitals(true, LiveSectionTest.idleCombat(), LiveSectionTest.pausedChopping(),
 				LiveSectionTest.SESSION));
 			live.applyView(LiveSection.View.SKILLING);
 			ui.layout(WIDTH);
-			shot(ui, "panel-live-skilling-paused.png");
+			liveShot(ui, panel, live, "panel-live-skilling-paused.png");
 			panel.display(VitalsSidePanel.Main.PRESETS);
 			ui.layout(WIDTH);
 			ui.click("Skiller");
@@ -95,16 +95,24 @@ public class VitalsSidePanelShots
 			new LiveVitals.GoalLine("Ranged level 99", new LiveVitals.Bar(0.31, "Ranged 99 · 31% · ~12h 05m", accent),
 				"Ranged level 99: 8,100,000 xp to go (31%), 62,000 actions left, 12h 05m at 670,000 xp/hr (session), "
 					+ "no rate yet (last hour)"));
-		final java.util.List<LiveVitals.Period> periods = java.util.Arrays.asList(
-			new LiveVitals.Period("This session", "+412.3k xp", "2h 10m", "190.2k/h",
-				"This session: +412.3k xp in 2h 10m, 190,200 xp/h"),
-			new LiveVitals.Period("Total", "+1.24m xp", "12h 05m", "102.7k/h",
-				"Total: +1.24m xp in 12h 05m, 102,700 xp/h"));
-		final LiveVitals.Skilling chop = LiveSectionTest.chopping();
+		final java.util.List<LiveVitals.Period> periods = LiveSectionTest.realisticPeriods();
+		// The Skilling card as played: "Active · running" and "Pauses in" timers, goal bars, and the Session, Total and
+		// All time rows.
 		return new LiveVitals(true, LiveSectionTest.fighting().with(goals, periods),
-			new LiveVitals.Skilling(chop.header, chop.colour, chop.icon, chop.xp, chop.stats, chop.chips, chop.lines,
-				goals).withPeriods(periods),
+			LiveSectionTest.activeChopping(goals, periods),
 			LiveSectionTest.LONG_SESSION, LiveSectionTest.LONG_SESSION);
+	}
+
+	/** The panel down to the bottom of the Live section: the card, without the empty panel under it. */
+	private static void liveShot(SwingDriver ui, VitalsSidePanel panel, LiveSection live, String name)
+	{
+		final BufferedImage full = ui.render(WIDTH, 0, SCALE);
+		final int bottom = javax.swing.SwingUtilities.convertPoint(live.getParent(), live.getLocation(), panel).y
+			+ live.getHeight() + 8;
+		final BufferedImage image = full.getSubimage(0, 0, full.getWidth(),
+			Math.min(full.getHeight(), (int) Math.round(bottom * SCALE)));
+		assertTrue(name + " is empty", image.getHeight() > 100);
+		SwingDriver.writePng(image, new File(dir(), name));
 	}
 
 	private static void shot(SwingDriver ui, String name)

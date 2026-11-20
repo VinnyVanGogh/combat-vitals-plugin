@@ -674,15 +674,18 @@ final class LiveSection extends VitalsSidePanel.Column
 	}
 
 	/**
-	 * "This session   +12.3k xp   23m   45.2k/h": a muted label and three right-aligned columns at fixed shares
-	 * of the width, so every row's columns line up. A cell too long for its share is cut with an ellipsis and the
+	 * "This session   +12.3k xp   23m   45.2k/h": a muted label and three right-aligned columns sized to the widest
+	 * text in the card, so every row's columns line up. A cell too long for the panel is cut with an ellipsis and the
 	 * row's tooltip has the whole line.
 	 */
 	private static final class PeriodRow extends JPanel
 	{
-		/** Label, xp, time, xp/h: shares of the row's width. */
-		private static final double[] SHARE = {0.28, 0.27, 0.18, 0.27};
-		private final JLabel[] cells = new JLabel[SHARE.length];
+		/** Label, xp, time, xp/h. */
+		private static final int COLUMNS = 4;
+		/** Space between columns, so one cell's text never runs into the next. */
+		private static final int COLUMN_GAP = 4;
+		private static final String XP_UNIT = " xp";
+		private final JLabel[] cells = new JLabel[COLUMNS];
 		private LiveVitals.Period shown;
 
 		PeriodRow()
@@ -720,19 +723,66 @@ final class LiveSection extends VitalsSidePanel.Column
 			return PanelStyle.fullWidth(this);
 		}
 
+		/**
+		 * Columns are as wide as the widest text in any visible row of the same card, so every row's columns line up
+		 * and nothing is cut while it fits. When the rows are wider than the panel, the label gives way first.
+		 */
 		@Override
 		public void doLayout()
 		{
 			final java.awt.Insets in = getInsets();
 			final int width = getWidth() - in.left - in.right;
 			final int height = getHeight() - in.top - in.bottom;
+			final int[] widths = columnWidths(width);
 			int x = in.left;
 			for (int i = 0; i < cells.length; i++)
 			{
-				final int w = i == cells.length - 1 ? in.left + width - x : (int) Math.round(width * SHARE[i]);
-				cells[i].setBounds(x, in.top, w, height);
-				x += w;
+				final int gap = i == 0 ? 0 : COLUMN_GAP;
+				final int w = i == cells.length - 1 ? in.left + width - x - gap : widths[i];
+				cells[i].setBounds(x + gap, in.top, Math.max(0, w), height);
+				x += widths[i] + gap;
 			}
+		}
+
+		/** Label, xp, time, xp/h widths for a row {@code width} wide; the last column is flush right. */
+		private int[] columnWidths(int width)
+		{
+			final int[] want = new int[cells.length];
+			final java.awt.Container parent = getParent();
+			final java.awt.Component[] rows = parent == null ? new java.awt.Component[] {this} : parent.getComponents();
+			for (java.awt.Component c : rows)
+			{
+				if (c instanceof PeriodRow && c.isVisible())
+				{
+					for (int i = 0; i < want.length; i++)
+					{
+						want[i] = Math.max(want[i], ((PeriodRow) c).cells[i].getPreferredSize().width);
+					}
+				}
+			}
+			final int gaps = COLUMN_GAP * (want.length - 1);
+			int over = 0;
+			for (int w : want)
+			{
+				over += w;
+			}
+			over += gaps - width;
+			final int[] out = new int[want.length];
+			System.arraycopy(want, 0, out, 0, want.length);
+			if (over > 0)
+			{
+				// Too wide: the label gives way first, down to a third of the row, then the xp column.
+				final int cutLabel = Math.min(over, Math.max(0, want[0] - width / 3));
+				out[0] -= cutLabel;
+				over -= cutLabel;
+				out[1] -= Math.min(over, Math.max(0, want[1] / 2));
+			}
+			else
+			{
+				// Spare room goes between the label and the numbers, which stay together at the right edge.
+				out[0] += -over;
+			}
+			return out;
 		}
 
 		boolean set(LiveVitals.Period p)
@@ -744,7 +794,9 @@ final class LiveSection extends VitalsSidePanel.Column
 			}
 			shown = p;
 			cells[0].setText(p.label);
-			cells[1].setText(p.xp);
+			// The unit goes: the rate beside it is xp/h, and the tooltip says "xp" in full. It is the 12px that keep
+			// "+412.3k  2h 10m  190.2k/h" from being cut at the default sidebar width.
+			cells[1].setText(p.xp.endsWith(XP_UNIT) ? p.xp.substring(0, p.xp.length() - XP_UNIT.length()) : p.xp);
 			cells[2].setText(p.time);
 			cells[3].setText(p.rate);
 			setToolTipText(p.tip);

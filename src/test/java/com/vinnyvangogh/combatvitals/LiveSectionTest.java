@@ -206,6 +206,78 @@ public class LiveSectionTest
 			LiveVitals.allTime(new AllTime.Stats(40 * 3_600_000L, 3_100_000, 5_200))));
 	}
 
+	/** Session, Total and All time rows as a real session reads: the widest values a card normally shows. */
+	static List<LiveVitals.Period> realisticPeriods()
+	{
+		return Arrays.asList(
+			new LiveVitals.Period("This session", "+412.3k xp", "2h 10m", "190.2k/h",
+				"This session: +412.3k xp in 2h 10m, 190,200 xp/h"),
+			new LiveVitals.Period("Total", "+1.24m xp", "12h 05m", "102.7k/h",
+				"Total: +1.24m xp in 12h 05m, 102,700 xp/h"),
+			LiveVitals.allTime(new AllTime.Stats(40 * 3_600_000L, 3_100_000, 5_200)));
+	}
+
+	/** The Skilling card while the work runs: "Active · running" and "Pauses in", with goals and all three rows. */
+	static LiveVitals.Skilling activeChopping(List<LiveVitals.GoalLine> goals, List<LiveVitals.Period> periods)
+	{
+		final LiveVitals.Skilling chop = chopping();
+		final LiveVitals.Skilling active = new LiveVitals.Skilling(chop.header, chop.colour, chop.icon, chop.xp,
+			chop.stats, chop.chips, chop.lines, goals).withPeriods(periods);
+		active.title = "Woodcutting 72";
+		return active.withTimers(new CardTimers(false, Arrays.asList("Active · running 1h 05m", "Pauses in 0:42")));
+	}
+
+	@Test
+	public void periodRowsShowTheirNumbersWholeWithAGapBetweenColumns()
+	{
+		live(new LiveVitals(true, fighting().with(Collections.emptyList(), realisticPeriods()),
+			activeChopping(Collections.emptyList(), realisticPeriods()), SESSION));
+		for (LiveSection.View v : new LiveSection.View[] {LiveSection.View.COMBAT, LiveSection.View.SKILLING})
+		{
+			view(v);
+			SwingDriver.onEdt(() ->
+			{
+				int rows = 0;
+				int[] right = null;
+				for (Component row : ui.all(Component.class))
+				{
+					if (!row.getClass().getSimpleName().equals("PeriodRow") || !visibleInPanel(row))
+					{
+						continue;
+					}
+					rows++;
+					final Component[] cells = ((Container) row).getComponents();
+					for (int i = 0; i < cells.length; i++)
+					{
+						final JLabel cell = (JLabel) cells[i];
+						final int wanted = cell.getFontMetrics(cell.getFont()).stringWidth(cell.getText());
+						assertTrue(v + ": '" + cell.getText() + "' is cut: needs " + wanted + ", has " + cell.getWidth()
+							+ " (row " + row.getWidth() + ", cells " + Arrays.toString(Arrays.stream(cells)
+								.mapToInt(Component::getWidth).toArray()) + ")",
+							wanted <= cell.getWidth());
+						if (i > 0)
+						{
+							assertTrue(v + ": '" + cell.getText() + "' runs into the cell before it",
+								cell.getX() - (cells[i - 1].getX() + cells[i - 1].getWidth()) >= 4);
+						}
+					}
+					// Every row's columns line up: the same right edge for each numeric cell.
+					final int[] edges = new int[cells.length];
+					for (int i = 0; i < cells.length; i++)
+					{
+						edges[i] = cells[i].getX() + cells[i].getWidth();
+					}
+					if (right != null)
+					{
+						assertEquals(v + ": rows' columns do not line up", Arrays.toString(right), Arrays.toString(edges));
+					}
+					right = edges;
+				}
+				assertTrue(v + ": expected the three period rows on screen, saw " + rows, rows == 3);
+			});
+		}
+	}
+
 	@Test
 	public void aStoppedSkillStaysOnTheCardMarkedPausedWithItsTimersAndTotals()
 	{
@@ -216,7 +288,7 @@ public class LiveSectionTest
 		ui.assertShows("Paused for 2:10");
 		ui.assertShows("Session resets in 12:50");
 		ui.assertShows("All time");
-		ui.assertShows("+3.1m xp");
+		ui.assertShows("+3.1m");
 		ui.assertShows("1d 16h");
 		ui.assertHides(LiveSection.NOT_SKILLING);
 		shot("panel-live-skilling-paused.png");
@@ -572,6 +644,14 @@ public class LiveSectionTest
 				|| l.getParent().getClass().getSimpleName().equals("PeriodRow")))
 			{
 				seen[l instanceof MeterBar ? 0 : 1]++;
+				if (!(l instanceof MeterBar))
+				{
+					// One cell never overlaps the one before it, so the columns cannot run together.
+					final List<Component> row = Arrays.asList(l.getParent().getComponents());
+					final int at = row.indexOf(l);
+					assertTrue(v + " " + where + ": '" + l.getText() + "' overlaps the cell before it",
+						at <= 0 || l.getX() >= row.get(at - 1).getX() + row.get(at - 1).getWidth());
+				}
 				final int left = SwingUtilities.convertPoint(l.getParent(), l.getLocation(), panel).x;
 				assertTrue(v + " " + where + ": '" + l.getText() + "' ends at " + (left + l.getWidth())
 					+ " past " + edge, left + l.getWidth() <= edge);
