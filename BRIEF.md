@@ -544,6 +544,30 @@ Splashing (the -64 bonus); both read 2026-11-18, quoted in `docs/splashing.md`.
 Not done, deliberately: no auto-recast, no gear swapping, no clicking, nothing
 that keeps you logged in or casting; no hit chance against players.
 
+### Pillar sources, split pillars and presets (RUNELITE-442)
+
+Checked 2026-11-20 with the runelite-compliance skill, against the forbidden list in `AGENTS.md`.
+The feature in terms of what the player learns: how much of their OWN supplies and stats they have
+left (ammo, runes, casts, special attack, run energy, charges, food, potion doses, boost), plus the
+health bar of the one target they are already fighting.
+
+| Source | Rule it lands near | Precedent | Verdict |
+| --- | --- | --- | --- |
+| Hitpoints, Prayer, Run energy, Special attack | none: the player's own stats | base Status Bars (hitpoints, prayer, run energy, special attack bars) | Allowed |
+| Ammo (arrows, bolts, darts, chinchompas, blowpipe darts and scales) | none: own inventory and equipment, read-only | base Ammo plugin (ammo count overlay) | Allowed |
+| Runes, Casts left, Cannonballs | none: own inventory and rune pouch | base Runepouch plugin; Hub Remaining Casts (already the precedent for `SpellCasts`, #59) | Allowed |
+| Charges (trident, Sanguinesti, Tumeken's shadow, blowpipe) | none: read from the game's own chat lines | base Item Charges plugin reads the same lines | Allowed. Unverified: the exact wording of each message; the regexes are tolerant and a weapon shows nothing until its charges were checked once |
+| Food (count, total heal), Prayer and restore doses, Stamina doses | none: own inventory. No combat prayer recommendation: it counts doses, it never says what to pray | counts of the player's own items, as the base Inventory Tags and Item Charges plugins do; no named Hub precedent checked | Allowed, no exact precedent: expect to defend it in the PR |
+| Stat boost | none: own skill levels, as the existing boost timer | this plugin's Boost timer and the base Boosts plugin | Allowed |
+| Target health, NPC | Boss & Combat: shows the health the game's own bar already shows; no attack timing, no prediction | base Opponent Information | Allowed |
+| Target health, player | PvP target scouting; no level-based indicators | base Opponent Information shows a player's health bar and name too | Restricted: HP and name only. `PillarSnapshot` has no field for anything else, and `PillarValuesTest.aTargetIsItsNameAndHealthAndNothingElse` pins it |
+| Split pillars | Interface Restrictions: draws over the game view, moves no click zone | base Status Bars draws bars in the same place | Allowed |
+| Presets, auto-switch by weapon or activity | Input Restrictions: writes this plugin's own config only, never sends input or changes menus | the existing sidebar Presets | Allowed. Off by default |
+| Preset storage | Forbidden Language Features: no file I/O, no Java serialization | RuneLite config, JSON through the injected Gson | Allowed |
+
+Not done, deliberately: no ammo or rune use per kill, no damage history, no anything about another
+player but name and health, no prayer or gear suggestions from the supplies.
+
 ---
 
 ## Phase 0.5, Measure before building
