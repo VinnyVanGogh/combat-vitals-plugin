@@ -920,6 +920,7 @@ public class CombatVitalsPlugin extends Plugin
 				pouchesCarried.clear();
 				// fall through
 			case HOPPING:
+				gemstoneCrabWatcher.reset();
 				forestryMarks.clear();
 				loginSync.loggingIn();
 				aggression.clear();

@@ -25,6 +25,8 @@ class GemstoneCrabWatcher
 	private final CombatVitalsConfig config;
 	private final List<GameObject> caves = new ArrayList<>();
 
+	/** Where the player stood when the crab or its shell was last in view. */
+	private WorldPoint anchor;
 	private GemstoneCrab crab;
 	private int crabWarn = -1;
 	private volatile GemstoneCrab.Reading reading;
@@ -48,6 +50,7 @@ class GemstoneCrabWatcher
 		reading = null;
 		caves.clear();
 		crab = null;
+		anchor = null;
 	}
 
 	void caveSpawned(GameObject object)
@@ -129,6 +132,19 @@ class GemstoneCrabWatcher
 			{
 				shellSeen = true;
 			}
+		}
+		final Player self = client.getLocalPlayer();
+		final WorldPoint here = self == null ? null : self.getWorldLocation();
+		if (crabSeen || shellSeen)
+		{
+			anchor = here;
+		}
+		else if (anchor != null && here != null
+			&& GemstoneCrab.left(anchor.getX(), anchor.getY(), anchor.getPlane(), here.getX(), here.getY(), here.getPlane()))
+		{
+			// Teleported or walked away: the card, arrow and outline go with the crab.
+			reset();
+			return null;
 		}
 		final GemstoneCrab.Alerts alerts = new GemstoneCrab.Alerts();
 		reading = crab.step(crabSeen, shellSeen, fraction, System.currentTimeMillis(), alerts);
