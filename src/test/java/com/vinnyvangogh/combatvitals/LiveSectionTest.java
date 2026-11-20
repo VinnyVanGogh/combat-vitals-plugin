@@ -52,6 +52,21 @@ public class LiveSectionTest
 		});
 	}
 
+	@Test
+	public void theCombatCardHasASplashingModeSwitchOnTheSettingsOwnKey()
+	{
+		live(new LiveVitals(true, fighting(), LiveVitals.skilling(null), SESSION));
+		final javax.swing.JCheckBox box = SwingDriver.onEdt(() ->
+			ui.find(javax.swing.JCheckBox.class, b -> "live-splash-mode".equals(b.getName()), "the Splashing switch"));
+		assertFalse(box.isSelected());
+		SwingDriver.onEdt(() -> ui.click(box));
+		assertTrue(box.isSelected());
+		assertEquals(Boolean.TRUE, store.get(LiveSection.SPLASH_KEY, Boolean.class));
+		SwingDriver.onEdt(() -> ui.click(box));
+		assertFalse(box.isSelected());
+		assertEquals(Boolean.FALSE, store.get(LiveSection.SPLASH_KEY, Boolean.class));
+	}
+
 	private void live(LiveVitals v)
 	{
 		SwingDriver.onEdt(() ->

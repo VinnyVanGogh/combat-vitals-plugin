@@ -172,7 +172,8 @@ final class PanelLayout
 					new Group("Splash card and AFK timer", "splashLingerSeconds", "splashLingerForever",
 						"splashAlertStopSoon", "splashWarnSeconds", "splashAlertStopped"),
 					new Group("Gemstone Crab", "gemstoneCrab", "gemstoneCrabWarnSeconds", "gemstoneCrabArrow",
-						"gemstoneCrabAlertSpawn", "gemstoneCrabAlertBurrow", "gemstoneCrabAlertGo"));
+						"gemstoneCrabAlertSpawn", "gemstoneCrabAlertBurrow", "gemstoneCrabAlertGo"),
+						new Group("Auto-detect splashing", "autoSplash", "autoSplashThreshold"));
 			case SKILLING:
 				return skillingGroups();
 			case LOOK:

@@ -85,6 +85,10 @@ final class LiveSection extends VitalsSidePanel.Column
 		SessionRow.Kind.TIME_TO_LEVEL, SessionRow.Kind.COUNT};
 	private static final String[] CAPTIONS = {"XP / hour", "Actions / hour", "To level", "Done"};
 
+	/** The Splashing mode setting, switched here beside the vitals as well as on the Targets tab. */
+	static final String SPLASH_KEY = "splashMode";
+
+	private final javax.swing.JCheckBox splashSwitch = new javax.swing.JCheckBox("Splashing mode (AFK Magic)");
 	private final ConfigStore store;
 	private final FoldCard.Header header = new FoldCard.Header(TITLE, null);
 	private final VitalsSidePanel.Column body = new VitalsSidePanel.Column();
@@ -235,8 +239,17 @@ final class LiveSection extends VitalsSidePanel.Column
 		targetBox.add(targetName);
 		targetBox.add(notInCombat);
 		targetBox.add(target);
-		for (Component c : new Component[]{hitpoints, gap(), prayer, gap(), energyRow, targetBox, gap(), training,
-			trainingRate, combatPeriods, combatGoals})
+		// The same setting as the Targets tab and the card's right-click, so all three agree.
+		splashSwitch.setName("live-splash-mode");
+		splashSwitch.setFont(PanelStyle.body());
+		splashSwitch.setForeground(PanelStyle.TEXT);
+		splashSwitch.setOpaque(false);
+		splashSwitch.setFocusable(false);
+		splashSwitch.setToolTipText("Splashing mode: show your Magic bonus and hit chance on the combat card. "
+			+ "Same as the right-click option on the card.");
+		splashSwitch.addActionListener(e -> store.set(SPLASH_KEY, splashSwitch.isSelected()));
+		for (Component c : new Component[]{splashSwitch, hitpoints, gap(), prayer, gap(), energyRow, targetBox, gap(),
+			training, trainingRate, combatPeriods, combatGoals})
 		{
 			combat.add(c);
 		}
@@ -304,6 +317,7 @@ final class LiveSection extends VitalsSidePanel.Column
 	void refresh()
 	{
 		setOpen(!Boolean.FALSE.equals(store.get(OPEN_KEY, Boolean.class)), false);
+		splashSwitch.setSelected(Boolean.TRUE.equals(store.get(SPLASH_KEY, Boolean.class)));
 	}
 
 	private void setOpen(boolean open, boolean remember)

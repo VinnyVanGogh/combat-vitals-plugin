@@ -28,8 +28,9 @@ clocks sit under them, like the pump's:
 - **Casting m:ss**, since your first cast. It restarts after ten ticks with no
   cast.
 
-**Show casts left** (Targets tab, on by default, works with Splashing mode off)
-counts casts from the runes in your inventory and rune pouch. A combination
+**Show casts left** (Targets tab, on by default, works with Splashing mode off,
+where the same card shows the casts alone and no clocks; **Always show**,
+**Always show: spell** and **Show only below** apply to that card) counts casts from the runes in your inventory and rune pouch. A combination
 rune pays for either of its two elements, and a worn staff (staff of air, an
 air battlestaff, a mystic or combination staff) or a charged tome of fire or
 water stands in for that rune without limit. **Casts: warn at** turns the line

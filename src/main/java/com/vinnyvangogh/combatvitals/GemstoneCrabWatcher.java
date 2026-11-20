@@ -91,14 +91,10 @@ class GemstoneCrabWatcher
 		return best;
 	}
 
-	/** True once the burrow warning level is reached, or the crab has burrowed. */
+	/** True only once the crab has actually burrowed; never while it is still up. */
 	boolean due(GemstoneCrab.Reading r)
 	{
-		if (r.phase == GemstoneCrab.Phase.SHELL)
-		{
-			return true;
-		}
-		return r.phase == GemstoneCrab.Phase.CRAB && r.remainingMs <= config.gemstoneCrabWarnSeconds() * 1000L;
+		return r.phase == GemstoneCrab.Phase.SHELL;
 	}
 
 	/** Reads this tick; the alerts due, or null when there are none. */

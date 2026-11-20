@@ -107,6 +107,47 @@ public class GemstoneCrabTest
 	}
 
 	@Test
+	public void crabLeavingSceneWithHpLeftIsNotABurrow()
+	{
+		final GemstoneCrab c = new GemstoneCrab(30);
+		GemstoneCrab.Alerts a = new GemstoneCrab.Alerts();
+		step(c, true, false, 0.6, 0, a);
+		a = new GemstoneCrab.Alerts();
+		final GemstoneCrab.Reading r = step(c, false, false, -1, 5000, a);
+		assertEquals(GemstoneCrab.Phase.NONE, r.phase);
+		assertFalse(a.goNow);
+		assertFalse(c.burrowed());
+		// Same crab walks back: no second spawn alert, no go alert.
+		a = new GemstoneCrab.Alerts();
+		step(c, true, false, 0.59, 8000, a);
+		assertFalse(a.spawned);
+		assertFalse(a.goNow);
+	}
+
+	@Test
+	public void crabGoneWithTimerRunOutCountsAsBurrowed()
+	{
+		final GemstoneCrab c = new GemstoneCrab(30);
+		step(c, true, false, 0.01, 0, new GemstoneCrab.Alerts());
+		final GemstoneCrab.Alerts a = new GemstoneCrab.Alerts();
+		final GemstoneCrab.Reading r = step(c, false, false, -1, 1000, a);
+		assertEquals(GemstoneCrab.Phase.SHELL, r.phase);
+		assertTrue(a.goNow);
+	}
+
+	@Test
+	public void warningFiresButGoNeverWhileTheCrabIsUp()
+	{
+		final GemstoneCrab c = new GemstoneCrab(30);
+		final GemstoneCrab.Alerts a = new GemstoneCrab.Alerts();
+		final GemstoneCrab.Reading r = step(c, true, false, 0.03, 0, a);
+		assertTrue(a.aboutToBurrow);
+		assertFalse(a.goNow);
+		assertFalse(c.burrowed());
+		assertEquals(GemstoneCrab.Phase.CRAB, r.phase);
+	}
+
+	@Test
 	public void nothingAboutMeansNoReadingAndNoAlerts()
 	{
 		final GemstoneCrab c = new GemstoneCrab(30);

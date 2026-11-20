@@ -507,6 +507,33 @@ public interface CombatVitalsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "autoSplash",
+		name = "Auto-detect splashing",
+		description = "Switch Splashing mode on by itself while your worn Magic attack bonus is at or under the "
+			+ "threshold below, and back off above it. Switching the mode by hand wins until your gear next "
+			+ "crosses the threshold.",
+		section = targetSection,
+		position = 30
+	)
+	default boolean autoSplash()
+	{
+		return true;
+	}
+
+	@Range(min = -200, max = 200)
+	@ConfigItem(
+		keyName = "autoSplashThreshold",
+		name = "Splash at bonus",
+		description = "Splashing mode switches on at this Magic attack bonus or lower (-40 by default).",
+		section = targetSection,
+		position = 31
+	)
+	default int autoSplashThreshold()
+	{
+		return -40;
+	}
+
+	@ConfigItem(
 		keyName = "splashAlertBroke",
 		name = "Splash: setup broke",
 		description = "Splashing mode: notify when you change your gear (anything worn), your spell, or the "
@@ -590,7 +617,8 @@ public interface CombatVitalsConfig extends Config
 	@ConfigItem(
 		keyName = "castsMerge",
 		name = "Merge into splash card",
-		description = "While the Splashing mode card is showing, put the casts on it and hide this overlay.",
+		description = "Show the casts line on the combat card while Splashing mode is on. Off keeps that card to the "
+				+ "Magic bonus and hit chance; the casts are never shown on a second card.",
 		section = targetSection,
 		position = 16
 	)

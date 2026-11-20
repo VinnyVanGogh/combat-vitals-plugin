@@ -28,6 +28,9 @@ public class LiveVitalsTest
 		assertEquals(-1, LiveVitals.level("Prayer", 0, 0, LiveVitals.PRAYER).fraction, 1e-9);
 		// Run energy in hundredths, spec in tenths, as the client gives them.
 		assertEquals("Run 64% | Spec 100%", LiveVitals.energy(6_480, 1_000));
+		// The run toggle (OPTION_RUN) is said beside the energy, on or off.
+		assertEquals("Run 64% on | Spec 100%", LiveVitals.energy(6_480, 1_000, true));
+		assertEquals("Run 64% off | Spec 100%", LiveVitals.energy(6_480, 1_000, false));
 	}
 
 	@Test

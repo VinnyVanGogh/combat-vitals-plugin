@@ -53,6 +53,12 @@ final class SplashReadout
 		this.tickMillis = tickMillis;
 	}
 
+	/** A card of the casts alone: no Magic read-out and no clocks, which belong to Splashing mode. */
+	static SplashReadout castsOnly(CastsReadout c, long now)
+	{
+		return new SplashReadout(null, c.spell, c.castsText, c.casts, c.low, c.runeItems, c.runeCosts, -1, 0, -1, now);
+	}
+
 	/** This card as an afterimage of casting that stopped at {@code at}. */
 	SplashReadout stopped(long at)
 	{
