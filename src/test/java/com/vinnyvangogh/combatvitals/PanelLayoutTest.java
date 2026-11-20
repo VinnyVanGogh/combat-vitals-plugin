@@ -31,7 +31,7 @@ public class PanelLayoutTest
 	private static final Set<String> OUTSIDE_SECTIONS = new HashSet<>(Arrays.asList(
 		"combatVitals", "skillingVitals", CombatVitalsConfig.LAST_SEEN_VERSION, LiveSection.OPEN_KEY,
 		VitalsSidePanel.GUIDES_CLOSED_KEY, VitalsSidePanel.GUIDES_HIDDEN_KEY,
-			VitalsSidePanel.TAB_KEY, LiveSection.VIEW_KEY));
+			VitalsSidePanel.TAB_KEY, LiveSection.VIEW_KEY, "followGameVolumeReset"));
 
 	@Test
 	public void everySettingIsInExactlyOnePlace()
