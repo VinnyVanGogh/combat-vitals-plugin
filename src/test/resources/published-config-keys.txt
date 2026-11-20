@@ -53,6 +53,7 @@ repeatNecklaceBroke boolean
 repeatSpotMoved boolean
 repeatStunned boolean
 repeatThievingStopped boolean
+replayUpdateNotes boolean
 showForNpcs boolean
 showForPlayers boolean
 showOverhead boolean

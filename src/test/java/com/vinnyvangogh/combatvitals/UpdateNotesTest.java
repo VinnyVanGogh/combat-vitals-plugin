@@ -58,6 +58,15 @@ public class UpdateNotesTest
 	}
 
 	@Test
+	public void allIsTheTitleThenEveryNoteWhateverWasSeen()
+	{
+		final List<String> lines = UpdateNotes.all();
+
+		assertEquals(UpdateNotes.TITLE, lines.get(0));
+		assertEquals(UpdateNotes.NOTES, lines.subList(1, lines.size()));
+	}
+
+	@Test
 	public void theToggleOffShowsNothing()
 	{
 		assertTrue(UpdateNotes.toShow(NEVER_SEEN, false, false).isEmpty());
