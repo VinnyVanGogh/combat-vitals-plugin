@@ -378,36 +378,90 @@ public class LiveSectionTest
 		assertTrue(muteY < liveY);
 	}
 
+	/** A goal whose words are far longer than the bar, to see it cut short with the whole story in a tooltip. */
+	private static LiveVitals.GoalLine longGoal()
+	{
+		return new LiveVitals.GoalLine("Runecrafting level 99",
+			new LiveVitals.Bar(0.4, "Runecrafting (Abyssal) 99 · 40% · ~12h 05m", Color.ORANGE),
+			"Runecrafting level 99: 3,000,000 xp to go (40%), 80,000 actions left");
+	}
+
+	private static List<LiveVitals.Period> longPeriods()
+	{
+		return Arrays.asList(
+			new LiveVitals.Period("This session", "+412.3k xp", "2h 10m", "190.2k/h",
+				"This session: +412.3k xp in 2h 10m, 190,200 xp/h"),
+			new LiveVitals.Period("Total", "+1.24m xp", "12h 05m", "123.4k/h",
+				"Total: +1.24m xp in 12h 05m, 123,400 xp/h"));
+	}
+
+	/** Whether the component and every parent up to the panel are visible, as a headless window has no "showing". */
+	private boolean visibleInPanel(Component c)
+	{
+		for (Component p = c; p != null && p != panel; p = p.getParent())
+		{
+			if (!p.isVisible())
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
 	@Test
 	public void noTextRunsPastThePanelsRightEdge()
 	{
-		live(new LiveVitals(true, fighting(), chopping(), LONG_SESSION));
-		view(LiveSection.View.OVERALL);
-		SwingDriver.onEdt(() ->
+		final LiveVitals.Skilling chop = chopping();
+		final LiveVitals.Skilling chopWithRows = new LiveVitals.Skilling(chop.header, chop.colour, chop.icon, chop.xp,
+			chop.stats, chop.chips, chop.lines, Collections.singletonList(longGoal())).withPeriods(longPeriods());
+		live(new LiveVitals(true, fighting().with(Collections.singletonList(longGoal()), longPeriods()), chopWithRows,
+			LONG_SESSION));
+		for (LiveSection.View v : LiveSection.View.values())
 		{
-			ui.click("Show all 5");
-			for (PanelLayout.Tab tab : PanelLayout.Tab.values())
+			view(v);
+			SwingDriver.onEdt(() ->
 			{
-				panel.show(tab);
-				ui.layout(WIDTH);
-				openEverything();
-				ui.layout(WIDTH);
-				final int edge = WIDTH - panel.getInsets().right;
-				for (JLabel l : ui.all(JLabel.class))
+				if (v == LiveSection.View.OVERALL)
 				{
-					if (!(l instanceof WrapLabel))
-					{
-						continue;
-					}
-					final int left = SwingUtilities.convertPoint(l.getParent(), l.getLocation(), panel).x;
-					final int right = left + l.getPreferredSize().width;
-					assertTrue(tab + ": '" + ((WrapLabel) l).plain() + "' ends at " + right + " past " + edge,
-						right <= edge);
-					assertTrue(tab + ": '" + ((WrapLabel) l).plain() + "' is cut short",
-						l.getHeight() >= l.getPreferredSize().height);
+					ui.click("Show all 5");
 				}
-			}
-		});
+				for (PanelLayout.Tab tab : PanelLayout.Tab.values())
+				{
+					panel.show(tab);
+					ui.layout(WIDTH);
+					openEverything();
+					ui.layout(WIDTH);
+					final int edge = WIDTH - panel.getInsets().right;
+					for (JLabel l : ui.all(JLabel.class))
+					{
+						if (l instanceof WrapLabel)
+						{
+							final int left = SwingUtilities.convertPoint(l.getParent(), l.getLocation(), panel).x;
+							final int right = left + l.getPreferredSize().width;
+							assertTrue(tab + ": '" + ((WrapLabel) l).plain() + "' ends at " + right + " past " + edge,
+								right <= edge);
+							assertTrue(tab + ": '" + ((WrapLabel) l).plain() + "' is cut short",
+								l.getHeight() >= l.getPreferredSize().height);
+						}
+						else if (visibleInPanel(l) && (l instanceof MeterBar
+							|| l.getParent().getClass().getSimpleName().equals("PeriodRow")))
+						{
+							// The goal and Overall bars and the session/total columns clip at their own edge: they must
+							// stay inside the panel, and a cut-short text must say all of itself in a tooltip.
+							final int left = SwingUtilities.convertPoint(l.getParent(), l.getLocation(), panel).x;
+							assertTrue(v + " " + tab + ": '" + l.getText() + "' ends at " + (left + l.getWidth())
+								+ " past " + edge, left + l.getWidth() <= edge);
+							final int wanted = l.getFontMetrics(l.getFont()).stringWidth(l.getText());
+							if (wanted > l.getWidth())
+							{
+								assertTrue(v + " " + tab + ": '" + l.getText() + "' is cut with no tooltip",
+									l.getToolTipText() != null && !l.getToolTipText().isEmpty());
+							}
+						}
+					}
+				}
+			});
+		}
 	}
 
 	/** Opens every folded card on screen, More settings first, so every label is laid out. */

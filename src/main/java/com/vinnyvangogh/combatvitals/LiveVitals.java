@@ -66,33 +66,55 @@ final class LiveVitals
 			period("Total", total, skills, nowMillis));
 	}
 
-	/** One compact row: a muted label and its value ("+12.3k xp · 23m"), not a sentence. */
+	/**
+	 * One compact row in three aligned columns after its label: xp, time, xp/h. Empty cells are "" (nothing yet) or
+	 * "-" (no rate yet); {@link #tip} says it all in words, for the row's tooltip.
+	 */
 	static final class Period
 	{
-		final String label;
-		final String value;
+		/** The first minute has no rate to show; a rate over a shorter stretch would be noise. */
+		static final long MIN_RATE_MILLIS = 60_000;
 
-		Period(String label, String value)
+		final String label;
+		/** "+12.3k xp", or "nothing yet". */
+		final String xp;
+		/** "23m", or "". */
+		final String time;
+		/** "45.2k/h", "-" before a rate exists, "paused" while paused, or "". */
+		final String rate;
+		final String tip;
+
+		Period(String label, String xp, String time, String rate, String tip)
 		{
 			this.label = label;
-			this.value = value;
+			this.xp = xp;
+			this.time = time;
+			this.rate = rate;
+			this.tip = tip;
+		}
+
+		/** A row with nothing in it yet. */
+		static Period nothingYet(String label)
+		{
+			return new Period(label, "nothing yet", "", "", label + ": nothing yet");
 		}
 	}
 
-	/** One unmet skill goal as a compact row: its title, a progress bar, and one short detail line. */
+	/** One unmet skill goal: a single bar with its words inside ({@code bar.text}), and every detail in a tooltip. */
 	static final class GoalLine
 	{
+		/** The goal in full, "Magic level 55". */
 		final String title;
-		/** Progress toward the goal, text "45%". */
+		/** Progress toward the goal; its text is "Magic 55 · 76% · ~54m". */
 		final Bar bar;
-		/** "1,200 xp to go · 2h 05m", short enough for one line. */
-		final String detail;
+		/** xp to go, actions left and the session and last-hour rates ({@link GoalMath#summary}). */
+		final String tooltip;
 
-		GoalLine(String title, Bar bar, String detail)
+		GoalLine(String title, Bar bar, String tooltip)
 		{
 			this.title = title;
 			this.bar = bar;
-			this.detail = detail;
+			this.tooltip = tooltip;
 		}
 	}
 
@@ -113,10 +135,15 @@ final class LiveVitals
 		}
 		if (millis < 0)
 		{
-			return new Period(label, "nothing yet");
+			return Period.nothingYet(label);
 		}
-		return new Period(label, "+" + SessionRow.shortNumber((int) Math.min(Integer.MAX_VALUE, xp)) + " xp · "
-			+ SessionRow.duration(millis) + (paused ? " (paused)" : ""));
+		final String gained = "+" + SessionRow.shortNumber((int) Math.min(Integer.MAX_VALUE, xp)) + " xp";
+		final String time = SessionRow.duration(millis);
+		final long perHour = millis >= Period.MIN_RATE_MILLIS ? xp * 3_600_000L / millis : -1;
+		final String rate = perHour < 0 ? "-" : SessionRow.shortNumber(perHour) + "/h";
+		final String tip = label + ": " + gained + " in " + time + (paused ? " (paused)" : "")
+			+ (perHour < 0 ? "" : ", " + GoalMath.number(perHour) + " xp/h");
+		return new Period(label, gained, time, paused ? "paused" : rate, tip);
 	}
 
 	/** A bar with its words: fraction 0 to 1, or -1 while unknown (drawn empty). */
@@ -239,18 +266,26 @@ final class LiveVitals
 		}
 	}
 
-	/** One skill gained in this session: its line, its XP for ranking, and its colour for the bar. */
+	/** One skill gained in this session: its line (the words inside its bar), its XP for ranking, and its colour. */
 	static final class Gain
 	{
 		final String text;
 		final int xp;
 		final Color colour;
+		/** The row's tooltip: the line, and the rate when there is one. */
+		final String tip;
 
 		Gain(String text, int xp, Color colour)
+		{
+			this(text, xp, colour, text);
+		}
+
+		Gain(String text, int xp, Color colour, String tip)
 		{
 			this.text = text;
 			this.xp = xp;
 			this.colour = colour;
+			this.tip = tip;
 		}
 	}
 
@@ -383,8 +418,12 @@ final class LiveVitals
 			{
 				line.append(", +").append(levels).append(levels == 1 ? " lvl" : " lvls");
 			}
-			line.append(" in ").append(SessionRow.duration(s.elapsed(skill, nowMillis)));
-			out.add(new Gain(line.toString(), gained, colours.apply(skill)));
+			final long elapsed = s.elapsed(skill, nowMillis);
+			line.append(" in ").append(SessionRow.duration(elapsed));
+			final String text = line.toString();
+			final String tip = elapsed >= Period.MIN_RATE_MILLIS
+				? text + ", " + GoalMath.number(gained * 3_600_000L / elapsed) + " xp/h" : text;
+			out.add(new Gain(text, gained, colours.apply(skill), tip));
 		}
 		out.sort(Comparator.comparingInt((Gain g) -> g.xp).reversed());
 		return out;

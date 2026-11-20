@@ -209,27 +209,10 @@ final class GoalBook
 			perAction, GoalMath.actionsLeft(left, perAction));
 	}
 
-	/** One line per unmet skill goal in {@code skill}, for the Skilling tab. */
-	synchronized List<String> skillLines(String skill, long nowSeconds)
-	{
-		return skillLines(java.util.Collections.singleton(skill), nowSeconds);
-	}
-
-	/** One line per unmet skill goal in any of {@code skills} (the game's names), for the Combat tab. */
-	synchronized List<String> skillLines(java.util.Collection<String> skills, long nowSeconds)
-	{
-		final List<String> out = new ArrayList<>();
-		for (Goal g : goals)
-		{
-			if (g.skill() && skills.contains(g.label) && !g.reached)
-			{
-				out.add("Goal " + GoalMath.title(g) + ": " + GoalMath.summary(progress(g, nowSeconds)));
-			}
-		}
-		return out;
-	}
-
-	/** The same unmet skill goals as compact rows (title, progress bar, one detail line) for the Live cards. */
+	/**
+	 * One bar per unmet skill goal in any of {@code skills} (the game's names), for the Live cards: the words inside
+	 * the bar are short ("Magic 55 · 76% · ~54m"), the tooltip has everything ({@link GoalMath#summary}).
+	 */
 	synchronized List<LiveVitals.GoalLine> skillGoals(java.util.Collection<String> skills, long nowSeconds)
 	{
 		final List<LiveVitals.GoalLine> out = new ArrayList<>();
@@ -239,8 +222,8 @@ final class GoalBook
 			{
 				final Progress p = progress(g, nowSeconds);
 				out.add(new LiveVitals.GoalLine(GoalMath.title(g),
-					new LiveVitals.Bar(Math.max(0, Math.min(1.0, p.percent / 100.0)), p.percent + "%",
-						PanelStyle.ACCENT), GoalMath.compact(p)));
+					new LiveVitals.Bar(Math.max(0, Math.min(1.0, p.percent / 100.0)), GoalMath.barText(g, p),
+						PanelStyle.ACCENT), GoalMath.title(g) + ": " + GoalMath.summary(p)));
 			}
 		}
 		return out;

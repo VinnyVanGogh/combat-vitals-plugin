@@ -44,6 +44,16 @@ public class VitalsSidePanelShots
 				ui.layout(WIDTH);
 				shot(ui, "panel-main-" + m.name().toLowerCase() + ".png");
 			}
+			// The Live tab as played, one shot per card: goals as bars, session and total as aligned columns.
+			panel.display(VitalsSidePanel.Main.LIVE);
+			panel.live(liveWithRows());
+			final LiveSection live = ui.find(LiveSection.class, s -> true, "the Live section");
+			for (LiveSection.View v : LiveSection.View.values())
+			{
+				live.applyView(v);
+				ui.layout(WIDTH);
+				shot(ui, "panel-live-" + v.name().toLowerCase() + ".png");
+			}
 			panel.display(VitalsSidePanel.Main.PRESETS);
 			ui.layout(WIDTH);
 			ui.click("Skiller");
@@ -66,6 +76,29 @@ public class VitalsSidePanelShots
 		});
 		assertTrue("rendering wrote settings: " + store.writes,
 			store.writes.equals(java.util.Collections.singletonList(VitalsSidePanel.GUIDES_HIDDEN_KEY)));
+	}
+
+	/** Live data for the shots: goals and session/total rows on the Combat and Skilling cards, a long session list. */
+	private static LiveVitals liveWithRows()
+	{
+		final java.awt.Color accent = PanelStyle.ACCENT;
+		final java.util.List<LiveVitals.GoalLine> goals = java.util.Arrays.asList(
+			new LiveVitals.GoalLine("Magic level 55", new LiveVitals.Bar(0.76, "Magic 55 · 76% · ~54m", accent),
+				"Magic level 55: 17,324 xp to go (76%), 931 actions left, 54m at 19,022 xp/hr (session), "
+					+ "54m at 19,022 xp/hr (last hour)"),
+			new LiveVitals.GoalLine("Ranged level 99", new LiveVitals.Bar(0.31, "Ranged 99 · 31% · ~12h 05m", accent),
+				"Ranged level 99: 8,100,000 xp to go (31%), 62,000 actions left, 12h 05m at 670,000 xp/hr (session), "
+					+ "no rate yet (last hour)"));
+		final java.util.List<LiveVitals.Period> periods = java.util.Arrays.asList(
+			new LiveVitals.Period("This session", "+412.3k xp", "2h 10m", "190.2k/h",
+				"This session: +412.3k xp in 2h 10m, 190,200 xp/h"),
+			new LiveVitals.Period("Total", "+1.24m xp", "12h 05m", "102.7k/h",
+				"Total: +1.24m xp in 12h 05m, 102,700 xp/h"));
+		final LiveVitals.Skilling chop = LiveSectionTest.chopping();
+		return new LiveVitals(true, LiveSectionTest.fighting().with(goals, periods),
+			new LiveVitals.Skilling(chop.header, chop.colour, chop.icon, chop.xp, chop.stats, chop.chips, chop.lines,
+				goals).withPeriods(periods),
+			LiveSectionTest.LONG_SESSION, LiveSectionTest.LONG_SESSION);
 	}
 
 	private static void shot(SwingDriver ui, String name)

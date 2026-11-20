@@ -123,12 +123,26 @@ final class GoalMath
 		return sb.toString();
 	}
 
-	/** "1,200 xp to go · 2h 05m": the live cards' one-line detail; the time uses the session rate, else the last hour's. */
-	static String compact(GoalBook.Progress p)
+	/** "Magic 55", "Mining 5m xp": a skill goal short enough to sit inside a bar; other goals keep {@link #title}. */
+	static String shortTitle(Goal g)
 	{
-		final String left = number(p.left) + " xp to go";
+		switch (g.type)
+		{
+			case SKILL_LEVEL:
+				return g.label + " " + g.target;
+			case SKILL_XP:
+				return g.label + " " + SessionRow.shortNumber(g.target) + " xp";
+			default:
+				return title(g);
+		}
+	}
+
+	/** "Magic 55 · 76% · ~54m": the words inside a goal's bar; the time uses the session rate, else the last hour's. */
+	static String barText(Goal g, GoalBook.Progress p)
+	{
+		final String head = shortTitle(g) + " · " + p.percent + "%";
 		final double rate = p.sessionRate > 0 ? p.sessionRate : p.hourRate;
-		return rate > 0 ? left + " · " + etaText(etaSeconds(p.left, rate)) : left;
+		return rate > 0 ? head + " · ~" + etaText(etaSeconds(p.left, rate)) : head;
 	}
 
 	private static String rate(String name, long left, double perHour)

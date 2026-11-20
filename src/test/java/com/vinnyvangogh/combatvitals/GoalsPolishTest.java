@@ -66,6 +66,21 @@ public class GoalsPolishTest
 		}
 	}
 
+	private static void tooltips(Component c, List<String> out)
+	{
+		if (c instanceof javax.swing.JComponent && ((javax.swing.JComponent) c).getToolTipText() != null)
+		{
+			out.add(((javax.swing.JComponent) c).getToolTipText());
+		}
+		if (c instanceof Container)
+		{
+			for (Component child : ((Container) c).getComponents())
+			{
+				tooltips(child, out);
+			}
+		}
+	}
+
 	private static List<String> texts(Component c)
 	{
 		final List<String> out = new ArrayList<>();
@@ -251,10 +266,25 @@ public class GoalsPolishTest
 		book.addSkill("Mining", true, 80, 0);
 		book.addSkill("Fishing", true, 50, 0);
 		book.addCounted(Goal.Type.ITEM, "Mining thing", 1, 0);
-		final List<String> lines = book.skillLines("Mining", 10);
+		final List<LiveVitals.GoalLine> lines = book.skillGoals(Collections.singleton("Mining"), 10);
 		assertEquals(1, lines.size());
-		assertTrue(lines.get(0), lines.get(0).startsWith("Goal Mining level 80: "));
-		assertTrue(book.skillLines("Smithing", 10).isEmpty());
+		assertEquals("Mining level 80", lines.get(0).title);
+		assertTrue(lines.get(0).bar.text, lines.get(0).bar.text.startsWith("Mining 80 · "));
+		assertTrue(lines.get(0).tooltip, lines.get(0).tooltip.startsWith("Mining level 80: "));
+		assertTrue(book.skillGoals(Collections.singleton("Smithing"), 10).isEmpty());
+	}
+
+	@Test
+	public void aGoalsBarHasTheShortWordsAndItsTooltipHasEverything()
+	{
+		final GoalBook book = new GoalBook(new Mem());
+		book.onXp("Magic", 100_000, 0);
+		final Goal g = book.addSkill("Magic", true, 55, 0);
+		final GoalBook.Progress p = new GoalBook.Progress(17_324, 76, 19_022, 18_000, 18.6, 931);
+		assertEquals("Magic 55", GoalMath.shortTitle(g));
+		assertEquals("Magic 55 · 76% · ~54m", GoalMath.barText(g, p));
+		assertEquals("Magic 55 · 76%", GoalMath.barText(g, new GoalBook.Progress(17_324, 76, 0, 0, 18.6, 931)));
+		assertTrue(GoalMath.summary(p), GoalMath.summary(p).contains("931 actions left"));
 	}
 
 	@Test
@@ -263,15 +293,20 @@ public class GoalsPolishTest
 		final LiveVitals.Skilling s = new LiveVitals.Skilling("Mining 72", java.awt.Color.GREEN, null, null,
 			Collections.emptyMap(), Collections.emptyList(), Collections.emptyList(),
 			Collections.singletonList(new LiveVitals.GoalLine("Mining level 80",
-				new LiveVitals.Bar(0.5, "50%", java.awt.Color.ORANGE), "5,000 xp to go · 2h 05m")));
+				new LiveVitals.Bar(0.5, "Mining 80 · 50% · ~2h 05m", java.awt.Color.ORANGE),
+				"Mining level 80: 5,000 xp to go (50%)")));
 		final LiveSection[] section = new LiveSection[1];
 		SwingDriver.onEdt(() ->
 		{
 			section[0] = new LiveSection(PanelFixture.store());
 			section[0].update(new LiveVitals(true, null, s, Collections.emptyList()));
-			assertTrue(texts(section[0]).stream().anyMatch(t -> t.equals("Mining level 80")));
-			assertTrue(texts(section[0]).stream().anyMatch(t -> t.equals("5,000 xp to go · 2h 05m")));
+			// One bar with the words inside; no title, percent and detail lines beside it.
+			assertTrue(texts(section[0]).stream().anyMatch(t -> t.equals("Mining 80 · 50% · ~2h 05m")));
+			assertTrue(texts(section[0]).stream().noneMatch(t -> t.equals("Mining level 80")));
 			assertTrue(texts(section[0]).stream().noneMatch(t -> t.startsWith("Goal ")));
+			final List<String> tips = new ArrayList<>();
+			tooltips(section[0], tips);
+			assertTrue(tips.toString(), tips.contains("Mining level 80: 5,000 xp to go (50%)"));
 		});
 	}
 

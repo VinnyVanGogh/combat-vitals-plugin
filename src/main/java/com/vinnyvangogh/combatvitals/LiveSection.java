@@ -469,11 +469,16 @@ final class LiveSection extends VitalsSidePanel.Column
 		text(showAll, gains.size() <= TOP ? null : allGains ? SHOW_TOP : "Show all " + gains.size());
 	}
 
-	/** One session row: the gain's line and its bar against the top skill's XP, or hidden for null. */
+	/** One Overall row: the gain's line inside its bar against the top skill's XP, details in the tooltip; hidden for null. */
 	private void gain(GainRow row, LiveVitals.Gain g, int top)
 	{
-		text(row.text, g == null ? null : g.text);
-		bar(row.bar, g == null ? null : new LiveVitals.Bar((double) g.xp / top, "", g.colour));
+		bar(row.bar, g == null ? null : new LiveVitals.Bar((double) g.xp / top, g.text, g.colour));
+		final String tip = g == null ? null : g.tip;
+		if (g != null && !g.tip.equals(row.bar.getToolTipText()))
+		{
+			row.bar.setToolTipText(tip);
+			changes++;
+		}
 		visible(row, g != null);
 	}
 
@@ -540,77 +545,76 @@ final class LiveSection extends VitalsSidePanel.Column
 		}
 	}
 
-	/** One goal: its title with the percent at the right, a thin bar, and one muted detail line. */
+	/** One goal: a single bar like the level bar, its words inside, and every detail in the tooltip. */
 	private static final class GoalRow extends VitalsSidePanel.Column
 	{
-		private final JLabel title = new JLabel();
-		private final JLabel percent = new JLabel();
-		private final MeterBar bar = new MeterBar(MeterBar.THIN);
-		private final JLabel detail = new JLabel();
+		private final MeterBar bar = new MeterBar();
 		private LiveVitals.GoalLine shown;
 
 		GoalRow()
 		{
 			setBorder(new EmptyBorder(PanelStyle.S, 0, 0, 0));
-			title.setFont(PanelStyle.body());
-			title.setForeground(PanelStyle.TEXT);
-			percent.setFont(PanelStyle.body());
-			percent.setForeground(PanelStyle.SOFT);
-			detail.setFont(PanelStyle.body());
-			detail.setForeground(PanelStyle.MUTED);
-			final JPanel top = new JPanel(new BorderLayout(PanelStyle.S, 0));
-			top.setOpaque(false);
-			top.add(title, BorderLayout.CENTER);
-			top.add(percent, BorderLayout.EAST);
-			add(top);
 			add(bar);
-			add(detail);
 		}
 
 		/** False when already showing this goal. */
 		boolean set(LiveVitals.GoalLine g)
 		{
-			final boolean same = shown != null && shown.title.equals(g.title) && shown.detail.equals(g.detail)
-				&& Objects.equals(shown.bar, g.bar);
-			if (same)
+			if (shown != null && shown.tooltip.equals(g.tooltip) && Objects.equals(shown.bar, g.bar))
 			{
 				return false;
 			}
 			shown = g;
-			title.setText(g.title);
-			percent.setText(g.bar.text);
 			bar.set(g.bar);
-			detail.setText(g.detail);
-			detail.setToolTipText(g.title + ": " + g.detail);
+			bar.setToolTipText(g.tooltip);
 			return true;
 		}
 
-		String plain()
+		MeterBar bar()
 		{
-			return shown == null ? "" : shown.title + " " + shown.bar.text + " " + shown.detail;
+			return bar;
 		}
 	}
 
-	/** "This session   +12.3k xp · 23m": a muted label and its value on one line. */
+	/**
+	 * "This session   +12.3k xp   23m   45.2k/h": a muted label and three right-aligned columns at fixed shares
+	 * of the width, so every row's columns line up. A cell too long for its share is cut with an ellipsis and the
+	 * row's tooltip has the whole line.
+	 */
 	private static final class PeriodRow extends JPanel
 	{
-		private final JLabel label = new JLabel();
-		private final JLabel value = new JLabel();
+		/** Label, xp, time, xp/h: shares of the row's width. */
+		private static final double[] SHARE = {0.28, 0.27, 0.18, 0.27};
+		private final JLabel[] cells = new JLabel[SHARE.length];
 		private LiveVitals.Period shown;
 
 		PeriodRow()
 		{
-			super(new BorderLayout(PanelStyle.S, 0));
+			super(null);
 			setOpaque(false);
 			setAlignmentX(LEFT_ALIGNMENT);
 			setBorder(new EmptyBorder(1, 0, 1, 0));
-			label.setFont(PanelStyle.body());
-			label.setForeground(PanelStyle.MUTED);
-			value.setFont(PanelStyle.body());
-			value.setForeground(PanelStyle.TEXT);
-			value.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
-			add(label, BorderLayout.WEST);
-			add(value, BorderLayout.CENTER);
+			for (int i = 0; i < cells.length; i++)
+			{
+				cells[i] = new JLabel();
+				cells[i].setFont(PanelStyle.body());
+				cells[i].setForeground(i == 0 ? PanelStyle.MUTED : PanelStyle.TEXT);
+				cells[i].setHorizontalAlignment(i == 0 ? javax.swing.SwingConstants.LEFT : javax.swing.SwingConstants.RIGHT);
+				add(cells[i]);
+			}
+		}
+
+		@Override
+		public Dimension getPreferredSize()
+		{
+			final java.awt.Insets in = getInsets();
+			return new Dimension(10, cells[0].getPreferredSize().height + in.top + in.bottom);
+		}
+
+		@Override
+		public Dimension getMinimumSize()
+		{
+			return getPreferredSize();
 		}
 
 		@Override
@@ -619,15 +623,38 @@ final class LiveSection extends VitalsSidePanel.Column
 			return PanelStyle.fullWidth(this);
 		}
 
+		@Override
+		public void doLayout()
+		{
+			final java.awt.Insets in = getInsets();
+			final int width = getWidth() - in.left - in.right;
+			final int height = getHeight() - in.top - in.bottom;
+			int x = in.left;
+			for (int i = 0; i < cells.length; i++)
+			{
+				final int w = i == cells.length - 1 ? in.left + width - x : (int) Math.round(width * SHARE[i]);
+				cells[i].setBounds(x, in.top, w, height);
+				x += w;
+			}
+		}
+
 		boolean set(LiveVitals.Period p)
 		{
-			if (shown != null && shown.label.equals(p.label) && shown.value.equals(p.value))
+			if (shown != null && shown.label.equals(p.label) && shown.xp.equals(p.xp) && shown.time.equals(p.time)
+				&& shown.rate.equals(p.rate) && shown.tip.equals(p.tip))
 			{
 				return false;
 			}
 			shown = p;
-			label.setText(p.label);
-			value.setText(p.value);
+			cells[0].setText(p.label);
+			cells[1].setText(p.xp);
+			cells[2].setText(p.time);
+			cells[3].setText(p.rate);
+			setToolTipText(p.tip);
+			for (JLabel cell : cells)
+			{
+				cell.setToolTipText(p.tip);
+			}
 			return true;
 		}
 	}
@@ -696,16 +723,14 @@ final class LiveSection extends VitalsSidePanel.Column
 		}
 	}
 
-	/** One of This session's skills: its line, and a thin bar of its XP against the top skill's. */
+	/** One of the Overall card's skills: a single bar of its XP against the top skill's, its line inside it. */
 	private static final class GainRow extends VitalsSidePanel.Column
 	{
-		final WrapLabel text = new WrapLabel("", PanelStyle.TEXT);
-		final MeterBar bar = new MeterBar(MeterBar.THIN);
+		final MeterBar bar = new MeterBar();
 
 		GainRow()
 		{
 			setBorder(new EmptyBorder(0, 0, PanelStyle.S, 0));
-			add(text);
 			add(bar);
 		}
 	}
@@ -765,7 +790,7 @@ final class LiveSection extends VitalsSidePanel.Column
 		{
 			if (r.isVisible())
 			{
-				out.add(r.text.plain());
+				out.add(r.bar.bar().text);
 			}
 		}
 		return Collections.unmodifiableList(out);
