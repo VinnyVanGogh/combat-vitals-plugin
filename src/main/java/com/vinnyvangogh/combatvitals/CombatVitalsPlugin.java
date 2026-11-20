@@ -283,6 +283,13 @@ public class CombatVitalsPlugin extends Plugin
 	private NextSpotOverlay nextSpotOverlay;
 
 	@Inject
+	private ForestryHighlightOverlay forestryHighlightOverlay;
+
+	/** The Forestry event parts on the scene, for the highlight overlay. Client thread only. */
+	@Getter
+	private final ForestryMarks forestryMarks = new ForestryMarks();
+
+	@Inject
 	private AggressionOverlay aggressionOverlay;
 
 	@Inject
@@ -300,6 +307,10 @@ public class CombatVitalsPlugin extends Plugin
 	/** Splashing mode: the Magic bonus and hit chance read-out, and its setup-changed alert. */
 	@Inject
 	private SplashOverlay splashOverlay;
+
+	/** The standalone Casts left overlay, separate from Splashing mode. */
+	@Inject
+	private CastsOverlay castsOverlay;
 
 	@Inject
 	private SplashWatcher splashWatcher;
@@ -451,6 +462,8 @@ public class CombatVitalsPlugin extends Plugin
 
 	/** This login's counts and rates; outlives a hop, not a logout. */
 	private final SkillingSession session = new SkillingSession();
+	/** The same gains, never reset by an activity change or Reset session: the Total next to This session. Cleared at logout. */
+	private final SkillingSession totalSession = new SkillingSession();
 
 	/** Status Bars as last read, refreshed each tick for the pillar overlay. */
 	private volatile SidePillars.StatusBars statusBars = SidePillars.StatusBars.OFF;
@@ -529,10 +542,12 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.add(skillingBadgeOverlay);
 		overlayManager.add(pillarOverlay);
 		overlayManager.add(nextSpotOverlay);
+		overlayManager.add(forestryHighlightOverlay);
 		overlayManager.add(aggressionOverlay);
 		overlayManager.add(aggressionAreaOverlay);
 		overlayManager.add(gameHealthBarOverlay);
 		overlayManager.add(splashOverlay);
+		overlayManager.add(castsOverlay);
 		splashOverlay.showMode(config.splashMode());
 		splashWatcher.warm();
 		overlayManager.add(gemstoneCrabArrowOverlay);
@@ -595,7 +610,19 @@ public class CombatVitalsPlugin extends Plugin
 			items.put(d.key(), d);
 		}
 		sidePanel = new VitalsSidePanel(ConfigStore.of(configManager, executor), items, colorPickerManager,
-			type -> clientThread.invoke(() -> testAlert(type)), alertMute, goalsHub.book(), goalsHub.source());
+			type -> clientThread.invoke(() -> testAlert(type)), alertMute, goalsHub.book(), goalsHub.source(),
+			skill -> skillIconManager.getSkillImage(skill, true));
+		goalsHub.book().actionXp(name ->
+		{
+			for (Skill s : Skill.values())
+			{
+				if (s.getName().equals(name))
+				{
+					return session.xpPerAction(s);
+				}
+			}
+			return 0;
+		});
 		navButton = NavigationButton.builder()
 			.tooltip(VitalsSidePanel.TITLE)
 			.icon(VitalsSidePanel.icon())
@@ -699,10 +726,13 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.remove(skillingBadgeOverlay);
 		overlayManager.remove(pillarOverlay);
 		overlayManager.remove(nextSpotOverlay);
+		overlayManager.remove(forestryHighlightOverlay);
+		forestryMarks.clear();
 		overlayManager.remove(aggressionOverlay);
 		overlayManager.remove(aggressionAreaOverlay);
 		overlayManager.remove(gameHealthBarOverlay);
 		overlayManager.remove(splashOverlay);
+		overlayManager.remove(castsOverlay);
 		overlayManager.remove(gemstoneCrabArrowOverlay);
 		gemstoneCrabWatcher.reset();
 		splashWatcher.reset();
@@ -744,6 +774,7 @@ public class CombatVitalsPlugin extends Plugin
 		combat.clear();
 		clearSkilling();
 		session.clear();
+		totalSession.clear();
 		stockPlugin = null;
 		badgeBounds = null;
 		statusBarsPlugin = null;
@@ -823,6 +854,12 @@ public class CombatVitalsPlugin extends Plugin
 			SwingUtilities.invokeLater(() -> panel.guides(hidden, closed));
 			return;
 		}
+		if (VitalsSidePanel.TAB_KEY.equals(event.getKey()) || LiveSection.VIEW_KEY.equals(event.getKey()))
+		{
+			// The panel wrote its own tab choice; nothing to redraw.
+			log.debug("Sidebar tab {} view {}", config.sidebarTab(), config.sidebarLiveView());
+			return;
+		}
 		SwingUtilities.invokeLater(panel::refresh);
 	}
 
@@ -875,6 +912,7 @@ public class CombatVitalsPlugin extends Plugin
 			case LOGIN_SCREEN:
 				// Logging out ends the session's counts; a hop does not.
 				session.clear();
+				totalSession.clear();
 				sessionActivity.clear();
 				goalsHub.loggedOut();
 				goalsChanged();
@@ -888,6 +926,7 @@ public class CombatVitalsPlugin extends Plugin
 				pouchesCarried.clear();
 				// fall through
 			case HOPPING:
+				forestryMarks.clear();
 				loginSync.loggingIn();
 				aggression.clear();
 				opponent = null;
@@ -1266,7 +1305,11 @@ public class CombatVitalsPlugin extends Plugin
 	{
 		activityAlerts.xp(skill, xp);
 		skillingEvents.stat(skill, xp, level, tick);
+		final long idle = config.pauseAfterIdleSeconds() * 1000L;
+		session.setIdleMillis(idle);
+		totalSession.setIdleMillis(idle);
 		session.xp(skill, xp, System.currentTimeMillis());
+		totalSession.xp(skill, xp, System.currentTimeMillis());
 		xpSkilling.xp(skill, xp);
 		trainingSession.xp(skill, xp);
 		recentGain.xp(skill, xp, tick);
@@ -1694,6 +1737,7 @@ public class CombatVitalsPlugin extends Plugin
 		final SkillingEvents.Forestry kind = SkillingEvents.forestryObject(event.getGameObject().getId());
 		if (kind != null)
 		{
+			forestryMarks.spawned(kind, event.getGameObject());
 			skillingEvents.forestrySpawned(kind, event.getGameObject(), near(event.getGameObject().getWorldLocation()),
 				client.getTickCount());
 		}
@@ -1710,6 +1754,7 @@ public class CombatVitalsPlugin extends Plugin
 		final SkillingEvents.Forestry kind = SkillingEvents.forestryObject(event.getGameObject().getId());
 		if (kind != null)
 		{
+			forestryMarks.despawned(kind, event.getGameObject());
 			skillingEvents.forestryDespawned(kind, event.getGameObject(), client.getTickCount());
 		}
 	}
@@ -1720,6 +1765,7 @@ public class CombatVitalsPlugin extends Plugin
 		final SkillingEvents.Forestry kind = SkillingEvents.forestryNpc(event.getNpc().getId());
 		if (kind != null)
 		{
+			forestryMarks.spawned(kind, event.getNpc());
 			skillingEvents.forestrySpawned(kind, event.getNpc(), near(event.getNpc().getWorldLocation()),
 				client.getTickCount());
 		}
@@ -1801,6 +1847,7 @@ public class CombatVitalsPlugin extends Plugin
 		final SkillingEvents.Forestry kind = SkillingEvents.forestryNpc(event.getNpc().getId());
 		if (kind != null)
 		{
+			forestryMarks.despawned(kind, event.getNpc());
 			skillingEvents.forestryDespawned(kind, event.getNpc(), client.getTickCount());
 		}
 
@@ -2066,7 +2113,10 @@ public class CombatVitalsPlugin extends Plugin
 	@Subscribe
 	public void onGameTick(GameTick tick)
 	{
-		goalsHub.tick(tick == null ? 0 : client.getTickCount());
+		if (goalsHub.tick(tick == null ? 0 : client.getTickCount()))
+		{
+			goalsChanged();
+		}
 		tickAggression();
 		tickSkillingEventSummaries();
 		loginSync.tick();
@@ -2171,15 +2221,24 @@ public class CombatVitalsPlugin extends Plugin
 		final long now = System.currentTimeMillis();
 		return new LiveVitals(true,
 			VitalsHalves.combat(config) ? liveCombat(now) : null,
-			VitalsHalves.skilling(config) ? liveSkilling() : null,
-			LiveVitals.session(session, now, this::skillColour));
+			VitalsHalves.skilling(config) ? liveSkilling(now) : null,
+			LiveVitals.session(session, now, this::skillColour),
+			LiveVitals.session(totalSession, now, this::skillColour));
 	}
 
+	/** Every skill a fight trains, Hitpoints included, by the game's names: the Combat card's goal skills. */
+	private static final Skill[] COMBAT_GOAL_SKILLS = {Skill.ATTACK, Skill.STRENGTH, Skill.DEFENCE, Skill.RANGED,
+		Skill.MAGIC, Skill.HITPOINTS, Skill.PRAYER};
+
 	/** The badge's readout for the Skilling card, with the skill's small icon for its title. */
-	private LiveVitals.Skilling liveSkilling()
+	private LiveVitals.Skilling liveSkilling(long now)
 	{
 		final SkillingReadout r = skillingReadout;
-		return LiveVitals.skilling(r, r == null ? null : skillIconManager.getSkillImage(r.getSkill(), true));
+		return LiveVitals.skilling(r, r == null ? null : skillIconManager.getSkillImage(r.getSkill(), true),
+			r == null ? java.util.Collections.emptyList()
+				: goalsHub.book().skillLines(r.getSkill().getName(), now / 1000))
+			.withPeriods(r == null ? java.util.Collections.emptyList()
+				: LiveVitals.periods(session, totalSession, new Skill[]{r.getSkill()}, now));
 	}
 
 	/** Your vitals, the target as the overhead readout has it, and the combat skill gained in last. */
@@ -2198,7 +2257,19 @@ public class CombatVitalsPlugin extends Plugin
 			target == null ? null : target.getName(),
 			LiveVitals.target(target, config.percentageDecimals()),
 			skill == null ? null : LiveVitals.training(skill, xp, skillColour(skill)),
-			skill == null ? null : LiveVitals.trainingRate(xp, session.xpPerHour(skill, now)));
+			skill == null ? null : LiveVitals.trainingRate(xp, session.xpPerHour(skill, now)))
+			.with(goalsHub.book().skillLines(combatGoalNames(), now / 1000),
+				LiveVitals.periods(session, totalSession, LiveVitals.COMBAT_SKILLS, now));
+	}
+
+	private static java.util.List<String> combatGoalNames()
+	{
+		final java.util.List<String> names = new java.util.ArrayList<>();
+		for (Skill s : COMBAT_GOAL_SKILLS)
+		{
+			names.add(s.getName());
+		}
+		return names;
 	}
 
 	/**

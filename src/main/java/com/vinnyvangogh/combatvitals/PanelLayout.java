@@ -168,7 +168,8 @@ final class PanelLayout
 						"bigTargetMaxHp"),
 					new Group("Splashing (AFK Magic)", "splashMode", "autoSplash", "autoSplashThreshold", "splashMaxChance",
 						"splashAlertBroke"),
-					new Group("Casts left", "castsLeft", "castsWarnAt", "castsAlertLow"),
+					new Group("Casts left", "castsLeft", "castsAlways", "castsSpell", "castsOnlyBelow",
+						"castsMerge", "castsWarnAt", "castsAlertLow"),
 					new Group("Splash card and AFK timer", "splashLingerSeconds", "splashLingerForever",
 						"splashAlertStopSoon", "splashWarnSeconds", "splashAlertStopped"),
 					new Group("Gemstone Crab", "gemstoneCrab", "gemstoneCrabWarnSeconds", "gemstoneCrabArrow",
@@ -193,7 +194,8 @@ final class PanelLayout
 				"skillingCatches", "skillingLockedFish", "skillingGearWarning"),
 			new Group("Inventory", "skillingInventoryBar", "skillingInventoryCount", "skillingContainers",
 				"skillingContainersAsInventory"),
-			new Group("Session", "skillingSessionCount", "skillingRates", "skillingSessionReset"),
+			new Group("Session", "skillingSessionCount", "skillingRates", "skillingSessionReset",
+				"pauseAfterIdleSeconds"),
 			Group.more("Boosts", "skillingBoostTimer", "skillingBoostSource", "skillingSpecEnergy",
 				"skillingBoostNotify"),
 			new Group("Once you stop", "skillingIdleMode", "skillingIdleSeconds"),
@@ -201,7 +203,10 @@ final class PanelLayout
 			Group.more("More skills", "skillingHerblore", "skillingCooking", "skillingFletching", "skillingCrafting",
 				"skillingSmithing", "skillingFiremaking", "skillingPrayer", "skillingMagic", "skillingAgility",
 				"skillingConstruction", "skillingSailing"),
-			new Group("New activity", "autoResetSession"));
+			new Group("New activity", "autoResetSession"),
+			Group.more("Forestry highlights", "forestryHighlights", "forestryHighlightColour", "highlightRisingRoots",
+				"highlightStrugglingSapling", "highlightFloweringBush", "highlightLeprechaun", "highlightPoachers",
+				"highlightPheasantControl", "highlightBeeHive", "highlightEnchantmentRitual", "highlightFriendlyEnt"));
 	}
 
 	private static List<Group> lookGroups()

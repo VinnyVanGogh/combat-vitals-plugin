@@ -36,10 +36,10 @@ import static net.runelite.client.ui.overlay.OverlayManager.OPTION_CONFIGURE;
  */
 class SplashOverlay extends Overlay
 {
-	private static final Color SAFE = new Color(0, 200, 83);
+	static final Color SAFE = new Color(0, 200, 83);
 	private static final Color LOW = new Color(255, 193, 7);
-	private static final Color WARN = new Color(220, 60, 60);
-	private static final Color PLAIN = new Color(235, 235, 235);
+	static final Color WARN = new Color(220, 60, 60);
+	static final Color PLAIN = new Color(235, 235, 235);
 	private static final Color MUTED = new Color(160, 160, 160);
 	private static final Color BACK = new Color(ColorScheme.DARKER_GRAY_COLOR.getRed(),
 		ColorScheme.DARKER_GRAY_COLOR.getGreen(), ColorScheme.DARKER_GRAY_COLOR.getBlue(), 225);
@@ -117,7 +117,19 @@ class SplashOverlay extends Overlay
 		{
 			graphics.setComposite(AlphaComposite.SrcOver.derive(0.55f));
 		}
+		try
+		{
+			return card(graphics, rows, accent);
+		}
+		finally
+		{
+			graphics.setComposite(before);
+		}
+	}
 
+	/** Paints the rounded card with its accent bar around the rows, and returns its size. */
+	static Dimension card(Graphics2D graphics, List<Row> rows, Color accent)
+	{
 		final Font body = FontManager.getRunescapeSmallFont();
 		final Font bold = FontManager.getRunescapeBoldFont();
 		final FontMetrics bodyMetrics = graphics.getFontMetrics(body);
@@ -148,7 +160,6 @@ class SplashOverlay extends Overlay
 			row.draw(graphics, x, y, width - x - PAD, lineHeight, body, bold, bodyMetrics, boldMetrics);
 			y += row.height(lineHeight) + row.gapAfter();
 		}
-		graphics.setComposite(before);
 		return new Dimension(width, height);
 	}
 
