@@ -122,6 +122,9 @@ final class LiveSection extends VitalsSidePanel.Column
 	private final List<Chip> chipPool = new ArrayList<>();
 	private final VitalsSidePanel.Column skillLines = new VitalsSidePanel.Column();
 	private final List<WrapLabel> skillPool = new ArrayList<>();
+	/** The active skill's goals, each with what is left and the time to go. */
+	private final VitalsSidePanel.Column skillGoals = new VitalsSidePanel.Column();
+	private final List<WrapLabel> goalPool = new ArrayList<>();
 
 	// This session
 	private final FoldCard sessionCard = new FoldCard("This session", null, null, true);
@@ -247,7 +250,7 @@ final class LiveSection extends VitalsSidePanel.Column
 			statValues.put(STATS[i], value);
 			statGrid.add(tile);
 		}
-		for (Component c : new Component[]{title, gap(), skillXp, gap(), statGrid, gap(), skillChips, skillLines})
+		for (Component c : new Component[]{title, gap(), skillXp, gap(), statGrid, gap(), skillChips, skillLines, skillGoals})
 		{
 			skilling.add(c);
 		}
@@ -383,6 +386,8 @@ final class LiveSection extends VitalsSidePanel.Column
 		visible(statGrid, !s.stats.isEmpty());
 		chips(s.chips);
 		lines(skillLines, skillPool, s.lines);
+		lines(skillGoals, goalPool, s.header == null ? java.util.Collections.emptyList() : s.goals);
+		visible(skillGoals, s.header != null && !s.goals.isEmpty());
 	}
 
 	/** The three skills with the most XP gained; the rest only after Show all. */

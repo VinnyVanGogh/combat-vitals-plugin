@@ -187,7 +187,15 @@ final class VitalsSidePanel extends PluginPanel
 	VitalsSidePanel(ConfigStore store, Map<String, ConfigItemDescriptor> items, ColorPickerManager pickers,
 		Actions actions, AlertMute mute, GoalBook goals, MaxHitPage.Source gear)
 	{
-		this.goalsPage = new GoalsPage(goals);
+		this(store, items, pickers, actions, mute, goals, gear, null);
+	}
+
+	/** {@code icons} gives the Goals page's skill dropdown each skill's icon. */
+	VitalsSidePanel(ConfigStore store, Map<String, ConfigItemDescriptor> items, ColorPickerManager pickers,
+		Actions actions, AlertMute mute, GoalBook goals, MaxHitPage.Source gear,
+		java.util.function.Function<net.runelite.api.Skill, java.awt.image.BufferedImage> icons)
+	{
+		this.goalsPage = new GoalsPage(goals, icons);
 		this.muteBar = new MuteBar(mute);
 		this.store = store;
 		this.controls = new SettingControls(store, items, pickers);
@@ -216,7 +224,7 @@ final class VitalsSidePanel extends PluginPanel
 		}
 		settings.add(cardPanel);
 		addMain(Main.GOALS, goalsPage);
-		addMain(Main.MAX_HIT, new MaxHitPage(gear));
+		addMain(Main.MAX_HIT, new MaxHitPage(gear, icons));
 		final Column overlayTab = new Column();
 		overlayTab.add(overlays());
 		overlayTab.add(text("The look of each overlay, the pillars and the casts overlay are under Settings.",
