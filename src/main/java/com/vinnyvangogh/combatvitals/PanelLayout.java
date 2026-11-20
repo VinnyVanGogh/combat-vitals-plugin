@@ -220,7 +220,17 @@ final class PanelLayout
 			Group.more("Skill colours", "skillingFishingColour", "skillingWoodcuttingColour", "skillingMiningColour",
 				"skillingThievingColour", "skillingRunecraftColour", "skillingHunterColour"),
 			new Group("Side pillars", "pillarMode", "pillarCombatSide", "pillarXpSide", "pillarLabels",
-				"pillarStyle", "pillarContainers", "pillarContainerColour"));
+				"pillarStyle", "pillarContainers", "pillarContainerColour"),
+			new Group("Split pillars and sources", "pillarLeftSplit", "pillarLeftSource", "pillarLeftSource2",
+				"pillarRightSplit", "pillarRightSource", "pillarRightSource2", "pillarRune", "pillarRuneFull",
+				"pillarAmmoFull", "pillarAmmoLow"),
+			Group.more("Pillar colours", "pillarColourLow", "pillarColourHitpoints", "pillarColourPrayer",
+				"pillarColourRun", "pillarColourSpec", "pillarColourAmmo", "pillarColourRunes",
+				"pillarColourCasts", "pillarColourCharges", "pillarColourCannonballs", "pillarColourFood",
+				"pillarColourDoses", "pillarColourStamina", "pillarColourBoost"),
+			new Group("Pillar presets", "pillarPreset", "pillarSaveAs", "pillarLoad", "pillarRename",
+				"pillarDelete", "pillarAutoSwitch", "pillarAutoMelee", "pillarAutoRanged", "pillarAutoMagic",
+				"pillarAutoSkilling"));
 	}
 
 	/**

@@ -317,6 +317,10 @@ public class CombatVitalsPlugin extends Plugin
 	@Inject
 	private SplashWatcher splashWatcher;
 
+	/** The side pillars' sources, presets and auto-switch. */
+	@Inject
+	private PillarController pillarController;
+
 	/** True while auto-detect itself flips splashMode, so onConfigChanged does not read it as a hand switch. */
 	private boolean autoSwitching;
 
@@ -763,6 +767,7 @@ public class CombatVitalsPlugin extends Plugin
 		gemstoneCrabWatcher.reset();
 		splashWatcher.reset();
 		splashWatcher.resetAuto();
+		pillarController.reset();
 		mouseManager.unregisterMouseListener(backOnClick);
 		keyManager.unregisterKeyListener(backOnKey);
 		alertRepeat.stop();
@@ -855,6 +860,7 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			return;
 		}
+		pillarController.configChanged(event.getKey());
 		if ("replayUpdateNotes".equals(event.getKey()) && config.replayUpdateNotes())
 		{
 			clientThread.invoke(this::replayUpdateNotes);
@@ -1643,6 +1649,7 @@ public class CombatVitalsPlugin extends Plugin
 		}
 
 		final String message = Text.removeTags(event.getMessage());
+		pillarController.chat(message);
 		if (ActivityAlerts.isStunMessage(message))
 		{
 			activityAlerts.stunned();
@@ -2157,6 +2164,7 @@ public class CombatVitalsPlugin extends Plugin
 		seedBoosts();
 		tickBoostTimer();
 		tickAlerts();
+		pillarController.tick(getReadout(), getSkillingReadout() != null);
 		final String splashBroke = splashWatcher.tick();
 		final Boolean autoSplash = splashWatcher.takeAutoSwitch();
 		if (autoSplash != null)

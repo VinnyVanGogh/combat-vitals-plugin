@@ -536,6 +536,22 @@ class SplashWatcher
 		return 1.0;
 	}
 
+	/**
+	 * For the side pillar's Casts source: casts left of the spell being autocast, else the last spell
+	 * cast; null when neither is known. Never paces the low-casts alert.
+	 */
+	CastsReadout castsForPillar()
+	{
+		final String spell = castingSpell() != null ? castingSpell() : lastSpell;
+		return spell == null ? null : castsFor(spell, false);
+	}
+
+	/** The runes carried now, for the side pillar's Runes source. */
+	SpellCasts.Supply supplyNow()
+	{
+		return supply();
+	}
+
 	/** Runes in the inventory and rune pouch, and the staff and tome worn. */
 	private SpellCasts.Supply supply()
 	{
