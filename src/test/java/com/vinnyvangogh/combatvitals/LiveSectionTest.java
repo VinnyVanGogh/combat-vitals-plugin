@@ -217,7 +217,7 @@ public class LiveSectionTest
 		ui.assertShows("Session resets in 12:50");
 		ui.assertShows("All time");
 		ui.assertShows("+3.1m xp");
-		ui.assertShows("40h 00m");
+		ui.assertShows("1d 16h");
 		ui.assertHides(LiveSection.NOT_SKILLING);
 		shot("panel-live-skilling-paused.png");
 	}
@@ -246,7 +246,7 @@ public class LiveSectionTest
 		ui.assertShows("All time");
 		ui.assertShows("12h 00m");
 		view(LiveSection.View.OVERALL);
-		ui.assertShows("52h 00m");
+		ui.assertShows("2d 4h");
 	}
 
 	@Test
