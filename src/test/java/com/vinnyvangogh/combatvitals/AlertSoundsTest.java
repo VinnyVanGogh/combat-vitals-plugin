@@ -29,6 +29,66 @@ import org.junit.Test;
  */
 public class AlertSoundsTest
 {
+	private static ConfigStore fake(java.util.Map<String, String> m)
+	{
+		return new ConfigStore()
+		{
+			public String raw(String k)
+			{
+				return m.get(k);
+			}
+
+			public void setRaw(String k, String v)
+			{
+				m.put(k, v);
+			}
+
+			public <T> T get(String k, Class<T> t)
+			{
+				return m.containsKey(k) ? t.cast(Boolean.valueOf(m.get(k))) : null;
+			}
+
+			public void set(String k, Object v)
+			{
+				m.put(k, String.valueOf(v));
+			}
+		};
+	}
+
+	@Test
+	public void staleFollowClearedOnceThenPlayerChoiceKept()
+	{
+		final java.util.Map<String, String> m = new java.util.HashMap<>();
+		m.put("alertFollowGameVolume", "true");
+		AlertSounds.resetStaleFollowGameVolume(fake(m));
+		assertEquals("false", m.get("alertFollowGameVolume"));
+		m.put("alertFollowGameVolume", "true");
+		AlertSounds.resetStaleFollowGameVolume(fake(m));
+		assertEquals("true", m.get("alertFollowGameVolume"));
+	}
+
+	@Test
+	public void freshConfigLeftUnset()
+	{
+		final java.util.Map<String, String> m = new java.util.HashMap<>();
+		AlertSounds.resetStaleFollowGameVolume(fake(m));
+		assertEquals(null, m.get("alertFollowGameVolume"));
+	}
+
+	@Test
+	public void silentHintOnlyWhenFollowingAndMuted()
+	{
+		org.junit.Assert.assertTrue(AlertSounds.silentByGameVolume(true, 0));
+		org.junit.Assert.assertFalse(AlertSounds.silentByGameVolume(false, 0));
+		org.junit.Assert.assertFalse(AlertSounds.silentByGameVolume(true, 50));
+	}
+
+	@Test
+	public void defaultIsOff()
+	{
+		org.junit.Assert.assertFalse(((CombatVitalsConfig) new CombatVitalsConfig(){}).alertFollowGameVolume());
+	}
+
 	@Test
 	public void gameVolumeMuteSilencesOwnSounds()
 	{
