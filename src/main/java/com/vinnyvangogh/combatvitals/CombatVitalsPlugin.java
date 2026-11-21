@@ -1680,6 +1680,12 @@ public class CombatVitalsPlugin extends Plugin
 	@Subscribe
 	public void onItemContainerChanged(ItemContainerChanged event)
 	{
+		if (event.getContainerId() == InventoryID.INV || event.getContainerId() == InventoryID.WORN)
+		{
+			// Gear or runes changed: the casting card is right now, not on the next hit.
+			splashWatcher.refresh();
+		}
+
 		if (event.getContainerId() == InventoryID.BANK)
 		{
 			// The bank's contents arrive when it opens: you stopped on purpose.
@@ -1838,6 +1844,10 @@ public class CombatVitalsPlugin extends Plugin
 	@Subscribe
 	public void onVarbitChanged(VarbitChanged event)
 	{
+		if (SplashWatcher.isCastingVarbit(event.getVarbitId()))
+		{
+			splashWatcher.refresh();
+		}
 		if (event.getVarpId() != VarPlayerID.SA_ENERGY)
 		{
 			return;
@@ -2157,7 +2167,9 @@ public class CombatVitalsPlugin extends Plugin
 		seedBoosts();
 		tickBoostTimer();
 		tickAlerts();
-		final String splashBroke = splashWatcher.tick();
+		final String splashTick = splashWatcher.tick();
+		final String splashPending = splashWatcher.takePendingChanged();
+		final String splashBroke = splashTick != null ? splashTick : splashPending;
 		final Boolean autoSplash = splashWatcher.takeAutoSwitch();
 		if (autoSplash != null)
 		{
@@ -2526,9 +2538,10 @@ public class CombatVitalsPlugin extends Plugin
 		final Player self = client.getLocalPlayer();
 		final boolean animating = self != null && self.getAnimation() != -1;
 		final Instant now = Instant.now();
-		final boolean blocked = skillingTarget != null || objectBadge || combat.inCombat(now, timeout());
+		final boolean blocked = skillingTarget != null || objectBadge;
+		final boolean fighting = combat.inCombat(now, timeout());
 		final int tick = client.getTickCount();
-		applyXpStep(xpSkilling.tick(tick, animating, blocked), now);
+		applyXpStep(xpSkilling.tick(tick, animating, blocked, fighting), now);
 
 		if (xpSkilling.acted())
 		{

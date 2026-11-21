@@ -43,6 +43,30 @@ public class XpSkillingTest
 	}
 
 	@Test
+	public void anAltarOfferingCountsAsPrayerEvenWithAFightFlagged()
+	{
+		gain(Skill.PRAYER, 50);
+		assertEquals(XpSkilling.Step.ENGAGE, xp.tick(++tick, true, false, true));
+		assertEquals(Skill.PRAYER, xp.skill());
+	}
+
+	@Test
+	public void aBonecrusherDropWithNoAnimationStaysCombat()
+	{
+		gain(Skill.PRAYER, 5);
+		assertEquals(XpSkilling.Step.NONE, xp.tick(++tick, false, false, true));
+		assertNull(xp.skill());
+	}
+
+	@Test
+	public void anOfferingNeverOverridesAnotherBadge()
+	{
+		gain(Skill.PRAYER, 50);
+		assertEquals(XpSkilling.Step.NONE, xp.tick(++tick, true, true, true));
+		assertNull(xp.skill());
+	}
+
+	@Test
 	public void cleaningAHerbRaisesTheHerbloreBadge()
 	{
 		gain(Skill.HERBLORE, 3);

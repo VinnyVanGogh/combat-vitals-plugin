@@ -117,12 +117,18 @@ final class SplashTimer
 	/** "Stopped 12s ago", or "Stopped 2m 05s ago" from a minute. */
 	static String stoppedAgo(long sinceStopMillis)
 	{
-		final long s = Math.max(0, sinceStopMillis) / 1000;
+		return "Stopped " + ago(sinceStopMillis);
+	}
+
+	/** "16s ago" or "2m 05s ago". */
+	static String ago(long sinceMillis)
+	{
+		final long s = Math.max(0, sinceMillis) / 1000;
 		if (s >= 60)
 		{
-			return String.format(Locale.ROOT, "Stopped %dm %02ds ago", s / 60, s % 60);
+			return String.format(Locale.ROOT, "%dm %02ds ago", s / 60, s % 60);
 		}
-		return "Stopped " + s + "s ago";
+		return s + "s ago";
 	}
 
 	/** "Active" while you are using the client, else "Splashing stops in 14:32"; null when unknown. */

@@ -591,7 +591,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "castsSpell",
 		name = "Always show: spell",
 		description = "The spell to count when Always show is on and you are not casting, by name, e.g. Fire "
-			+ "Surge or Ice Barrage. Leave empty for the last spell you cast.",
+			+ "Surge or Ice Barrage. Leave empty for the strongest spell you can cast now (your spellbook, Magic "
+			+ "level and runes).",
 		section = targetSection,
 		position = 14
 	)
@@ -1553,6 +1554,19 @@ public interface CombatVitalsConfig extends Config
 	default Color pillarContainerColour()
 	{
 		return new Color(142, 92, 222, 230);
+	}
+
+	@ConfigItem(
+		keyName = "skillingCardStyle",
+		name = "Card style",
+		description = "Clean: the skilling badge as a card of label and value rows, dimmed when you are not "
+			+ "doing the skill. Retro: the original coloured bars.",
+		section = pillarsSection,
+		position = 26
+	)
+	default CardStyle skillingCardStyle()
+	{
+		return CardStyle.CLEAN;
 	}
 
 	@ConfigItem(

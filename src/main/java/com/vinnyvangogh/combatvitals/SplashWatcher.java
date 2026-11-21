@@ -1,8 +1,10 @@
 package com.vinnyvangogh.combatvitals;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import javax.inject.Inject;
@@ -73,8 +75,11 @@ class SplashWatcher
 
 	private volatile SplashReadout readout;
 	private volatile CastsReadout castsReadout;
-	/** The last spell seen being cast, for Always show when none is picked in settings. */
-	private String lastSpell;
+	/** When a spell was last cast (wall clock), or -1. */
+	private long lastCastAt = -1;
+	/** Spells castable now with runes behind them, strongest first; empty hides the card. */
+	private List<SpellCasts.Castable> castable = Collections.emptyList();
+	private String pendingChanged;
 	private int manualNpcIndex = -1;
 	/** The NPC the player last clicked Attack on; autocast only counts as casting at that NPC. */
 	private int attackNpcIndex = -1;
@@ -121,6 +126,10 @@ class SplashWatcher
 	 */
 	SplashReadout readout()
 	{
+		if (config.castsLeft() && castable.isEmpty())
+		{
+			return null; // no castable spell has runes: runes banked or dropped; the card returns with them
+		}
 		final SplashReadout r = readout;
 		if (on() && r != null)
 		{
@@ -147,7 +156,9 @@ class SplashWatcher
 	{
 		readout = null;
 		castsReadout = null;
-		lastSpell = null;
+		lastCastAt = -1;
+		castable = Collections.emptyList();
+		pendingChanged = null;
 		manualNpcIndex = -1;
 		attackNpcIndex = -1;
 		lowArmed = true;
@@ -205,6 +216,24 @@ class SplashWatcher
 		manualTicks = MANUAL_TICKS;
 	}
 
+	/** A varbit whose change alters which spells are castable or what is cast: the spellbook, autocast, rune pouch. */
+	static boolean isCastingVarbit(int varbitId)
+	{
+		if (varbitId == VarbitID.SPELLBOOK || varbitId == VarbitID.AUTOCAST_SET || varbitId == VarbitID.AUTOCAST_SPELL
+			|| varbitId == VarbitID.COMBAT_WEAPON_CATEGORY)
+		{
+			return true;
+		}
+		for (int i = 0; i < POUCH_TYPES.length; i++)
+		{
+			if (varbitId == POUCH_TYPES[i] || varbitId == POUCH_QUANTITIES[i])
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
 	private static boolean isNpcOption(MenuAction action)
 	{
 		switch (action)
@@ -249,14 +278,49 @@ class SplashWatcher
 		{
 			manualTicks--;
 		}
+		return update(false);
+	}
+
+	/**
+	 * The worn gear, the spellbook, or the runes carried changed: recompute the card now instead of on the next
+	 * game tick, so it is right the moment the player swaps an item or banks their runes. Client thread. A
+	 * setup-changed alert it finds is kept for the next tick to send; the clocks and idle counters do not move.
+	 */
+	void refresh()
+	{
+		if (!on())
+		{
+			return;
+		}
+		final String changed = update(true);
+		if (changed != null)
+		{
+			pendingChanged = changed;
+		}
+	}
+
+	/** A setup-changed alert found by {@link #refresh()}, once, or null. */
+	String takePendingChanged()
+	{
+		final String text = pendingChanged;
+		pendingChanged = null;
+		return text;
+	}
+
+	/** One read of the client. {@code event}: not a game tick, so nothing that counts ticks advances. */
+	private String update(boolean event)
+	{
+		final boolean attacking = attacking();
 		final boolean casting = CastsVisibility.casting(
 			client.getVarbitValue(VarbitID.AUTOCAST_SET) == 1,
-			client.getVarbitValue(VarbitID.COMBAT_WEAPON_CATEGORY), manualTicks);
+			client.getVarbitValue(VarbitID.COMBAT_WEAPON_CATEGORY), manualTicks, attacking);
 		spellName = casting ? castingSpell() : null;
-		if (spellName != null)
+		final long now = System.currentTimeMillis();
+		if (casting && !event)
 		{
-			lastSpell = spellName;
+			lastCastAt = now;
 		}
+		castable = config.castsLeft() ? castableNow() : Collections.emptyList();
 
 		String changed = null;
 		final boolean splashing = config.splashMode();
@@ -265,9 +329,8 @@ class SplashWatcher
 			readout = null;
 		}
 		final SplashTracker.Input in = splashing ? read() : null;
-		final long now = System.currentTimeMillis();
 		final SplashReadout shown = readout;
-		if (in != null || shown != null && !shown.isStopped())
+		if (!event && (in != null || shown != null && !shown.isStopped()))
 		{
 			afk(idleMillis());
 		}
@@ -277,18 +340,54 @@ class SplashWatcher
 			{
 				readout = shown.stopped(now);
 			}
-			tracker.idle();
-			timer.idle();
+			if (!event)
+			{
+				tracker.idle();
+				timer.idle();
+			}
 		}
 		else
 		{
-			timer.cast(now);
+			if (!event)
+			{
+				timer.cast(now);
+			}
 			final SplashTracker.Result splash = tracker.step(in, config.splashMaxChance());
-			readout = buildSplash(splash, now);
+			readout = buildSplash(splash, now, in.magicBonus);
 			changed = splash.changed;
 		}
 		castsReadout = buildCasts(casting);
 		return changed;
+	}
+
+	/** The player is interacting with the NPC they last clicked Attack on. */
+	private boolean attacking()
+	{
+		return client.getLocalPlayer() != null && client.getLocalPlayer().getInteracting() instanceof NPC
+			&& ((NPC) client.getLocalPlayer().getInteracting()).getIndex() == attackNpcIndex;
+	}
+
+	/** Every spell castable now with runes behind it, strongest first. */
+	private List<SpellCasts.Castable> castableNow()
+	{
+		boolean iban = false;
+		boolean dart = false;
+		final ItemContainer worn = client.getItemContainer(InventoryID.WORN);
+		if (worn != null)
+		{
+			for (Item item : worn.getItems())
+			{
+				if (item.getId() <= 0)
+				{
+					continue;
+				}
+				final String n = name(item.getId());
+				iban |= n.contains("iban's staff");
+				dart |= n.contains("slayer's staff") || n.contains("staff of the dead");
+			}
+		}
+		return SpellCasts.castable(client.getBoostedSkillLevel(Skill.MAGIC),
+			client.getVarbitValue(VarbitID.SPELLBOOK) == 1, iban, dart, supply());
 	}
 
 	/** Reads the worn Magic bonus and queues a Splashing mode switch when auto-detect wants one. */
@@ -335,7 +434,38 @@ class SplashWatcher
 	}
 
 	/** The splashing card: the splash result, with the casts line while casts are merged into it. */
-	private SplashReadout buildSplash(SplashTracker.Result splash, long now)
+	private SplashReadout buildSplash(SplashTracker.Result splash, long now, int magicBonus)
+	{
+		final SplashReadout r = buildSplashCard(splash, now);
+		r.lastCastAt = lastCastAt;
+		if (splash.status != SplashTracker.Status.SAFE)
+		{
+			r.remove = GearAdvice.remove(wornItems(), magicBonus);
+		}
+		return r;
+	}
+
+	/** The worn items with their Magic attack bonus, for the remove list. */
+	private List<GearAdvice.Worn> wornItems()
+	{
+		final List<GearAdvice.Worn> out = new ArrayList<>();
+		for (int id : worn())
+		{
+			if (id <= 0)
+			{
+				continue;
+			}
+			final ItemStats stats = itemManager.getItemStats(id);
+			final ItemEquipmentStats equipment = stats == null ? null : stats.getEquipment();
+			if (equipment != null && equipment.getAmagic() > 0)
+			{
+				out.add(new GearAdvice.Worn(itemManager.getItemComposition(id).getName(), equipment.getAmagic()));
+			}
+		}
+		return out;
+	}
+
+	private SplashReadout buildSplashCard(SplashTracker.Result splash, long now)
 	{
 		// Always counted, so the low-casts alert is paced; shown on the card only while castsMerge is on.
 		final CastsReadout counted = config.castsLeft() ? castsFor(spellName, true) : null;
@@ -362,13 +492,15 @@ class SplashWatcher
 		{
 			return null;
 		}
-		final String spell = CastsVisibility.spell(casting, spellName, config.castsAlways(), config.castsSpell(),
-			lastSpell);
+		final String spell = CastsVisibility.shown(casting, spellName, config.castsAlways(), config.castsSpell(),
+			castable);
 		final CastsReadout r = castsFor(spell, casting);
 		if (r == null)
 		{
 			return null;
 		}
+		r.casting = casting;
+		r.lastCastAt = lastCastAt;
 		return CastsVisibility.visible(true, config.castsAlways(), casting, true, r.casts, config.castsOnlyBelow(),
 			readout != null, true) ? r : null; // splash card up: it carries (or deliberately omits) the casts
 	}

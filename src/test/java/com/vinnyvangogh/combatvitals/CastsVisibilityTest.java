@@ -45,31 +45,50 @@ public class CastsVisibilityTest
 	// the spell
 
 	@Test
+	public void autocastFlagLeftOnWhileNotAttackingIsNotCasting()
+	{
+		// Walked away and started woodcutting with the staff still wielded.
+		assertFalse(CastsVisibility.casting(true, STAFF, 0, false));
+		assertTrue(CastsVisibility.casting(true, STAFF, 0, true));
+		assertTrue(CastsVisibility.casting(false, SWORD, 3, false));
+	}
+
+	private static java.util.List<SpellCasts.Castable> best(String... names)
+	{
+		final java.util.List<SpellCasts.Castable> out = new java.util.ArrayList<>();
+		for (String n : names)
+		{
+			out.add(new SpellCasts.Castable(n, 1, new int[10], new SpellCasts.Result(5, null)));
+		}
+		return out;
+	}
+
+	@Test
 	public void theSpellBeingCastWinsInBothModes()
 	{
-		assertEquals("Fire Surge", CastsVisibility.spell(true, "Fire Surge", false, "Ice Barrage", "Wind Strike"));
-		assertEquals("Fire Surge", CastsVisibility.spell(true, "Fire Surge", true, "Ice Barrage", "Wind Strike"));
+		assertEquals("Fire Surge", CastsVisibility.shown(true, "Fire Surge", false, "Ice Barrage", best("Wind Strike")));
+		assertEquals("Fire Surge", CastsVisibility.shown(true, "Fire Surge", true, "Ice Barrage", best("Wind Strike")));
 	}
 
 	@Test
 	public void contextualModeHasNoSpellWhenNotCasting()
 	{
-		assertNull(CastsVisibility.spell(false, null, false, "Ice Barrage", "Wind Strike"));
+		assertNull(CastsVisibility.shown(false, null, false, "Ice Barrage", best("Wind Strike")));
 	}
 
 	@Test
-	public void alwaysShowUsesThePickedSpellThenTheLastOne()
+	public void alwaysShowUsesThePickedSpellThenTheBestCastable()
 	{
-		assertEquals("Ice Barrage", CastsVisibility.spell(false, null, true, " Ice Barrage ", "Wind Strike"));
-		assertEquals("Wind Strike", CastsVisibility.spell(false, null, true, "", "Wind Strike"));
-		assertEquals("Wind Strike", CastsVisibility.spell(false, null, true, null, "Wind Strike"));
-		assertNull(CastsVisibility.spell(false, null, true, "", null));
+		assertEquals("Ice Barrage", CastsVisibility.shown(false, null, true, " Ice Barrage ", best("Wind Strike")));
+		assertEquals("Fire Surge", CastsVisibility.shown(false, null, true, "", best("Fire Surge", "Wind Strike")));
+		assertEquals("Fire Surge", CastsVisibility.shown(false, null, true, null, best("Fire Surge", "Wind Strike")));
+		assertNull(CastsVisibility.shown(false, null, true, "", best()));
 	}
 
 	@Test
 	public void aCastingSpellTheTableDoesNotKnowStillFallsBackInAlwaysShow()
 	{
-		assertEquals("Ice Barrage", CastsVisibility.spell(true, null, true, "Ice Barrage", null));
+		assertEquals("Ice Barrage", CastsVisibility.shown(true, null, true, "Ice Barrage", best()));
 	}
 
 	// visible: contextual (always off)
