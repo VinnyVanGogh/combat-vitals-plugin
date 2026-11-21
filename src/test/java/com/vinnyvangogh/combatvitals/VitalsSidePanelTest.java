@@ -294,14 +294,14 @@ public class VitalsSidePanelTest
 	public void seldomUsedSettingsWaitBehindMore()
 	{
 		final Map<String, ConfigItemDescriptor> items = PanelFixture.descriptors();
-		final String spotPath = items.get("fishingSpotPath").name();
+		final String spotArrow = items.get("nextSpotArrow").name();
 		onEdt(() -> panel.show(PanelLayout.Tab.SKILLING));
 		ui.assertShows(items.get("skillingEnabled").name());
-		ui.assertHides(spotPath);
-		ui.assertHides("Next fishing spot");
+		ui.assertHides(spotArrow);
+		ui.assertHides("Next spot arrow");
 		onEdt(() -> ui.click(VitalsSidePanel.MORE));
-		onEdt(() -> ui.click("Next fishing spot"));
-		ui.assertShows(spotPath);
+		onEdt(() -> ui.click("Next spot arrow"));
+		ui.assertShows(spotArrow);
 	}
 
 	@Test

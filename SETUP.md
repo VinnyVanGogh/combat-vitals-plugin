@@ -91,8 +91,8 @@ pillars never show and the other half's take the bars.
 | Show inventory fill | On | `Inv 26/28 free` on a bar under the badge, green to red as the inventory fills; stackables, tools and equipment do not count toward the fill |
 | Show containers | On | A line per carried log basket, fish barrel, coal bag or essence pouches under the inventory line, for the skill they serve: `Log basket 12/28 free`, or `?/28` until checked |
 | Count containers as free | Off | `Inv 27/28 free (+16 basket)`, and Inventory full waits for the container to fill too; the coal bag and unchecked containers never count |
-| Next spot path | Off | Mark the nearest fishing spot of the same kind when yours moves, or only from the badge's right-click menu: its tile outlined, a line from you to it, an arrow at the screen's edge while it is off screen |
-| Next spot: Shortest Path | On | Also send the next spot to Shortest Path for a walking path, when it is installed |
+| Next spot arrow | On | Point the game's hint arrow at the nearest fishing spot, tree or rock of the kind you were working, when yours moves or runs out, or from the badge's right-click `Point to next spot`. Never replaces a quest or clue arrow |
+| Arrow distance | 15 | Tiles you can walk from the next spot, once you have been near it, before the arrow comes down |
 
 The timer is honest about what it knows. The game never tells the client where
 it is in its one-minute drain cycle, so from login the badge shows an estimate

@@ -132,8 +132,8 @@ public class ConfigKeysTest
 
 	/**
 	 * A setting is read by a call, config.key(), or by a method reference,
-	 * config::key, handed on to be called later (SpotPathing's
-	 * fishingSpotShortestPath). The reference must end at the key's last
+	 * config::key, handed on to be called later (NextSpotArrow's
+	 * nextSpotArrowDistance). The reference must end at the key's last
 	 * letter, so config::keyLonger does not count as reading key. An unbound
 	 * reference, CombatVitalsConfig::key, counts too (SkillSwitches' table).
 	 */
@@ -147,12 +147,11 @@ public class ConfigKeysTest
 	@Test
 	public void aMethodReferenceCountsAsARead()
 	{
-		assertTrue(isRead("new SpotPathing(config::fishingSpotPath, router(bridge, config::fishingSpotShortestPath));",
-			"fishingSpotShortestPath"));
-		assertTrue(isRead("if (config.fishingSpotPath() == ON)", "fishingSpotPath"));
+		assertTrue(isRead("new NextSpotArrow(p, () -> on, config::nextSpotArrowDistance);", "nextSpotArrowDistance"));
+		assertTrue(isRead("if (config.nextSpotArrow())", "nextSpotArrow"));
 		assertFalse("a longer key's reference is not this key's read",
-			isRead("router(bridge, config::fishingSpotShortestPath)", "fishingSpot"));
-		assertFalse("named but never read", isRead("// fishingSpotShortestPath is optional", "fishingSpotShortestPath"));
+			isRead("arrow(p, config::nextSpotArrowDistance)", "nextSpotArrow"));
+		assertFalse("named but never read", isRead("// nextSpotArrow is optional", "nextSpotArrow"));
 	}
 
 	@Test

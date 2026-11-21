@@ -21,8 +21,6 @@ bigTargetMaxHp int
 bigTargetRule BigTargetRule
 colourGradient boolean
 displayMode DisplayMode
-fishingSpotPath FishingSpotPath
-fishingSpotShortestPath boolean
 healthFullColour Color
 healthLowColour Color
 healthMidColour Color
@@ -255,6 +253,10 @@ highlightBeeHive boolean
 highlightEnchantmentRitual boolean
 highlightFriendlyEnt boolean
 pauseAfterIdleSeconds int
+# 2026-11-20: Next spot hint arrow replaces the Shortest Path settings fishingSpotPath and fishingSpotShortestPath
+# (RUNELITE-537, Board-approved removal; both defaulted to off / optional).
+nextSpotArrow boolean
+nextSpotArrowDistance int
 # 2026-11-19: Auto-detect splashing (RUNELITE-469).
 autoSplash boolean
 autoSplashThreshold int

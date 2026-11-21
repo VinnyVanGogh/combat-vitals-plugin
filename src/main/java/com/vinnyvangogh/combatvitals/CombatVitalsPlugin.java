@@ -20,7 +20,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BooleanSupplier;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.swing.SwingUtilities;
@@ -85,7 +84,6 @@ import net.runelite.client.config.ConfigItemDescriptor;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.Notification;
 import net.runelite.client.config.RuneLiteConfig;
-import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.game.FishingSpot;
@@ -190,9 +188,6 @@ public class CombatVitalsPlugin extends Plugin
 	private Notifier notifier;
 
 	@Inject
-	private EventBus eventBus;
-
-	@Inject
 	private ChatMessageManager chatMessageManager;
 
 	/** RuneLite's own player, the one {@link Notifier} plays through. */
@@ -286,9 +281,6 @@ public class CombatVitalsPlugin extends Plugin
 	private boolean developerMode;
 
 	@Inject
-	private NextSpotOverlay nextSpotOverlay;
-
-	@Inject
 	private ForestryHighlightOverlay forestryHighlightOverlay;
 
 	/** The Forestry event parts on the scene, for the highlight overlay. Client thread only. */
@@ -334,19 +326,37 @@ public class CombatVitalsPlugin extends Plugin
 	/** A repaint of the Goals page is already queued on the Swing thread. */
 	private final AtomicBoolean goalsRepaintQueued = new AtomicBoolean();
 
-	/** Finds the next fishing spot and paths to or highlights it. Client thread only; null until started. */
+	/** Finds the next fishing spot and points the hint arrow at it. Client thread only; null until started. */
 	private SpotPathing spotPathing;
+
+	/** The hint arrow this plugin sets, and the only one it ever clears. Client thread only; null until started. */
+	private NextSpotArrow nextSpotArrow;
 
 	/** The bundled fishing spot locations, read once at start-up. */
 	private List<NextFishingSpot.Spot> knownSpots = Collections.emptyList();
 
-	/**
-	 * The next fishing spot to mark, until the player fishes again. Marked
-	 * whether or not it also went to Shortest Path, which drops its own path
-	 * once the player is within its finish distance (5 tiles by default).
-	 */
-	@Getter
-	private volatile NextFishingSpot.Spot nextSpot;
+	/** Loaded trees and rocks the player can chop or mine, by tile, kept from spawn and despawn events. */
+	private final Map<WorldPoint, WorkableObject> workableObjects = new HashMap<>();
+
+	/** The tree or rock being worked: what the next one has to match. Null when none. */
+	private WorkableObject workedObject;
+	private WorldPoint workedAt;
+
+	/** The skill the arrow is pointing for, so another skill's badge takes it down. */
+	private Skill arrowSkill;
+
+	/** A loaded tree or rock: its skill and its name, so "Oak tree" is followed by another oak. */
+	private static final class WorkableObject
+	{
+		private final Skill skill;
+		private final String name;
+
+		private WorkableObject(Skill skill, String name)
+		{
+			this.skill = skill;
+			this.name = name;
+		}
+	}
 
 	/** Where the overlay drew the skilling badge in the latest frame, or null. */
 	private volatile Rectangle badgeBounds;
@@ -543,7 +553,6 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.add(overheadOverlay);
 		overlayManager.add(skillingBadgeOverlay);
 		overlayManager.add(pillarOverlay);
-		overlayManager.add(nextSpotOverlay);
 		overlayManager.add(forestryHighlightOverlay);
 		overlayManager.add(aggressionOverlay);
 		overlayManager.add(aggressionAreaOverlay);
@@ -557,11 +566,10 @@ public class CombatVitalsPlugin extends Plugin
 		voiceLines = VoiceLines.load();
 		mouseManager.registerMouseListener(backOnClick);
 		keyManager.registerKeyListener(backOnKey);
-		final ShortestPathBridge bridge = new ShortestPathBridge(
-			() -> pluginManager.getPlugins(),
-			p -> pluginManager.isPluginEnabled((Plugin) p),
-			ShortestPathBridge.clientThreadEventPoster(clientThread::invoke, eventBus::post));
-		spotPathing = new SpotPathing(() -> VitalsHalves.fishingSpotPath(config),router(bridge, config::fishingSpotShortestPath));
+		nextSpotArrow = new NextSpotArrow(hintArrow(), () -> VitalsHalves.nextSpotArrow(config),
+			config::nextSpotArrowDistance);
+		spotPathing = new SpotPathing(() -> VitalsHalves.nextSpotArrow(config), nextSpotArrow);
+		workableObjects.clear();
 
 		stockPlugin = findPlugin(STOCK_PLUGIN_NAME);
 		statusBarsPlugin = findPlugin(STATUS_BARS_NAME);
@@ -752,7 +760,6 @@ public class CombatVitalsPlugin extends Plugin
 		overlayManager.remove(overheadOverlay);
 		overlayManager.remove(skillingBadgeOverlay);
 		overlayManager.remove(pillarOverlay);
-		overlayManager.remove(nextSpotOverlay);
 		overlayManager.remove(forestryHighlightOverlay);
 		forestryMarks.clear();
 		overlayManager.remove(aggressionOverlay);
@@ -893,28 +900,46 @@ public class CombatVitalsPlugin extends Plugin
 		SwingUtilities.invokeLater(panel::refresh);
 	}
 
-	/** Shortest Path as the pather sees it: unavailable while the user has it switched off here. */
-	private static SpotPathing.Router router(ShortestPathBridge bridge, BooleanSupplier wanted)
+	/** The game's hint arrow, as {@link NextSpotArrow} drives it. */
+	private NextSpotArrow.Pointer hintArrow()
 	{
-		return new SpotPathing.Router()
+		return new NextSpotArrow.Pointer()
 		{
 			@Override
-			public boolean available()
+			public boolean hasArrow()
 			{
-				return wanted.getAsBoolean() && bridge.availability() == ShortestPathBridge.Availability.AVAILABLE;
+				return client.hasHintArrow();
 			}
 
 			@Override
-			public boolean route(NextFishingSpot.Spot spot)
+			public boolean showing(NextSpotArrow.Target target)
 			{
-				final WorldPoint target = new WorldPoint(spot.getX(), spot.getY(), spot.getPlane());
-				return bridge.route(target) == ShortestPathBridge.RouteOutcome.SENT;
+				if (target.npc() != null)
+				{
+					return client.getHintArrowNpc() == target.npc();
+				}
+				final WorldPoint at = client.getHintArrowPoint();
+				return at != null && at.getX() == target.x() && at.getY() == target.y()
+					&& at.getPlane() == target.plane();
 			}
 
 			@Override
-			public void clear()
+			public void show(NextSpotArrow.Target target)
 			{
-				bridge.clear();
+				if (target.npc() != null)
+				{
+					client.setHintArrow((NPC) target.npc());
+				}
+				else
+				{
+					client.setHintArrow(new WorldPoint(target.x(), target.y(), target.plane()));
+				}
+			}
+
+			@Override
+			public void hide()
+			{
+				client.clearHintArrow();
 			}
 		};
 	}
@@ -922,6 +947,11 @@ public class CombatVitalsPlugin extends Plugin
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged event)
 	{
+		if (event.getGameState() == GameState.LOADING)
+		{
+			// The scene is rebuilt: its objects spawn again.
+			workableObjects.clear();
+		}
 		switch (event.getGameState())
 		{
 			case LOGGED_IN:
@@ -1040,7 +1070,13 @@ public class CombatVitalsPlugin extends Plugin
 		inventoryEmpty = -1;
 		coinPouches = 0;
 		lastPosition = null;
-		nextSpot = null;
+		if (spotPathing != null)
+		{
+			spotPathing.cancel();
+		}
+		workedObject = null;
+		workedAt = null;
+		arrowSkill = null;
 	}
 
 	@Subscribe
@@ -1261,7 +1297,7 @@ public class CombatVitalsPlugin extends Plugin
 		if (trained == Skill.FISHING && spotPathing != null)
 		{
 			spotPathing.fishingOn(FishingSpot.findSpot(skillingTarget.getId()), skilling.method(), skillingTarget);
-			nextSpot = null;
+			arrowSkill = Skill.FISHING;
 		}
 	}
 
@@ -1557,6 +1593,18 @@ public class CombatVitalsPlugin extends Plugin
 		final int size = Math.max(composition.getSizeX(), composition.getSizeY());
 		objectSpot = at;
 		objectSpotSize = size;
+
+		// Clicking the arrow's target takes the arrow down; a tree or rock clicked becomes what "next" must match.
+		if (nextSpotArrow != null && nextSpotArrow.targetsTile(at.getX(), at.getY(), at.getPlane()))
+		{
+			spotPathing.cancel();
+		}
+		final WorkableObject clicked = workableObjects.get(at);
+		if (clicked != null && clicked.skill == skill)
+		{
+			workedObject = clicked;
+			workedAt = at;
+		}
 		objectSkilling.clicked(skill, at.getX(), at.getY(), at.getPlane(), size, size, client.getTickCount());
 	}
 
@@ -1760,6 +1808,11 @@ public class CombatVitalsPlugin extends Plugin
 	public void onGameObjectSpawned(GameObjectSpawned event)
 	{
 		gemstoneCrabWatcher.caveSpawned(event.getGameObject());
+		final WorkableObject workable = workable(event.getGameObject().getId());
+		if (workable != null)
+		{
+			workableObjects.put(event.getGameObject().getWorldLocation(), workable);
+		}
 		if (PumpChecks.isStove(event.getGameObject().getId()))
 		{
 			stove = event.getGameObject();
@@ -1777,6 +1830,11 @@ public class CombatVitalsPlugin extends Plugin
 	public void onGameObjectDespawned(GameObjectDespawned event)
 	{
 		gemstoneCrabWatcher.caveDespawned(event.getGameObject());
+		final WorldPoint gone = event.getGameObject().getWorldLocation();
+		if (workableObjects.remove(gone) != null)
+		{
+			objectGone(gone);
+		}
 		if (event.getGameObject() == stove)
 		{
 			stove = null;
@@ -2371,7 +2429,94 @@ public class CombatVitalsPlugin extends Plugin
 			return;
 		}
 		spotPathing.tick(this::pickSpot, CombatVitalsPlugin::spotTile);
-		nextSpot = VitalsHalves.fishingSpotPath(config) == FishingSpotPath.OFF ? null : spotPathing.target();
+
+		final Player self = client.getLocalPlayer();
+		if (self == null)
+		{
+			return;
+		}
+		// Another skill's badge coming up is a change of activity. The badge going (walking off) is not:
+		// the arrow is for that walk.
+		final SkillingReadout badge = skillingReadout;
+		if (nextSpotArrow.active() && badge != null && arrowSkill != null && badge.getSkill() != arrowSkill)
+		{
+			spotPathing.cancel();
+		}
+		final WorldPoint at = self.getWorldLocation();
+		nextSpotArrow.tick(at.getX(), at.getY(), at.getPlane());
+	}
+
+	/** A loaded tree or rock the player can chop or mine, or null for any other object. */
+	private WorkableObject workable(int id)
+	{
+		final ObjectComposition composition = objectDefinition(id);
+		if (composition == null || composition.getActions() == null)
+		{
+			return null;
+		}
+		for (String action : composition.getActions())
+		{
+			final Skill skill = SkillingActions.forOption(action, composition.getName());
+			if (skill == Skill.WOODCUTTING || skill == Skill.MINING)
+			{
+				return new WorkableObject(skill, composition.getName());
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * The tree or rock being worked went (the tree fell, the rock emptied):
+	 * point at the nearest one of the same kind. Another tile's despawn, or
+	 * the next one's being taken by someone else, is handled the same way.
+	 */
+	private void objectGone(WorldPoint tile)
+	{
+		if (nextSpotArrow == null || !nextSpotArrow.enabled())
+		{
+			return;
+		}
+		final boolean worked = workedAt != null && workedAt.equals(tile) && objectSkilling.started();
+		if (worked || nextSpotArrow.targetsTile(tile.getX(), tile.getY(), tile.getPlane()))
+		{
+			pointAtNextObject();
+		}
+	}
+
+	/** Points the arrow at the nearest tree or rock of the kind being worked, other than the one worked. */
+	private void pointAtNextObject()
+	{
+		final Player self = client.getLocalPlayer();
+		final WorldView view = client.getTopLevelWorldView();
+		final WorkableObject worked = workedObject;
+		if (worked == null || workedAt == null || self == null || view == null || view.isInstance())
+		{
+			return;
+		}
+
+		final List<NextObjectSpot.Candidate> candidates = new ArrayList<>();
+		for (Map.Entry<WorldPoint, WorkableObject> entry : workableObjects.entrySet())
+		{
+			final WorkableObject object = entry.getValue();
+			if (object.skill == worked.skill && object.name.equals(worked.name))
+			{
+				final WorldPoint tile = entry.getKey();
+				candidates.add(new NextObjectSpot.Candidate(tile.getX(), tile.getY(), tile.getPlane()));
+			}
+		}
+
+		final WorldPoint at = self.getWorldLocation();
+		final NextObjectSpot.Candidate next = NextObjectSpot.nearest(candidates, at.getX(), at.getY(), at.getPlane(),
+			workedAt.getX(), workedAt.getY(), workedAt.getPlane());
+		if (next == null)
+		{
+			log.debug("No next {} found", worked.name);
+			return;
+		}
+		if (nextSpotArrow.point(NextSpotArrow.Target.tile(next.x(), next.y(), next.plane())))
+		{
+			arrowSkill = worked.skill;
+		}
 	}
 
 	/** Where a spot NPC stands: spots move by relocating, the same NPC on a new tile. */
@@ -2417,9 +2562,9 @@ public class CombatVitalsPlugin extends Plugin
 	}
 
 	/**
-	 * Right-clicking the fishing badge offers "Path to next spot". The entry
-	 * is the plugin's own, added only over the badge; no game entry is
-	 * changed or removed.
+	 * Right-clicking the fishing, woodcutting or mining badge offers "Point to
+	 * next spot". The entry is the plugin's own, added only over the badge; no
+	 * game entry is changed or removed.
 	 */
 	@Subscribe
 	public void onMenuOpened(MenuOpened event)
@@ -2430,8 +2575,12 @@ public class CombatVitalsPlugin extends Plugin
 		final Rectangle bounds = config.skillingPosition() == BadgePosition.FIXED && skillingBadgeOverlay != null
 			? skillingBadgeOverlay.getBounds()
 			: badgeBounds;
-		if (spotPathing == null || VitalsHalves.fishingSpotPath(config) == FishingSpotPath.OFF || badge == null
-			|| badge.getSkill() != Skill.FISHING || bounds == null)
+		if (spotPathing == null || !VitalsHalves.nextSpotArrow(config) || badge == null || bounds == null)
+		{
+			return;
+		}
+		final Skill skill = badge.getSkill();
+		if (skill != Skill.FISHING && skill != Skill.WOODCUTTING && skill != Skill.MINING)
 		{
 			return;
 		}
@@ -2443,10 +2592,20 @@ public class CombatVitalsPlugin extends Plugin
 		}
 
 		client.getMenu().createMenuEntry(-1)
-			.setOption("Path to next spot")
-			.setTarget(ColorUtil.wrapWithColorTag("Fishing", SkillColours.of(Skill.FISHING)))
+			.setOption("Point to next spot")
+			.setTarget(ColorUtil.wrapWithColorTag(skill.getName(), SkillColours.of(skill)))
 			.setType(MenuAction.RUNELITE)
-			.onClick(e -> spotPathing.requested());
+			.onClick(e ->
+			{
+				if (skill == Skill.FISHING)
+				{
+					spotPathing.requested();
+				}
+				else
+				{
+					pointAtNextObject();
+				}
+			});
 	}
 
 	/** Called by the overlay once per frame with where it drew the badge, or null. */
@@ -2479,6 +2638,8 @@ public class CombatVitalsPlugin extends Plugin
 			case ENGAGE:
 				endXpBadge();
 				skillingTarget = null;
+				// Swinging at a tree or rock: the arrow has done its job.
+				spotPathing.cancel();
 				skilling.engage(objectSkilling.skill());
 				objectBadge = true;
 				startTraining();

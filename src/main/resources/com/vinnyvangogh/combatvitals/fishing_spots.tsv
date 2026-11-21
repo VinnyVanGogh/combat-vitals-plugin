@@ -9,7 +9,7 @@
 #   https://oldschool.runescape.wiki/w/Fishing_spot_(big_net,_harpoon)  -> SHARK
 #   https://oldschool.runescape.wiki/w/Fishing_spot_(barbarian)         -> BARB_FISH
 # The coordinate is the first one the wiki gives for the location; spots move
-# between a few tiles there, and Shortest Path stops within its own reach.
+# between a few tiles there.
 # The Fishing Guild needs 68 Fishing to enter (wiki, "Fishing Guild").
 #
 # Left out on purpose:

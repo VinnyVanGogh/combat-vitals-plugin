@@ -1,13 +1,13 @@
 package com.vinnyvangogh.combatvitals;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Deque;
 import java.util.IdentityHashMap;
-import java.util.List;
 import java.util.Map;
 import net.runelite.client.game.FishingSpot;
 import org.junit.Before;
@@ -15,33 +15,6 @@ import org.junit.Test;
 
 public class SpotPathingTest
 {
-	/** Records what would have gone to Shortest Path. */
-	private static final class FakeRouter implements SpotPathing.Router
-	{
-		boolean installed = true;
-		final List<NextFishingSpot.Spot> routes = new ArrayList<>();
-		int clears;
-
-		@Override
-		public boolean available()
-		{
-			return installed;
-		}
-
-		@Override
-		public boolean route(NextFishingSpot.Spot spot)
-		{
-			routes.add(spot);
-			return true;
-		}
-
-		@Override
-		public void clear()
-		{
-			clears++;
-		}
-	}
-
 	/** Hands out the queued spots in order, one per pick, and counts the picks. */
 	private static final class FakePicker implements SpotPathing.Picker
 	{
@@ -85,8 +58,9 @@ public class SpotPathingTest
 	private static final NextFishingSpot.Spot SPOT_1 = NextFishingSpot.Spot.loaded(FishingSpot.LOBSTER, 3001, 3000, 0, NPC_1);
 	private static final NextFishingSpot.Spot SPOT_2 = NextFishingSpot.Spot.loaded(FishingSpot.LOBSTER, 3005, 3000, 0, NPC_2);
 
-	private FishingSpotPath mode;
-	private FakeRouter router;
+	private boolean enabled;
+	private FakeHintArrow game;
+	private NextSpotArrow arrow;
 	private FakePicker picker;
 	private FakeLocator tiles;
 	private SpotPathing pathing;
@@ -94,11 +68,12 @@ public class SpotPathingTest
 	@Before
 	public void setUp()
 	{
-		mode = FishingSpotPath.ON_SPOT_MOVE;
-		router = new FakeRouter();
+		enabled = true;
+		game = new FakeHintArrow();
+		arrow = new NextSpotArrow(game, () -> enabled, () -> 15);
 		picker = new FakePicker();
 		tiles = new FakeLocator();
-		pathing = new SpotPathing(() -> mode, router);
+		pathing = new SpotPathing(() -> enabled, arrow);
 		pathing.fishingOn(FishingSpot.LOBSTER, "Cage", FISHED);
 	}
 
@@ -122,7 +97,7 @@ public class SpotPathingTest
 		tick();
 
 		assertEquals(1, picker.picks);
-		assertSame(SPOT_1, router.routes.get(0));
+		assertTrue("the arrow follows the spot NPC", arrow.targets(NPC_1));
 	}
 
 	@Test
@@ -214,19 +189,6 @@ public class SpotPathingTest
 	}
 
 	@Test
-	public void rightClickModeIgnoresTheSpotRelocating()
-	{
-		mode = FishingSpotPath.RIGHT_CLICK;
-		picker.next.add(SPOT_1);
-		tiles.put(FISHED, 3000, 3000, 0);
-		tick();
-		tiles.put(FISHED, 3010, 3004, 0);
-		tick();
-
-		assertEquals(0, picker.picks);
-	}
-
-	@Test
 	public void targetRelocatingBeforeItIsReachedSearchesAgain()
 	{
 		picker.next.add(SPOT_1);
@@ -242,6 +204,7 @@ public class SpotPathingTest
 
 		assertEquals(2, picker.picks);
 		assertSame(SPOT_2, pathing.target());
+		assertTrue(arrow.targets(NPC_2));
 	}
 
 	@Test
@@ -261,28 +224,21 @@ public class SpotPathingTest
 	}
 
 	@Test
-	public void spotMoveRoutesToTheNextSpotOfTheSameTypeAndMethod()
+	public void spotMovePointsTheArrowAtTheNextSpotOfTheSameTypeAndMethod()
 	{
 		picker.next.add(SPOT_1);
 
 		pathing.despawned(FISHED);
 		tick();
 
-		assertEquals(1, router.routes.size());
-		assertSame(SPOT_1, router.routes.get(0));
+		assertEquals(1, game.shows);
+		assertSame(NPC_1, game.shown.npc());
 		assertSame(FishingSpot.LOBSTER, picker.lastType);
 		assertEquals("Cage", picker.lastMethod);
-		assertNull("routed, not highlighted", pathing.highlighted());
 	}
 
-	/**
-	 * Board's in-game test, 2026-11-06: Shortest Path drops its own path once
-	 * the player is within its finish distance, so the plugin marks the spot
-	 * itself. The target the mark is drawn from stays, routed or not, through
-	 * any number of ticks, until the player fishes again.
-	 */
 	@Test
-	public void theTargetStaysMarkedUntilFishingStartsAgain()
+	public void theArrowStaysUntilFishingStartsAgain()
 	{
 		picker.next.add(SPOT_1);
 		pathing.despawned(FISHED);
@@ -293,29 +249,57 @@ public class SpotPathingTest
 		{
 			tick();
 		}
-		assertSame("still marked while walking up to it", SPOT_1, pathing.target());
+		assertSame("still up while walking up to it", SPOT_1, pathing.target());
+		assertSame(NPC_1, game.shown.npc());
 
 		pathing.fishingOn(FishingSpot.LOBSTER, "Cage", NPC_1);
-		assertNull("cleared once fishing starts", pathing.target());
-		assertEquals("and the path this sent is cleared", 1, router.clears);
+		assertNull("cleared once XP starts on it", pathing.target());
+		assertNull(game.shown);
+		assertEquals(1, game.hides);
 	}
 
 	@Test
-	public void withShortestPathSwitchedOffTheSpotIsStillMarked()
+	public void clickingTheArrowsSpotTakesTheArrowDown()
 	{
-		router.installed = false;
 		picker.next.add(SPOT_1);
 		pathing.despawned(FISHED);
 		tick();
 
-		assertEquals(0, router.routes.size());
+		pathing.turnedTo(NPC_1);
+
+		assertNull(game.shown);
+		assertNull(pathing.target());
+	}
+
+	@Test
+	public void clickingSomethingElseKeepsTheArrow()
+	{
+		picker.next.add(SPOT_1);
+		pathing.despawned(FISHED);
+		tick();
+
+		pathing.turnedTo(NPC_2);
+
 		assertSame(SPOT_1, pathing.target());
+		assertSame(NPC_1, game.shown.npc());
+	}
+
+	@Test
+	public void aKnownLocationIsPointedAtAsATile()
+	{
+		picker.next.add(NextFishingSpot.Spot.known(FishingSpot.LOBSTER, 2844, 3429, 0, true, 0, "Catherby"));
+
+		pathing.despawned(FISHED);
+		tick();
+
+		assertNull(game.shown.npc());
+		assertTrue(arrow.targetsTile(2844, 3429, 0));
 	}
 
 	@Test
 	public void offDoesNothingEvenOnRightClick()
 	{
-		mode = FishingSpotPath.OFF;
+		enabled = false;
 		picker.next.add(SPOT_1);
 
 		pathing.despawned(FISHED);
@@ -323,26 +307,38 @@ public class SpotPathingTest
 		tick();
 
 		assertEquals(0, picker.picks);
-		assertEquals(0, router.routes.size());
+		assertEquals(0, game.shows);
 	}
 
 	@Test
-	public void rightClickOnlyIgnoresTheSpotMovingButAnswersTheMenu()
+	public void theBadgeRightClickAsksForTheNextSpot()
 	{
-		mode = FishingSpotPath.RIGHT_CLICK;
+		picker.next.add(SPOT_1);
+
+		pathing.requested();
+		tick();
+
+		assertEquals(1, game.shows);
+		assertSame(SPOT_1, pathing.target());
+	}
+
+	@Test
+	public void neverOverridesAForeignArrowOnADespawn()
+	{
+		game.foreign = true;
 		picker.next.add(SPOT_1);
 
 		pathing.despawned(FISHED);
 		tick();
-		assertEquals(0, router.routes.size());
 
-		pathing.requested();
-		tick();
-		assertEquals(1, router.routes.size());
+		assertEquals(1, picker.picks);
+		assertEquals(0, game.shows);
+		assertNull(pathing.target());
+		assertTrue("the quest's arrow is untouched", game.foreign);
 	}
 
 	@Test
-	public void spotMovingTwiceInOneTickSendsOnePath()
+	public void spotMovingTwiceInOneTickPointsOnce()
 	{
 		picker.next.add(SPOT_2);
 
@@ -352,12 +348,12 @@ public class SpotPathingTest
 		tick();
 
 		assertEquals(1, picker.picks);
-		assertEquals(1, router.routes.size());
-		assertSame(SPOT_2, router.routes.get(0));
+		assertEquals(1, game.shows);
+		assertSame(NPC_2, game.shown.npc());
 	}
 
 	@Test
-	public void targetMovingAgainReroutesToTheLatestSpot()
+	public void targetMovingAgainPointsAtTheLatestSpot()
 	{
 		picker.next.add(SPOT_1);
 		picker.next.add(SPOT_2);
@@ -368,8 +364,8 @@ public class SpotPathingTest
 		pathing.despawned(NPC_1);
 		tick();
 
-		assertEquals(2, router.routes.size());
-		assertSame(SPOT_2, router.routes.get(1));
+		assertEquals(2, game.shows);
+		assertSame(NPC_2, game.shown.npc());
 		assertSame(SPOT_2, pathing.target());
 	}
 
@@ -387,68 +383,7 @@ public class SpotPathingTest
 	}
 
 	@Test
-	public void withoutShortestPathTheSpotIsHighlightedInstead()
-	{
-		router.installed = false;
-		picker.next.add(SPOT_1);
-
-		pathing.despawned(FISHED);
-		tick();
-
-		assertEquals(0, router.routes.size());
-		assertSame(NPC_1, pathing.highlighted());
-	}
-
-	@Test
-	public void aBundledSpotWithoutShortestPathHasNothingToHighlight()
-	{
-		router.installed = false;
-		picker.next.add(NextFishingSpot.Spot.known(FishingSpot.LOBSTER, 2844, 3429, 0, true, 0, "Catherby"));
-
-		pathing.despawned(FISHED);
-		tick();
-
-		assertNull(pathing.highlighted());
-	}
-
-	@Test
-	public void startingToFishAgainClearsThePath()
-	{
-		picker.next.add(SPOT_1);
-		pathing.despawned(FISHED);
-		tick();
-
-		pathing.fishingOn(FishingSpot.LOBSTER, "Cage", new Object());
-
-		assertEquals(1, router.clears);
-		assertNull(pathing.target());
-	}
-
-	@Test
-	public void startingToFishAgainClearsTheHighlight()
-	{
-		router.installed = false;
-		picker.next.add(SPOT_1);
-		pathing.despawned(FISHED);
-		tick();
-
-		pathing.fishingOn(FishingSpot.LOBSTER, "Cage", new Object());
-
-		assertNull(pathing.highlighted());
-		assertEquals("nothing was sent, so nothing to clear", 0, router.clears);
-	}
-
-	@Test
-	public void aPathThePluginNeverSentIsNeverCleared()
-	{
-		pathing.fishingOn(FishingSpot.SHRIMP, "Net", new Object());
-		pathing.reset();
-
-		assertEquals(0, router.clears);
-	}
-
-	@Test
-	public void noNextSpotClearsAnOldPath()
+	public void noNextSpotClearsAnOldArrow()
 	{
 		picker.next.add(SPOT_1);
 		pathing.despawned(FISHED);
@@ -457,14 +392,25 @@ public class SpotPathingTest
 		pathing.despawned(NPC_1);
 		tick();
 
-		assertEquals(1, router.clears);
+		assertNull(game.shown);
 		assertNull(pathing.target());
+	}
+
+	@Test
+	public void anArrowThePluginNeverSetIsNeverCleared()
+	{
+		game.foreign = true;
+		pathing.fishingOn(FishingSpot.SHRIMP, "Net", new Object());
+		pathing.reset();
+
+		assertEquals(0, game.hides);
+		assertTrue(game.foreign);
 	}
 
 	@Test
 	public void nothingFishedYetMeansNothingToFind()
 	{
-		final SpotPathing fresh = new SpotPathing(() -> FishingSpotPath.ON_SPOT_MOVE, router);
+		final SpotPathing fresh = new SpotPathing(() -> true, arrow);
 		fresh.despawned(FISHED);
 		fresh.requested();
 		fresh.tick(picker, tiles);
@@ -481,7 +427,7 @@ public class SpotPathingTest
 		tick();
 
 		assertEquals(1, picker.picks);
-		assertSame(SPOT_1, router.routes.get(0));
+		assertSame(NPC_1, game.shown.npc());
 	}
 
 	@Test
@@ -511,7 +457,7 @@ public class SpotPathingTest
 		tick();
 
 		assertEquals(1, picker.picks);
-		assertEquals(1, router.routes.size());
+		assertEquals(1, game.shows);
 	}
 
 	@Test
@@ -610,27 +556,10 @@ public class SpotPathingTest
 	@Test
 	public void someOtherNpcChangingIsIgnored()
 	{
-
 		pathing.changed(new Object());
 		tick();
 
 		assertEquals(0, picker.picks);
-	}
-
-	@Test
-	public void rightClickModeIgnoresTheFishedSpotMovingButAnswersTheMenu()
-	{
-		mode = FishingSpotPath.RIGHT_CLICK;
-		picker.next.add(SPOT_1);
-
-		pathing.despawned(FISHED);
-		tick();
-		assertEquals(0, picker.picks);
-
-		pathing.requested();
-		tick();
-		assertEquals(1, picker.picks);
-		assertEquals(1, router.routes.size());
 	}
 
 	@Test
@@ -645,17 +574,31 @@ public class SpotPathingTest
 	}
 
 	@Test
-	public void resetClearsASentPathAndForgetsTheSpot()
+	public void logoutClearsOurArrowAndForgetsTheSpot()
 	{
 		picker.next.add(SPOT_1);
 		pathing.despawned(FISHED);
 		tick();
+		assertSame(NPC_1, game.shown.npc());
 
 		pathing.reset();
 		pathing.despawned(FISHED);
 		tick();
 
-		assertEquals(1, router.clears);
+		assertNull(game.shown);
+		assertEquals(1, game.hides);
 		assertEquals(1, picker.picks);
+	}
+
+	@Test
+	public void cancelTakesDownTheArrowWhateverItPointsAt()
+	{
+		// A tree's arrow, set through the shared arrow rather than by a fishing search.
+		arrow.point(NextSpotArrow.Target.tile(3200, 3200, 0));
+
+		pathing.cancel();
+
+		assertNull(game.shown);
+		assertFalse(arrow.active());
 	}
 }

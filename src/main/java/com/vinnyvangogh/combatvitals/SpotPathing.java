@@ -1,19 +1,19 @@
 package com.vinnyvangogh.combatvitals;
 
-import java.util.function.Supplier;
+import java.util.function.BooleanSupplier;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.game.FishingSpot;
 
 /**
- * When to find the next fishing spot, and what to do with it: send it to
- * Shortest Path, or highlight it when Shortest Path is not there.
+ * When to find the next fishing spot, and what to do with it: point the
+ * game's hint arrow at it ({@link NextSpotArrow}).
  *
  * Requests (the spot moving, the badge's right-click) only mark a search as
  * due; the search itself runs once on the next game tick. A spot that moves
- * twice in one tick therefore sends one path, and a target that moves again
- * before the player gets there is searched for again, so the path always
- * points at the latest spot. Starting to fish clears what this sent, and
- * nothing else: a path the player set up themselves is never touched.
+ * twice in one tick therefore points once, and a target that moves again
+ * before the player gets there is searched for again, so the arrow always
+ * points at the latest spot. Starting to fish clears the arrow, and
+ * {@link NextSpotArrow} never touches a hint arrow it did not set.
  *
  * Client thread only. The game is reached through {@link Router},
  * {@link Picker} and {@link Locator}, so the whole flow is testable without
@@ -27,19 +27,6 @@ import net.runelite.client.game.FishingSpot;
 @Slf4j
 final class SpotPathing
 {
-	/** Shortest Path, or whatever stands in for it. */
-	interface Router
-	{
-		/** Installed and switched on. */
-		boolean available();
-
-		/** @return whether the path went out */
-		boolean route(NextFishingSpot.Spot spot);
-
-		/** Clears the path this sent. */
-		void clear();
-	}
-
 	/** Finds the next spot of this type, worked with this method, or null. */
 	interface Picker
 	{
@@ -68,8 +55,8 @@ final class SpotPathing
 	 */
 	static final int GRACE_TICKS = 2;
 
-	private final Supplier<FishingSpotPath> mode;
-	private final Router router;
+	private final BooleanSupplier enabled;
+	private final NextSpotArrow arrow;
 
 	/** The spot type and method last fished; null before any fishing. */
 	private FishingSpot type;
@@ -91,19 +78,16 @@ final class SpotPathing
 
 	private boolean due;
 
-	/** The spot pathed to or highlighted, until the player fishes again. */
+	/** The spot the arrow points at, until the player fishes again. */
 	private NextFishingSpot.Spot target;
 
-	/** Whether {@link #target} went to Shortest Path, so there is a path of ours to clear. */
-	private boolean routed;
-
-	SpotPathing(Supplier<FishingSpotPath> mode, Router router)
+	SpotPathing(BooleanSupplier enabled, NextSpotArrow arrow)
 	{
-		this.mode = mode;
-		this.router = router;
+		this.enabled = enabled;
+		this.arrow = arrow;
 	}
 
-	/** The player started fishing a spot: any path of ours is done with. */
+	/** The player started fishing a spot: any arrow of ours is done with. */
 	void fishingOn(FishingSpot type, String method, Object spot)
 	{
 		clearTarget();
@@ -133,6 +117,10 @@ final class SpotPathing
 	 */
 	void turnedTo(Object npc)
 	{
+		if (target != null && npc != null && target.getNpc() == npc)
+		{
+			clearTarget();
+		}
 		if (npc != fished)
 		{
 			fished = null;
@@ -152,19 +140,19 @@ final class SpotPathing
 	private void fishedSpotMoved()
 	{
 		fished = null;
-		if (mode.get() == FishingSpotPath.ON_SPOT_MOVE)
+		if (enabled.getAsBoolean())
 		{
 			log.debug("Fishing spot moved: searching for the next {} spot", type);
 			request();
 		}
 	}
 
-	/** "Path to next spot" on the badge. */
+	/** "Point to next spot" on the badge. */
 	void requested()
 	{
-		if (mode.get() != FishingSpotPath.OFF)
+		if (enabled.getAsBoolean())
 		{
-			log.debug("Path to next spot clicked: searching for the next {} spot", type);
+			log.debug("Point to next spot clicked: searching for the next {} spot", type);
 			request();
 		}
 	}
@@ -183,7 +171,7 @@ final class SpotPathing
 		{
 			fishedSpotMoved();
 		}
-		if (target != null && target.getNpc() == npc && mode.get() != FishingSpotPath.OFF)
+		if (target != null && target.getNpc() == npc && enabled.getAsBoolean())
 		{
 			log.debug("Next fishing spot moved before it was reached: searching again");
 			request();
@@ -215,18 +203,17 @@ final class SpotPathing
 		}
 		log.debug("Picked {} spot at ({}, {}, {})", next.getType(), next.getX(), next.getY(), next.getPlane());
 
-		if (router.available() && router.route(next))
+		final NextSpotArrow.Target arrowTarget = next.getNpc() != null
+			? NextSpotArrow.Target.npc(next.getNpc(), next.getX(), next.getY(), next.getPlane())
+			: NextSpotArrow.Target.tile(next.getX(), next.getY(), next.getPlane());
+		if (arrow.point(arrowTarget))
 		{
-			log.debug("Sent next fishing spot to Shortest Path");
 			target = next;
-			routed = true;
 			return;
 		}
 
-		// No Shortest Path (or switched off here): the plugin's own mark is all there is.
-		log.debug("Shortest Path not available or not wanted: marking the spot only");
-		clearTarget();
-		target = next;
+		// Arrow setting off, or a hint arrow that is not ours is up: leave it alone.
+		target = null;
 	}
 
 	/**
@@ -259,7 +246,7 @@ final class SpotPathing
 	private void watchTarget(Locator locator)
 	{
 		final Object npc = target == null ? null : target.getNpc();
-		if (npc == null || mode.get() == FishingSpotPath.OFF)
+		if (npc == null || !enabled.getAsBoolean())
 		{
 			return;
 		}
@@ -292,10 +279,10 @@ final class SpotPathing
 		graceLeft = -1;
 	}
 
-	/** The spot NPC to highlight, when there is one and no path went out for it. */
-	Object highlighted()
+	/** Takes down the arrow, whatever it points at (a fishing spot, tree or rock), if it is ours. */
+	void cancel()
 	{
-		return target == null || routed ? null : target.getNpc();
+		clearTarget();
 	}
 
 	NextFishingSpot.Spot target()
@@ -313,11 +300,7 @@ final class SpotPathing
 
 	private void clearTarget()
 	{
-		if (routed)
-		{
-			router.clear();
-		}
-		routed = false;
+		arrow.clear();
 		target = null;
 	}
 }
