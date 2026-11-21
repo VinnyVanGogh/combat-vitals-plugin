@@ -31,10 +31,23 @@ final class CastsVisibility
 	}
 
 	/**
-	 * Which spell the overlay is about: the one being cast, else (Always show
-	 * only) the one picked in settings, else the last one cast. Null when none.
+	 * As {@link #casting(boolean, int, int)}, but an autocast only counts while the player is actually attacking:
+	 * the autocast flag stays set with a staff wielded, so without this a player who walked off and started
+	 * chopping trees would still read as casting.
+	 *
+	 * @param attacking the player is interacting with the NPC they clicked Attack on
 	 */
-	static String spell(boolean casting, String castingSpell, boolean always, String picked, String last)
+	static boolean casting(boolean autocastSet, int weaponCategory, int manualTicks, boolean attacking)
+	{
+		return casting(autocastSet && attacking, weaponCategory, manualTicks);
+	}
+
+	/**
+	 * The spell the card is about: the one being cast, else the one picked in settings, else the strongest the
+	 * player can cast now (the first of {@code castable}, already strongest first), else null.
+	 */
+	static String shown(boolean casting, String castingSpell, boolean always, String picked,
+		java.util.List<SpellCasts.Castable> castable)
 	{
 		if (casting && castingSpell != null)
 		{
@@ -48,7 +61,7 @@ final class CastsVisibility
 		{
 			return picked.trim();
 		}
-		return last;
+		return castable.isEmpty() ? null : castable.get(0).name;
 	}
 
 	/**

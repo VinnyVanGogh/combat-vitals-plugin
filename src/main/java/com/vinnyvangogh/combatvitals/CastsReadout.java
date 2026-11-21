@@ -15,6 +15,10 @@ final class CastsReadout
 	final boolean low;
 	final int[] runeItems;
 	final int[] runeCosts;
+	/** A spell is being cast right now; false when the card is up (Always show) with nothing being cast. */
+	boolean casting = true;
+	/** When a spell was last cast (wall clock), or -1. */
+	long lastCastAt = -1;
 
 	CastsReadout(String spell, String castsText, int casts, boolean low, int[] runeItems, int[] runeCosts)
 	{

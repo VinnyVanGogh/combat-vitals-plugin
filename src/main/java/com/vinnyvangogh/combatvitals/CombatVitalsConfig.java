@@ -591,7 +591,8 @@ public interface CombatVitalsConfig extends Config
 		keyName = "castsSpell",
 		name = "Always show: spell",
 		description = "The spell to count when Always show is on and you are not casting, by name, e.g. Fire "
-			+ "Surge or Ice Barrage. Leave empty for the last spell you cast.",
+			+ "Surge or Ice Barrage. Leave empty for the strongest spell you can cast now (your spellbook, Magic "
+			+ "level and runes).",
 		section = targetSection,
 		position = 14
 	)
