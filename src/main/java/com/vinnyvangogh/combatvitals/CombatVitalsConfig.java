@@ -1557,6 +1557,19 @@ public interface CombatVitalsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "skillingCardStyle",
+		name = "Card style",
+		description = "Clean: the skilling badge as a card of label and value rows, dimmed when you are not "
+			+ "doing the skill. Retro: the original coloured bars.",
+		section = pillarsSection,
+		position = 26
+	)
+	default CardStyle skillingCardStyle()
+	{
+		return CardStyle.CLEAN;
+	}
+
+	@ConfigItem(
 		keyName = "fishingSpotPath",
 		name = "Next spot path",
 		description =

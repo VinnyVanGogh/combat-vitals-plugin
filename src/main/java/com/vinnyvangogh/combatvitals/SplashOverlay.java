@@ -128,12 +128,10 @@ class SplashOverlay extends Overlay
 	}
 
 	/** Paints the rounded card with its accent bar around the rows, and returns its size. */
-	static Dimension card(Graphics2D graphics, List<Row> rows, Color accent)
+	static Dimension size(Graphics2D graphics, List<Row> rows)
 	{
-		final Font body = FontManager.getRunescapeSmallFont();
-		final Font bold = FontManager.getRunescapeBoldFont();
-		final FontMetrics bodyMetrics = graphics.getFontMetrics(body);
-		final FontMetrics boldMetrics = graphics.getFontMetrics(bold);
+		final FontMetrics bodyMetrics = graphics.getFontMetrics(FontManager.getRunescapeSmallFont());
+		final FontMetrics boldMetrics = graphics.getFontMetrics(FontManager.getRunescapeBoldFont());
 		final int lineHeight = Math.max(bodyMetrics.getHeight(), boldMetrics.getHeight());
 
 		int width = MIN_WIDTH;
@@ -143,7 +141,19 @@ class SplashOverlay extends Overlay
 			width = Math.max(width, ACCENT + PAD * 2 + row.width(bodyMetrics, boldMetrics));
 			height += row.height(lineHeight) + row.gapAfter();
 		}
-		height -= ROW_GAP;
+		return new Dimension(width, height - ROW_GAP);
+	}
+
+	static Dimension card(Graphics2D graphics, List<Row> rows, Color accent)
+	{
+		final Font body = FontManager.getRunescapeSmallFont();
+		final Font bold = FontManager.getRunescapeBoldFont();
+		final FontMetrics bodyMetrics = graphics.getFontMetrics(body);
+		final FontMetrics boldMetrics = graphics.getFontMetrics(bold);
+		final int lineHeight = Math.max(bodyMetrics.getHeight(), boldMetrics.getHeight());
+		final Dimension size = size(graphics, rows);
+		final int width = size.width;
+		final int height = size.height;
 
 		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 		graphics.setColor(BACK);
