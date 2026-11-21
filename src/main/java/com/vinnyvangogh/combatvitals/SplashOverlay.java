@@ -340,6 +340,9 @@ class SplashOverlay extends Overlay
 		private final double fraction;
 		private final boolean divider;
 
+		/** The tag's colour: muted unless a row asks for another. */
+		private Color tagColour = MUTED;
+
 		private Row(String text, String tag, Color colour, boolean bold, BufferedImage[] icons, int[] counts,
 			double fraction, boolean divider)
 		{
@@ -361,6 +364,14 @@ class SplashOverlay extends Overlay
 		static Row text(String text, Color colour, boolean bold)
 		{
 			return new Row(text, null, colour, bold, null, null, -1, false);
+		}
+
+		/** A label at the left and its value at the right, in the card's rows. */
+		static Row pair(String label, String value, Color valueColour)
+		{
+			final Row row = new Row(label, value, MUTED, false, null, null, -1, false);
+			row.tagColour = valueColour;
+			return row;
 		}
 
 		static Row runes(BufferedImage[] icons, int[] counts)
@@ -432,7 +443,7 @@ class SplashOverlay extends Overlay
 				if (tag != null)
 				{
 					g.setFont(body);
-					shadowed(g, tag, x + width - bodyMetrics.stringWidth(tag), baseline, MUTED);
+					shadowed(g, tag, x + width - bodyMetrics.stringWidth(tag), baseline, tagColour);
 				}
 			}
 			else if (icons != null)

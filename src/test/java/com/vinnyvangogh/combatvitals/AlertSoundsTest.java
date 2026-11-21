@@ -30,24 +30,32 @@ import org.junit.Test;
 public class AlertSoundsTest
 {
 	@Test
-	public void gameVolumeMuteSilencesOwnSounds()
+	public void mutedNotificationsSilenceOwnSounds()
 	{
 		assertEquals(0, AlertSounds.effectiveVolume(40, true, 0));
 		assertEquals(0, AlertSounds.effectiveVolume(40, true, -5));
 	}
 
 	@Test
-	public void gameVolumeScalesAndClamps()
+	public void notificationVolumeScalesAndClamps()
 	{
-		assertEquals(40, AlertSounds.effectiveVolume(40, true, 127));
+		assertEquals(40, AlertSounds.effectiveVolume(40, true, 100));
 		assertEquals(40, AlertSounds.effectiveVolume(40, true, 500));
-		assertEquals(20, AlertSounds.effectiveVolume(40, true, 64));
+		assertEquals(20, AlertSounds.effectiveVolume(40, true, 50));
 	}
 
 	@Test
 	public void notFollowingKeepsOwnVolume()
 	{
 		assertEquals(40, AlertSounds.effectiveVolume(40, false, 0));
+	}
+
+	@Test
+	public void oldSettingMigrates()
+	{
+		assertEquals(false, AlertSounds.migratedFollowNotifications("false"));
+		assertEquals(true, AlertSounds.migratedFollowNotifications("true"));
+		assertEquals(true, AlertSounds.migratedFollowNotifications(""));
 	}
 
 	private static final Predicate<String> BUNDLED = p -> AlertSounds.class.getResource(p) != null;

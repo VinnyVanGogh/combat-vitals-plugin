@@ -126,6 +126,12 @@ public class ConfigKeysTest
 
 		for (Method method : items())
 		{
+			// A retired key is kept published and is read, as raw text, only by its migration.
+			if (method.getName().equals(AlertSounds.OLD_FOLLOW_GAME_KEY))
+			{
+				assertTrue(code.contains("OLD_FOLLOW_GAME_KEY"));
+				continue;
+			}
 			assertTrue(method.getName() + " is never read", isRead(code, method.getName()));
 		}
 	}
