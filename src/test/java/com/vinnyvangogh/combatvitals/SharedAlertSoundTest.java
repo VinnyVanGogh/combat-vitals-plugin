@@ -61,7 +61,8 @@ public class SharedAlertSoundTest
 			final AlertSettings s = AlertSettings.of(SHARED, type);
 			assertEquals(type.name(), AlertSound.VOICE, s.sound);
 			assertEquals(type.name(), 40, s.volume);
-			assertTrue(type.name(), s.repeat);
+			// One-off events never repeat, even with the shared repeat on.
+			assertEquals(type.name(), !SkillingEvents.isEvent(type), s.repeat);
 		}
 	}
 
