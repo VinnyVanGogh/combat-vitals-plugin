@@ -27,6 +27,8 @@ Every setting, the troubleshooting list and building from source are in
 
 ## Covers these plugins
 
+**Replaces 45 plugins (30 Hub, 15 built-in, 33 partial); adds 18 features** — full code-verified inventory in [docs/inventory.md](docs/inventory.md).
+
 If you want to run fewer plugins and configure everything in one place, Combat
 & Skilling Vitals covers the jobs below in one matching style. Everything plays
 nicely if you prefer to keep any of them enabled alongside it.
