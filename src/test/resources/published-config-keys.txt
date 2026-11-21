@@ -258,3 +258,7 @@ pauseAfterIdleSeconds int
 # 2026-11-19: Auto-detect splashing (RUNELITE-469).
 autoSplash boolean
 autoSplashThreshold int
+# 2026-11-20: Target card, first-run tour, follow RuneLite volume (RUNELITE-524).
+showNpcStats boolean
+alertFollowNotificationVolume boolean
+sidebarTourSeen int

@@ -98,6 +98,7 @@ final class VitalsSidePanel extends PluginPanel
 	private final Set<String> closedGuides = new LinkedHashSet<>();
 	private final JButton hideGuides = linkButton(HIDE_GUIDES, "Hide or show the guide at the top of each tab.");
 	private final LiveSection live;
+	private final WalkthroughCard tour;
 	private final MuteBar muteBar;
 	private final GoalsPage goalsPage;
 	private final ButtonGroup tabGroup = new ButtonGroup();
@@ -205,10 +206,12 @@ final class VitalsSidePanel extends PluginPanel
 
 		final Column root = new Column();
 		root.add(header());
+		tour = new WalkthroughCard(step -> display(step.tab), () -> store.set(Walkthrough.SEEN_KEY, Walkthrough.REVISION));
+		root.add(tour);
 		live = new LiveSection(store);
 		root.add(mainBar());
 		mainPanel.setOpaque(false);
-		addMain(Main.LIVE, live);
+		addMain(Main.LIVE, withHelp(Main.LIVE, live));
 		root.add(mainPanel);
 		final Column settings = new Column();
 		settings.add(tabBar());
@@ -229,13 +232,32 @@ final class VitalsSidePanel extends PluginPanel
 		overlayTab.add(overlays());
 		overlayTab.add(text("The look of each overlay, the pillars and the casts overlay are under Settings.",
 			PanelStyle.MUTED));
-		addMain(Main.OVERLAYS, overlayTab);
+		addMain(Main.OVERLAYS, withHelp(Main.OVERLAYS, overlayTab));
 		addMain(Main.PRESETS, presets());
 		addMain(Main.SETTINGS, settings);
 		add(root, BorderLayout.NORTH);
 		show(PanelLayout.Tab.COMBAT);
 		display(Main.of(store.get(TAB_KEY, String.class)));
 		refresh();
+		if (Walkthrough.due(store.get(Walkthrough.SEEN_KEY, Integer.class)))
+		{
+			tour.start(0);
+		}
+	}
+
+	/** A page under a short "? Guide" link that plays the tour from that page's step. */
+	private JComponent withHelp(Main m, JComponent page)
+	{
+		final JButton help = linkButton("? Guide", "Play the tour of this panel, from this page.");
+		help.setName("guide-link-" + m.name());
+		help.addActionListener(e -> tour.start(Walkthrough.stepFor(m)));
+		final JPanel row = new JPanel(new BorderLayout());
+		row.setOpaque(false);
+		row.add(help, BorderLayout.WEST);
+		final Column c = new Column();
+		c.add(row);
+		c.add(page);
+		return c;
 	}
 
 	/** Redraws every input and what depends on them from the stored settings. */
@@ -403,6 +425,10 @@ final class VitalsSidePanel extends PluginPanel
 			final boolean hide = HIDE_GUIDES.equals(hideGuides.getText());
 			store.set(GUIDES_HIDDEN_KEY, hide);
 			showGuides(hide);
+			if (!hide)
+			{
+				tour.start(0);
+			}
 		});
 		row.add(hideGuides, BorderLayout.EAST);
 		c.add(row);

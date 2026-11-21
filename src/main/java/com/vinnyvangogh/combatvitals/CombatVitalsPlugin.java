@@ -588,6 +588,7 @@ public class CombatVitalsPlugin extends Plugin
 			}
 		});
 
+		migrateFollowVolume();
 		startSidePanel();
 
 		// Installed or turned on mid-session: no LOGGED_IN is coming, so say it now.
@@ -596,6 +597,26 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			clientThread.invoke(this::postUpdateNotes);
 		}
+	}
+
+	/**
+	 * "Follow game volume" became "Volume: follow RuneLite notifications".
+	 * Someone who had set the old one explicitly keeps their choice of
+	 * manual volume; the old key is then dropped.
+	 */
+	private void migrateFollowVolume()
+	{
+		final String old = configManager.getConfiguration(CombatVitalsConfig.GROUP, AlertSounds.OLD_FOLLOW_GAME_KEY);
+		if (old == null)
+		{
+			return;
+		}
+		if (AlertSounds.migratedFollowNotifications(old) != config.alertFollowNotificationVolume())
+		{
+			configManager.setConfiguration(CombatVitalsConfig.GROUP, "alertFollowNotificationVolume",
+				AlertSounds.migratedFollowNotifications(old));
+		}
+		configManager.unsetConfiguration(CombatVitalsConfig.GROUP, AlertSounds.OLD_FOLLOW_GAME_KEY);
 	}
 
 	/**
@@ -888,6 +909,12 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			// The panel wrote its own tab choice; nothing to redraw.
 			log.debug("Sidebar tab {} view {}", config.sidebarTab(), config.sidebarLiveView());
+			return;
+		}
+		if (Walkthrough.SEEN_KEY.equals(event.getKey()))
+		{
+			// The tour closed itself; nothing to redraw.
+			log.debug("Sidebar tour seen at revision {}", config.sidebarTourSeen());
 			return;
 		}
 		SwingUtilities.invokeLater(panel::refresh);
@@ -3257,9 +3284,8 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			return;
 		}
-		// Read here, on the client thread: preferences are the game's own.
-		final int effective = AlertSounds.effectiveVolume(volume, config.alertFollowGameVolume(),
-			client.getPreferences().getSoundEffectVolume());
+		final int effective = AlertSounds.effectiveVolume(volume, config.alertFollowNotificationVolume(),
+			runeLiteConfig.notificationVolume());
 		if (effective <= 0)
 		{
 			return;

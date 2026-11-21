@@ -422,6 +422,19 @@ public interface CombatVitalsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "showNpcStats",
+		name = "NPC wiki stats",
+		description = "Show the target's wiki stats under its health in the corner card: max hit, attack style "
+			+ "and speed, defence bonuses, weakness and poison immunity. Bundled with the plugin, no lookup.",
+		section = targetSection,
+		position = 100
+	)
+	default boolean showNpcStats()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 		keyName = "bigTargetDisplay",
 		name = "Big targets",
 		description =
@@ -3020,16 +3033,17 @@ public interface CombatVitalsConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "alertFollowGameVolume",
-		name = "Follow game volume",
-		description = "Scale the plugin's own alert sounds by the game's sound effects volume, and play nothing "
-			+ "while that is muted. RuneLite's sound keeps RuneLite's notification volume.",
+		keyName = "alertFollowNotificationVolume",
+		name = "Follow RuneLite volume",
+		description = "Volume: follow RuneLite notifications. Scales the plugin's own alert sounds by RuneLite's "
+			+ "notification volume (RuneLite settings, Notification volume), and plays nothing while that is 0. "
+			+ "Off, each alert plays at the volume slider you set for it.",
 		section = alertsSection,
 		position = 96
 	)
-	default boolean alertFollowGameVolume()
+	default boolean alertFollowNotificationVolume()
 	{
-		return false;
+		return true;
 	}
 
 	@ConfigItem(
@@ -3154,6 +3168,34 @@ public interface CombatVitalsConfig extends Config
 	default String sidebarTab()
 	{
 		return "";
+	}
+
+	/**
+	 * Retired: "Follow game volume", replaced by {@link #alertFollowNotificationVolume()}. The key stays
+	 * published so a saved value is never orphaned; only the migration reads it
+	 * ({@code CombatVitalsPlugin.migrateFollowVolume}), then unsets it.
+	 */
+	@ConfigItem(
+		keyName = AlertSounds.OLD_FOLLOW_GAME_KEY,
+		name = "",
+		description = "",
+		hidden = true
+	)
+	default boolean alertFollowGameVolume()
+	{
+		return false;
+	}
+
+	/** The revision of the first-run tour already seen or skipped ({@link Walkthrough}); written there, never listed. */
+	@ConfigItem(
+		keyName = Walkthrough.SEEN_KEY,
+		name = "",
+		description = "",
+		hidden = true
+	)
+	default int sidebarTourSeen()
+	{
+		return 0;
 	}
 
 	/** Which card the Live tab shows, a {@link LiveSection.View} name; written there, never listed. */

@@ -102,7 +102,7 @@ final class PanelLayout
 		"alertVolumeAll", "alertRepeatAll");
 
 	/** Silencing every alert, at the top of the Alerts tab; last in RuneLite's list. */
-	static final Group MUTING = new Group("Muting", "alertMuteSounds", "alertFollowGameVolume");
+	static final Group MUTING = new Group("Muting", "alertMuteSounds", "alertFollowNotificationVolume");
 
 	static final Group REPEATS = new Group("Repeats", "repeatEverySeconds", "repeatMaxMinutes");
 
@@ -164,7 +164,7 @@ final class PanelLayout
 			case TARGETS:
 				return Arrays.asList(
 					new Group("Who gets a readout", "showForNpcs", "showForPlayers", "overheadForPlayers",
-						"showPlayerHitpoints", "showStatComparison"),
+						"showPlayerHitpoints", "showStatComparison", "showNpcStats"),
 					new Group("Big targets", "bigTargetDisplay", "otherTargetDisplay", "bigTargetRule",
 						"bigTargetMaxHp"),
 					new Group("Splashing (AFK Magic)", "splashMode", "splashMaxChance", "splashAlertBroke"),

@@ -118,21 +118,35 @@ final class AlertSounds
 		return plan.missingFile && hinted.add(type);
 	}
 
-	/** The game's sound effects volume runs 0 to 127. */
-	static final int GAME_VOLUME_MAX = 127;
+	/** The retired "Follow game volume" key. */
+	static final String OLD_FOLLOW_GAME_KEY = "alertFollowGameVolume";
 
 	/**
-	 * The volume to play at: the alert's own, scaled by the game's sound
-	 * effects volume when following it. 0 means play nothing.
+	 * Following RuneLite's notification volume for someone who had set the old
+	 * setting: an explicit off meant they wanted a manual volume, so it stays
+	 * off; anything else takes the new default, on.
 	 */
-	static int effectiveVolume(int volume, boolean followGame, int gameVolume)
+	static boolean migratedFollowNotifications(String oldValue)
 	{
-		if (!followGame)
+		return !"false".equalsIgnoreCase(oldValue);
+	}
+
+	/** RuneLite's notification volume runs 0 to 100. */
+	static final int NOTIFICATION_VOLUME_MAX = 100;
+
+	/**
+	 * The volume to play at: the alert's own, scaled by RuneLite's
+	 * notification volume when following it. 0 means play nothing, which is
+	 * what RuneLite's notifications being muted gives.
+	 */
+	static int effectiveVolume(int volume, boolean followNotifications, int notificationVolume)
+	{
+		if (!followNotifications)
 		{
 			return volume;
 		}
-		final int game = Math.max(0, Math.min(GAME_VOLUME_MAX, gameVolume));
-		return Math.round(volume * game / (float) GAME_VOLUME_MAX);
+		final int rl = Math.max(0, Math.min(NOTIFICATION_VOLUME_MAX, notificationVolume));
+		return Math.round(volume * rl / (float) NOTIFICATION_VOLUME_MAX);
 	}
 
 	/** Volume 0 to 100 as the gain RuneLite's player takes, in dB, as {@code Notifier} converts it. */
