@@ -750,8 +750,8 @@ public interface CombatVitalsConfig extends Config
 	@ConfigItem(
 		keyName = "gemstoneCrabArrow",
 		name = "Crab: cave arrow",
-		description = "Draw an arrow and an outline over the cave to crawl through, from the burrow warning until "
-			+ "the shell is gone. Drawing only: nothing is clicked for you.",
+		description = "Draw an arrow and an outline over the cave to crawl through, once the crab has burrowed, "
+			+ "until you crawl through or the next crab spawns. Drawing only: nothing is clicked for you.",
 		section = targetSection,
 		position = 26
 	)

@@ -50,7 +50,7 @@ public class CombatCardRowsTest
 		final List<String> t = texts(rows(casting(), crab(), false));
 		assertEquals("Gemstone Crab", t.get(0));
 		assertTrue(t.contains("Health 87%"));
-		assertTrue(t.contains("Burrows in 4:00"));
+		assertTrue(t.contains("Burrows in ~4:00"));
 		assertFalse(t.contains("(health bar)"));
 		assertTrue(t.contains("Fire Strike"));
 		assertTrue(t.contains("142 casts left"));

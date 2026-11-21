@@ -2245,19 +2245,24 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			return;
 		}
-		if (crab.spawned)
+		// Gated by Gemstone Crab mode itself, not the combat half: the Board hears
+		// them while fighting the crab. See CrabAlerts for what is due and the sound.
+		for (CrabAlerts.Due due : CrabAlerts.due(crab, config))
 		{
-			notifier.notify(muted(config.gemstoneCrabAlertSpawn()), "A Gemstone Crab has appeared.");
+			crabAlert(due);
 		}
-		if (crab.aboutToBurrow)
-		{
-			notifier.notify(muted(config.gemstoneCrabAlertBurrow()), "The Gemstone Crab is about to burrow.");
-		}
-		if (crab.goNow)
-		{
-			notifier.notify(muted(config.gemstoneCrabAlertGo()),
-				"The Gemstone Crab has burrowed: crawl through the cave now.");
-		}
+	}
+
+	/**
+	 * One crab alert. RuneLite's notification alone is silent while the game
+	 * is focused, so the plugin's own sound plays too (see {@link CrabAlerts#sound}).
+	 */
+	private void crabAlert(CrabAlerts.Due due)
+	{
+		final AlertSounds.Plan plan = AlertSounds.plan(CrabAlerts.sound(config),
+			new ActivityAlerts.Alert(ActivityAlerts.Type.STUNNED, null), null, voiceLines, BUNDLED, name -> false);
+		notifier.notify(AlertSettings.quiet(due.notification, runeLiteConfig), due.message);
+		play(plan, CrabAlerts.volume(config));
 	}
 
 	/**
