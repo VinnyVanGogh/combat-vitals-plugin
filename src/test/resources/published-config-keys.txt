@@ -260,3 +260,7 @@ nextSpotArrowDistance int
 # 2026-11-19: Auto-detect splashing (RUNELITE-469).
 autoSplash boolean
 autoSplashThreshold int
+# 2026-11-20: Forestry correct-target highlights (RUNELITE-519).
+forestryCorrectColour Color
+forestryLabels boolean
+forestryHighlightAll boolean
