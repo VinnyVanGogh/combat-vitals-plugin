@@ -118,6 +118,32 @@ final class XpSkilling
 	 */
 	Step tick(int tick, boolean animating, boolean blocked)
 	{
+		return tick(tick, animating, blocked, false);
+	}
+
+	/**
+	 * As {@link #tick(int, boolean, boolean)}, with the fight told apart from
+	 * the other badges: an offering at an altar (Chaos Temple, shrines) is
+	 * Prayer experience with the offering animation playing, and counts as
+	 * training even when a fight is on (Board, 2026-11-21). A bonecrusher
+	 * plays no animation, so it stays combat.
+	 *
+	 * @param blocked  another badge is up
+	 * @param fighting a fight is on
+	 */
+	Step tick(int tick, boolean animating, boolean blocked, boolean fighting)
+	{
+		final boolean offering = fighting && animating && gained.contains(Skill.PRAYER);
+		if (offering)
+		{
+			gained.retainAll(EnumSet.of(Skill.PRAYER));
+		}
+		final boolean held = blocked || (fighting && !offering);
+		return step(tick, animating, held);
+	}
+
+	private Step step(int tick, boolean animating, boolean blocked)
+	{
 		final Skill now = blocked || hitpointsGained ? null : chosen();
 		gained.clear();
 		hitpointsGained = false;

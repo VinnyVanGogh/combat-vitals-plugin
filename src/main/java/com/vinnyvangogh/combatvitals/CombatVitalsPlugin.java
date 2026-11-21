@@ -2538,9 +2538,10 @@ public class CombatVitalsPlugin extends Plugin
 		final Player self = client.getLocalPlayer();
 		final boolean animating = self != null && self.getAnimation() != -1;
 		final Instant now = Instant.now();
-		final boolean blocked = skillingTarget != null || objectBadge || combat.inCombat(now, timeout());
+		final boolean blocked = skillingTarget != null || objectBadge;
+		final boolean fighting = combat.inCombat(now, timeout());
 		final int tick = client.getTickCount();
-		applyXpStep(xpSkilling.tick(tick, animating, blocked), now);
+		applyXpStep(xpSkilling.tick(tick, animating, blocked, fighting), now);
 
 		if (xpSkilling.acted())
 		{
