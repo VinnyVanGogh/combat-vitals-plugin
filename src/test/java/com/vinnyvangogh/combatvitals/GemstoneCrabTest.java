@@ -165,4 +165,14 @@ public class GemstoneCrabTest
 		assertEquals("0:05", GemstoneCrab.clock(4_200));
 		assertEquals("0:00", GemstoneCrab.clock(-5));
 	}
+
+	@Test
+	public void teleportingOrChangingPlaneLeavesTheCrabArea()
+	{
+		assertFalse(GemstoneCrab.left(1000, 2000, 0, 1020, 1990, 0));
+		assertFalse(GemstoneCrab.left(1000, 2000, 0, 1032, 2032, 0));
+		assertTrue(GemstoneCrab.left(1000, 2000, 0, 1033, 2000, 0));
+		assertTrue(GemstoneCrab.left(1000, 2000, 0, 3000, 3000, 0));
+		assertTrue(GemstoneCrab.left(1000, 2000, 0, 1000, 2000, 1));
+	}
 }
