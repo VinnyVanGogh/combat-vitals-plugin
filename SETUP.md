@@ -3,31 +3,60 @@
 Back to the [README](README.md).
 
 - [Install](#install)
+- [Which version has what](#which-version-has-what)
 - [Sidebar panel](#sidebar-panel)
 - [Settings](#settings)
 - [Compatibility](#compatibility)
+- [Privacy](#privacy)
 - [Troubleshooting](#troubleshooting)
 - [Building and testing](#building-and-testing)
 - [README screenshots](#readme-screenshots)
 
+What each feature does is in [docs/features.md](docs/features.md).
+
 ## Install
 
 1. In RuneLite, open the Plugin Hub (the plug icon at the bottom of the
-   configuration sidebar) and search for **Combat & Skilling Vitals** (slug
-   `combat-vitals`).
+   configuration sidebar) and search for **Combat Vitals** (slug
+   `combat-vitals`). The Hub lists version 1.1.0 under that name; the rename to
+   **Combat & Skilling Vitals** arrives with 1.2.0.
 2. Click **Install**. The plugin turns on right away, showing target and own
-   health in combat, casts left while casting combat spells, Gemstone Crab
-   timers at the crab, and the skilling badge across 17 skills.
-3. Open its **sidebar panel** (the health-bar-over-skilling-bar icon in
-   RuneLite's toolbar) to use **Live**, **Goals**, **Max Hit**, **Overlays**,
-   **Presets**, or **Settings**, or open **Combat & Skilling Vitals** in
-   RuneLite's configuration list. Every setting is synced two-way between both
-   views.
+   health in combat and the skilling badge while you fish, chop, mine, steal,
+   runecraft or hunt.
+3. Open **Combat Vitals** in RuneLite's configuration list for the settings.
+
+Version 1.2.0 is an open Plugin Hub pull request. When it merges, the plugin
+also gets its own sidebar button (the health-bar-over-skilling-bar icon in
+RuneLite's toolbar), and every setting is synced two-way between the panel and
+the configuration list.
+
+## Which version has what
+
+This file describes `main`. The Plugin Hub has **1.1.0** today, so parts of what
+follows are not installable yet. Sections and settings carry a mark:
+
+- **Coming in 1.2.0:** in the open 1.2.0 Plugin Hub update.
+- **After 1.2.0:** on `main` only (1.3.0 and newer), not submitted yet.
+- No mark: in 1.1.0.
+
+Settings that are **not in 1.1.0**, by the group they sit in:
+
+| Version | Settings |
+|---|---|
+| **Coming in 1.2.0** | Master switches (*Combat vitals*, *Skilling vitals*); the skill switches Herblore, Cooking, Fletching, Crafting, Smithing, Firemaking, Prayer, Magic, Agility, Construction and Sailing; *Show containers*, *Count containers as free*; *Containers on the pillar*, *Container colour*; every per-alert sound, volume and repeat setting, *Same for every alert*, *Sound for all*, *Volume for all*, *Repeat every alert*, *Repeat every (s)*, *Repeat for (min)*; the alerts Stopped pumping, Idle logout soon, Pump stops soon, *Warn before (s)*, Wrong world, *Wrong world: pumping worlds*, Stove: no one stoking, Stove: coke runs low, Bird nest, Clue drop, Forestry event, Pet, Level up, *Level up skills* and Random event |
+| **After 1.2.0** | *Only after damage*, *NPC aggression timer*, *Aggression area lines*; everything for Splashing mode, *Auto-detect splashing*, *Splash at bonus*, Casts left and the Gemstone Crab; *Goal reached*; *Idle pause (s)*; *Auto-reset on new activity*; the Mining and fishing events alert; the Forestry highlight settings; *Mute alert sounds*, *Follow game volume*; *Show what's new again* |
+
+The sidebar panel itself is **coming in 1.2.0** (**Live**, **Presets** and five
+settings tabs); the **Goals**, **Max Hit** and **Overlays** tabs, the Live
+**Combat / Skilling / Overall** views and the **Mute alerts** bar are **after
+1.2.0**. The `PanelLayoutTest` suite keeps the panel and RuneLite's list in step.
 
 ## Sidebar panel
 
+**Coming in 1.2.0** (the six-tab layout below is **after 1.2.0**).
+
 Above every tab sit **Hide guides** (collapses the tab walkthrough cards across
-restarts) and the **Mute alerts** bar:
+restarts) and, **after 1.2.0**, the **Mute alerts** bar:
 
 - **Mute alerts / Unmute alerts:** silences every plugin alert (audio, tray,
   chat, repeats, boost notifications, and the **Test** buttons) until unmuted.
@@ -55,12 +84,53 @@ restarts) and the **Mute alerts** bar:
 | **Minimal** | `Combat vitals` on, `Show over target` on, `Show panel` off, `Show your own health` off, `Stat comparison panel` off, `Skilling vitals` off, `Show on side pillars` = *Off* |
 | **Everything** | `Combat vitals` on, `Skilling vitals` on, `Show over target` on, `Show panel` on, `Show your own health` on, `Stat comparison panel` on, `Skilling badge` on, `Show on side pillars` = *Both* |
 
+### Settings tabs walkthroughs
+
+Each settings tab opens with a guide card. These are its steps, word for word
+(`PanelLayoutTest` checks that they match).
+
+**Combat tab**
+
+1. Leave Combat vitals ticked.
+2. Tick Show over target for the readout over the monster, Show panel for the box.
+3. Pick Display: hitpoints, percentage, or both.
+4. Tick Hide game health bar to see only this plugin's bar.
+
+**Targets tab**
+
+1. Tick NPC targets for monsters; Player targets for PvP.
+2. Set Big target is to Bosses only, then Big targets to Both for hitpoints and percent on bosses.
+
+**Skilling tab**
+
+1. Leave Skilling vitals and Skilling badge ticked.
+2. Untick any skill you do not want a badge for.
+3. Under Rows, untick rows you do not read; Badge layout on the Look tab makes it smaller.
+4. Once you stop: choose how long the badge stays after you stop.
+
+**Alerts tab**
+
+1. Tick Same for every alert.
+2. Pick Voice line as the sound and set the volume, e.g. 40.
+3. Tick Repeat every alert if you want it again until you are back.
+4. Open Inventory full and click Test to hear it.
+
+**Look tab**
+
+1. Pick a Style for the readout over your target.
+2. Change the three health colours; the preview bar shows the fade.
+3. Move the badge with Badge position and Badge offset; the preview shows where.
+4. Side pillars: pick Combat, Skilling or Both.
+
 ---
 
 ## Settings
 
 In RuneLite's configuration panel (`combat-vitals` group), the two master
-switches sit at the top above six collapsed sections: **Combat readout**
+switches sit at the top above six collapsed sections (**coming in 1.2.0**; the
+Hub's 1.1.0 groups the same settings under *Display*, *Targets*, *Skilling
+vitals*, *Skilling badge*, *Side pillars*, *Activity alerts* and *Advanced*):
+**Combat readout**
 (sidebar *Combat* tab), **Combat targets** (*Targets*), **Skilling badge**
 (*Skilling*), **Alerts and sounds** (*Alerts*), **Look** (*Look*), and
 **Advanced** (RuneLite list only). Every setting name below matches the
@@ -330,6 +400,15 @@ sidebar.
 
 ---
 
+## Privacy
+
+When you attack a player, their display name is sent to Jagex's official
+hiscores to look up their Hitpoints level, at most once per opponent and cached
+for an hour. Turn it off with *Targets → Look up player hitpoints* (*Combat
+targets* in 1.2.0 and later). Nothing else leaves your machine.
+
+---
+
 ## Troubleshooting
 
 - **Nothing appears when I attack or am attacked.** Target health only tracks an
@@ -387,11 +466,14 @@ the resolved RuneLite client version on `test` and `run`. Pin a specific version
 with `./gradlew build -PruneLiteVersion=1.13.6`. The Plugin Hub replaces
 `build.gradle` (`build=standard`) when packaging releases.
 
+GitHub Actions runs `./gradlew build` on every pull request and on pushes to
+`main` (`.github/workflows/build.yml`).
+
 `DocsLinksTest` verifies that every local link, heading anchor, and image in
 `README.md`, `SETUP.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, and `docs/`
 resolves and stays within the 160 KB README image budget. `PanelLayoutTest`
 verifies that every setting in `CombatVitalsConfig` matches `PanelLayout` and
-that `README.md` preserves each tab's walkthrough verbatim.
+that `SETUP.md` preserves each tab's walkthrough verbatim.
 
 ## README screenshots
 
