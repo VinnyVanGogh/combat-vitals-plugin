@@ -15,10 +15,12 @@ each feature so you know what you can install:
 | **Coming in 1.2.0** | In the open 1.2.0 update. Not installable until it merges. |
 | **After 1.2.0** | On `main` only (1.3.0 and newer). Not submitted to the Plugin Hub yet. |
 
-The marks come from the config keys and source files at commit `9d7a168`
-(2026-11-10, version 1.1.0), `68131b6` (version 1.2.0) and `a64d61a` (version
-1.3.0). The exact commit the Plugin Hub built for 1.1.0 was not checked; the
-[CHANGELOG](../CHANGELOG.md) has the full list.
+The marks come from the config keys and source files at the commits the Plugin
+Hub pins: `9d7a168` (version 1.1.0, the pin on the Hub's `master` on
+2026-11-23) and `6b9290e` (version 1.2.0, the pin in the still-open Hub PR
+20795), plus `a64d61a` (version 1.3.0, not submitted). Between `68131b6` and
+`6b9290e` the config did not change. The [CHANGELOG](../CHANGELOG.md) has the
+full list.
 
 ## Covers these plugins
 
@@ -90,7 +92,9 @@ enabled alongside it.
     ahead of the game's 20-minute no-input stop, and *Splash: setup broke*.
     *Auto-detect splashing* switches it on at a Magic bonus of -40 or lower.
   - **Gemstone Crab mode:** crab health %, a burrow countdown, the shell clock,
-    a cave outline with an arrow, and spawn, burrow and cave-ready alerts.
+    a cave outline with an arrow that stays up from the burrow until you crawl
+    through or the next crab spawns, and spawn, burrow and cave-ready alerts
+    that play the plugin's soft chime.
 
 <p align="center">
   <img src="images/low-health.png" alt="Opponent health readout over a player target at 20 / 91 (23%)" width="380">

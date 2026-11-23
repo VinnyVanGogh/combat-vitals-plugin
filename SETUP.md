@@ -191,14 +191,16 @@ off lets the other half keep the pillars.
 | Splash card and AFK timer | Splash: stops soon | On | Notify ahead of the game's 20-minute no-input combat auto-stop while splashing |
 | Splash card and AFK timer | Splash: warn (s) | 60 | Seconds (`5–600`) before the 20-minute splash stop when *Splash: stops soon* fires |
 | Splash card and AFK timer | Splash: stopped | On | Notify once 20 minutes without mouse or keyboard input pass and splashing stops |
-| Gemstone Crab | Gemstone Crab mode | On | At the Gemstone Crab: show crab `Health %` and ~10-minute `Burrows in` timer (refined by observed bar drop rate), then 90-second `Shell gone in` clock on the combat card |
+| Gemstone Crab | Gemstone Crab mode | On | At the Gemstone Crab: show crab `Health %` (an estimate from the timer, shown as `Health ~N%`, when the bar cannot be read) and a rough ~10-minute `Burrows in ~` timer (refined by observed bar drop rate), then 90-second `Shell gone in` clock on the combat card |
 | Gemstone Crab | Crab: warn at (s) | 30 | Seconds (`0–120`) before burrow when *Crab: about to burrow* fires (`0` waits for burrow) |
-| Gemstone Crab | Crab: cave arrow | On | Outline the nearest crawl-through cave and draw an arrow to it while the crab is burrowed in its shell phase |
-| Gemstone Crab | Crab: spawned | On | Notify once per cycle when a Gemstone Crab spawns |
-| Gemstone Crab | Crab: about to burrow | On | Notify once per cycle at *Crab: warn at (s)* before the crab burrows |
-| Gemstone Crab | Crab: go through the cave | On | Notify once per cycle when the crab burrows and the cave is ready |
+| Gemstone Crab | Crab: cave arrow | On | Outline the nearest crawl-through cave and draw an arrow to it from the moment the crab has burrowed (its shell appears) until you crawl through the cave or the next crab spawns; walking to the cave, however far, keeps it up |
+| Gemstone Crab | Crab: spawned | On | Notify once per cycle when a Gemstone Crab spawns; plays the *Soft chime* (see below) |
+| Gemstone Crab | Crab: about to burrow | On | Notify once per cycle at *Crab: warn at (s)* before the crab burrows; plays the *Soft chime* |
+| Gemstone Crab | Crab: go through the cave | On | Notify once per cycle when the crab has burrowed and the cave is ready; plays the *Soft chime* |
 | Auto-detect splashing | Auto-detect splashing | On | Automatically turn *Splashing mode* on at or below *Splash at bonus* and off above it; manual toggles hold until worn gear next crosses the threshold |
 | Auto-detect splashing | Splash at bonus | -40 | Magic attack bonus (`-200` to `200`) at or below which *Auto-detect splashing* enables *Splashing mode* |
+
+The three crab alerts have no sound setting of their own. They play the plugin's *Soft chime* at volume `40`. With *Same for every alert* on, they use *Sound for all* and *Volume for all* instead, except that *RuneLite*, *Voice line* and *My sounds* fall back to the *Soft chime* (those cannot say anything about the crab). They follow *Gemstone Crab mode*, *Mute alerts* and *Mute alert sounds*, and no other alert's switch.
 
 ### Skilling badge (`Skilling` tab)
 
@@ -432,8 +434,11 @@ targets* in 1.2.0 and later). Nothing else leaves your machine.
   ever mismatches in game, cast it once manually or set *Always show: spell*.
 - **Gemstone Crab cave arrow has not appeared yet.** *Crab: about to burrow*
   alerts ahead of the burrow (*Crab: warn at (s)*), while *Crab: cave arrow*
-  outlines and points to the nearest crawl-through cave once the crab burrows
-  into its 90-second shell phase.
+  appears only once the crab has burrowed (its shell is up), never from the
+  timer alone. It then stays until you crawl through the cave or the next crab
+  spawns; walking to the cave does not hide it. The three crab alerts play the
+  *Soft chime*, so if you hear nothing check *Gemstone Crab mode*, *Mute
+  alerts* and *Mute alert sounds*.
 - **Forestry only outlines one object.** By default, *Highlight Forestry events*
   outlines only the solved target in gold (*Step here*, *Anima root*, *Empty
   nest*, etc.); bush pairs and sapling ingredient order appear as players tend
