@@ -116,6 +116,3 @@ for Combat & Skilling Vitals without copying their source code:
   Expanded: inspired the combined inventory-full alerts, container rows,
   gentle repeating alerts, clue-tier skilling notifications, and custom
   per-alert WAV folder.
-- Shortest Path (Skretzo, https://github.com/Skretzo/shortest-path,
-  BSD 2-Clause): optional next-fishing-spot routing communicates solely over
-  RuneLite's public PluginMessage event bus; no Shortest Path code is bundled.

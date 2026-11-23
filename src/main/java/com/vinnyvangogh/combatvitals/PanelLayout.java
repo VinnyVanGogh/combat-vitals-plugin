@@ -200,7 +200,7 @@ final class PanelLayout
 			Group.more("Boosts", "skillingBoostTimer", "skillingBoostSource", "skillingSpecEnergy",
 				"skillingBoostNotify"),
 			new Group("Once you stop", "skillingIdleMode", "skillingIdleSeconds"),
-			Group.more("Next fishing spot", "fishingSpotPath", "fishingSpotShortestPath"),
+			Group.more("Next spot arrow", "nextSpotArrow", "nextSpotArrowDistance"),
 			Group.more("More skills", "skillingHerblore", "skillingCooking", "skillingFletching", "skillingCrafting",
 				"skillingSmithing", "skillingFiremaking", "skillingPrayer", "skillingMagic", "skillingAgility",
 				"skillingConstruction", "skillingSailing"),

@@ -47,25 +47,30 @@ public class FramePathBenchmarkTest
 	public void spotTileCheckIsCheapEnoughForEveryTick()
 	{
 		final Object spot = new Object();
-		final SpotPathing pathing = new SpotPathing(() -> FishingSpotPath.ON_SPOT_MOVE, new SpotPathing.Router()
+		final SpotPathing pathing = new SpotPathing(() -> true, new NextSpotArrow(new NextSpotArrow.Pointer()
 		{
 			@Override
-			public boolean available()
+			public boolean hasArrow()
 			{
 				return false;
 			}
 
 			@Override
-			public boolean route(NextFishingSpot.Spot s)
+			public boolean showing(NextSpotArrow.Target target)
 			{
 				return false;
 			}
 
 			@Override
-			public void clear()
+			public void show(NextSpotArrow.Target target)
 			{
 			}
-		});
+
+			@Override
+			public void hide()
+			{
+			}
+		}, () -> true, () -> 15));
 		pathing.fishingOn(net.runelite.client.game.FishingSpot.SHRIMP, "Net", spot);
 		final long tile = SpotPathing.tile(3086, 3228, 0);
 		final int[] picks = {0};

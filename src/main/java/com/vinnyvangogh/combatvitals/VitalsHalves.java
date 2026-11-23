@@ -36,9 +36,9 @@ final class VitalsHalves
 		return combat(config) && config.hideGameHealthBar();
 	}
 
-	static FishingSpotPath fishingSpotPath(CombatVitalsConfig config)
+	static boolean nextSpotArrow(CombatVitalsConfig config)
 	{
-		return skilling(config) ? config.fishingSpotPath() : FishingSpotPath.OFF;
+		return skilling(config) && config.nextSpotArrow();
 	}
 
 	/** The pillars the user chose, less the half that is switched off. */

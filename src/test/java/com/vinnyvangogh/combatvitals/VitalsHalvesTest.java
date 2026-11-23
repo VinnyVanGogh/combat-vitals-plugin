@@ -51,9 +51,9 @@ public class VitalsHalvesTest
 			}
 
 			@Override
-			public FishingSpotPath fishingSpotPath()
+			public boolean nextSpotArrow()
 			{
-				return FishingSpotPath.ON_SPOT_MOVE;
+				return true;
 			}
 		};
 	}
@@ -72,7 +72,7 @@ public class VitalsHalvesTest
 		assertEquals(newProfile.pillarMode(), VitalsHalves.pillarMode(newProfile));
 		assertEquals(newProfile.skillingEnabled(), VitalsHalves.skillingBadge(newProfile));
 		assertEquals(newProfile.hideGameHealthBar(), VitalsHalves.hideGameHealthBar(newProfile));
-		assertEquals(newProfile.fishingSpotPath(), VitalsHalves.fishingSpotPath(newProfile));
+		assertEquals(newProfile.nextSpotArrow(), VitalsHalves.nextSpotArrow(newProfile));
 	}
 
 	@Test
@@ -84,7 +84,7 @@ public class VitalsHalvesTest
 		assertTrue(VitalsHalves.skillingBadge(on));
 		assertTrue(VitalsHalves.hideGameHealthBar(on));
 		assertEquals(PillarMode.BOTH, VitalsHalves.pillarMode(on));
-		assertEquals(on.fishingSpotPath(), VitalsHalves.fishingSpotPath(on));
+		assertEquals(on.nextSpotArrow(), VitalsHalves.nextSpotArrow(on));
 	}
 
 	@Test
@@ -99,7 +99,7 @@ public class VitalsHalvesTest
 		assertTrue(VitalsHalves.skilling(skillingOnly));
 		assertTrue(VitalsHalves.skillingBadge(skillingOnly));
 		assertTrue(VitalsHalves.pillarMode(skillingOnly).skilling());
-		assertEquals(skillingOnly.fishingSpotPath(), VitalsHalves.fishingSpotPath(skillingOnly));
+		assertEquals(skillingOnly.nextSpotArrow(), VitalsHalves.nextSpotArrow(skillingOnly));
 	}
 
 	@Test
@@ -110,7 +110,7 @@ public class VitalsHalvesTest
 		assertFalse(VitalsHalves.skilling(combatOnly));
 		assertFalse(VitalsHalves.skillingBadge(combatOnly));
 		assertFalse(VitalsHalves.pillarMode(combatOnly).skilling());
-		assertEquals(FishingSpotPath.OFF, VitalsHalves.fishingSpotPath(combatOnly));
+		assertFalse(VitalsHalves.nextSpotArrow(combatOnly));
 		// Combat untouched.
 		assertTrue(VitalsHalves.combat(combatOnly));
 		assertTrue(VitalsHalves.hideGameHealthBar(combatOnly));
@@ -158,7 +158,7 @@ public class VitalsHalvesTest
 	{
 		final String[] gated = {
 			"config.skillingEnabled()", "config.pillarMode()", "config.hideGameHealthBar()",
-			"config.fishingSpotPath()", "config::fishingSpotPath",
+			"config.nextSpotArrow()",
 		};
 		try (Stream<Path> files = Files.list(SOURCES))
 		{

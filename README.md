@@ -182,11 +182,13 @@ draggable fixed screen position, tinted per skill:
 - **Missing gear warning:** clicking a spot without the required rod, net, cage,
   harpoon, bait, or level flashes `Needs: ...` on the badge right away
   (accounting for barehanded Barbarian Fishing).
-- **Next fishing spot mark and Shortest Path:** *Next spot path* (*On spot move*
-  or *Right-click only* via `Path to next spot` on the badge) outlines the
-  nearest active spot of the same kind, draws a line from you to it plus an
-  edge-of-screen arrow while off camera, and optionally routes through the
-  **Shortest Path** plugin.
+- **Next spot arrow:** *Next spot arrow* (on by default) points the game's own
+  hint arrow at the nearest fishing spot of the same kind, tree or rock of the
+  kind you were working, when yours moves or runs out. It also comes from
+  `Point to next spot` on the fishing, woodcutting or mining badge's
+  right-click menu. The arrow comes down when you click it or start working
+  it, walk more than *Arrow distance* tiles away (15 by default), change
+  activity or log out, and it never replaces an arrow a quest or clue has set.
 
 <p align="center">
   <img src="docs/images/badge-catch-list.png" alt="Fishing badge with the catch list: shrimps and anchovies" width="300">
@@ -457,7 +459,4 @@ This plugin is licensed under the **BSD 2-Clause License**—see
   [Clue Scroll Notifier](https://runelite.net/plugin-hub/show/clue-scroll-notifier)
   (`SoaresPT`),
   [Sound Alerts Expanded](https://runelite.net/plugin-hub/show/sound-alerts-expanded),
-  RuneLite's built-in **NPC Aggression Timer** (BSD 2-Clause), and optional
-  `PluginMessage` routing to
-  [Shortest Path](https://runelite.net/plugin-hub/show/shortest-path)
-  (`Skretzo`, BSD 2-Clause).
+  RuneLite's built-in **NPC Aggression Timer** (BSD 2-Clause).

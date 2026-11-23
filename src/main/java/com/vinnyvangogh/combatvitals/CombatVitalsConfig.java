@@ -1556,35 +1556,35 @@ public interface CombatVitalsConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "fishingSpotPath",
-		name = "Next spot path",
+		keyName = "nextSpotArrow",
+		name = "Next spot arrow",
 		description =
-			"Find the nearest fishing spot of the same kind (net/bait, lure/bait, cage/harpoon...) that you can "
-				+ "catch something at, and mark it: its tile outlined, a line from you to it, and an arrow at "
-				+ "the screen's edge while it is off screen. The mark stays until you start fishing again. "
-				+ "'On spot move' does it when your spot moves; either way, right-clicking the badge offers "
-				+ "'Path to next spot'. With no spot of that kind nearby, the nearest known location is used.",
+			"Point the game's hint arrow at the nearest fishing spot (same kind: net/bait, lure/bait, cage/harpoon...), "
+				+ "tree or rock of the kind you were working, when yours moves or runs out. The arrow comes down "
+				+ "when you click it or start working it, walk too far away, or change activity. Right-clicking "
+				+ "the fishing, woodcutting or mining badge offers 'Point to next spot'. Never replaces a hint "
+				+ "arrow that a quest or clue has set.",
 		section = skillingSection,
 		position = 28
 	)
-	default FishingSpotPath fishingSpotPath()
+	default boolean nextSpotArrow()
 	{
-		return FishingSpotPath.OFF;
+		return true;
 	}
 
 	@ConfigItem(
-		keyName = "fishingSpotShortestPath",
-		name = "Next spot: Shortest Path",
+		keyName = "nextSpotArrowDistance",
+		name = "Arrow distance",
 		description =
-			"Also send the next spot to the Shortest Path plugin, when it is installed and on, for a walking "
-				+ "path. Shortest Path ends its own path once you are within its 'Finish distance' (5 tiles by "
-				+ "default), which is why the plugin's own mark is drawn as well.",
+			"Tiles from the next spot you can walk away before the arrow comes down. It only comes down after "
+				+ "you have been this close to it.",
 		section = skillingSection,
 		position = 29
 	)
-	default boolean fishingSpotShortestPath()
+	@Range(min = 5, max = 50)
+	default int nextSpotArrowDistance()
 	{
-		return true;
+		return 15;
 	}
 
 	@ConfigItem(

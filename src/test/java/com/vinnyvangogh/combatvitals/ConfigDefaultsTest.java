@@ -39,25 +39,19 @@ public class ConfigDefaultsTest
 	}
 
 	@Test
-	public void newProfileNeverPathsToTheNextFishingSpot()
+	public void newProfilePointsTheArrowAtTheNextSpot()
 	{
-		assertEquals(FishingSpotPath.OFF, NEW_PROFILE.fishingSpotPath());
-	}
-
-	@Test
-	public void newProfileAlsoSendsTheNextSpotToShortestPath()
-	{
-		// Shortest Path stays optional; the plugin's own mark is drawn either way.
-		assertTrue(NEW_PROFILE.fishingSpotShortestPath());
+		assertTrue(NEW_PROFILE.nextSpotArrow());
+		assertEquals(15, NEW_PROFILE.nextSpotArrowDistance());
 	}
 
 	@Test
 	public void savedValuesKeepTheirKeys() throws NoSuchMethodException
 	{
-		assertEquals("fishingSpotShortestPath", keyName("fishingSpotShortestPath"));
+		assertEquals("nextSpotArrow", keyName("nextSpotArrow"));
+		assertEquals("nextSpotArrowDistance", keyName("nextSpotArrowDistance"));
 		assertEquals("hideGameOverheadChat", keyName("hideGameOverheadChat"));
 		assertEquals("hideGameHealthBar", keyName("hideGameHealthBar"));
-		assertEquals("fishingSpotPath", keyName("fishingSpotPath"));
 		assertEquals("skillingBadgeLayout", keyName("skillingBadgeLayout"));
 	}
 
