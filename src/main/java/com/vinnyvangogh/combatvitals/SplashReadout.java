@@ -1,5 +1,8 @@
 package com.vinnyvangogh.combatvitals;
 
+import java.util.Collections;
+import java.util.List;
+
 /**
  * Everything the splashing card draws for one tick: the Magic read-out (null
  * with Splashing mode off), the casts left for the spell being cast (null
@@ -53,22 +56,63 @@ final class SplashReadout
 		this.tickMillis = tickMillis;
 	}
 
+	/** Worn items to take off to reach the splash bonus, biggest first; empty when none or already splashing. */
+	List<GearAdvice.Step> remove = Collections.emptyList();
+	/** A casts-only card: a spell is being cast right now (false: the card is up but nothing is being cast). */
+	boolean casting = true;
+	/** When a spell was last cast (wall clock), or -1 when not seen this session. */
+	long lastCastAt = -1;
+
+	static final String STATE_SPLASHING = "Splashing";
+	static final String STATE_HITTING = "Hitting";
+	static final String STATE_IDLE = "Idle";
+	static final String STATE_CASTING = "Casting";
+
 	/** A card of the casts alone: no Magic read-out and no clocks, which belong to Splashing mode. */
 	static SplashReadout castsOnly(CastsReadout c, long now)
 	{
-		return new SplashReadout(null, c.spell, c.castsText, c.casts, c.low, c.runeItems, c.runeCosts, -1, 0, -1, now);
+		final SplashReadout r = new SplashReadout(null, c.spell, c.castsText, c.casts, c.low, c.runeItems,
+			c.runeCosts, -1, 0, -1, now);
+		r.casting = c.casting;
+		r.lastCastAt = c.lastCastAt;
+		return r;
 	}
 
 	/** This card as an afterimage of casting that stopped at {@code at}. */
 	SplashReadout stopped(long at)
 	{
-		return new SplashReadout(splash, spell, castsText, casts, castsLow, runeItems, runeCosts, idleMillis,
-			logoutMillis, sessionMillis, tickMillis, at);
+		final SplashReadout r = new SplashReadout(splash, spell, castsText, casts, castsLow, runeItems, runeCosts,
+			idleMillis, logoutMillis, sessionMillis, tickMillis, at);
+		r.lastCastAt = lastCastAt;
+		return r;
+	}
+
+	/**
+	 * What the card says it is doing. Splashing: attacking with no chance to hit. Hitting: attacking with a real
+	 * chance. Idle: not attacking. "Casting" only while a spell really is being cast, never for a stopped card.
+	 */
+	String state()
+	{
+		if (isStopped())
+		{
+			return STATE_IDLE;
+		}
+		if (splash != null)
+		{
+			return splash.status == SplashTracker.Status.SAFE ? STATE_SPLASHING : STATE_HITTING;
+		}
+		return casting ? STATE_CASTING : STATE_IDLE;
 	}
 
 	boolean isStopped()
 	{
 		return stoppedAt >= 0;
+	}
+
+	/** Not casting right now: a stopped afterimage, or an Always show card with nothing being cast. Drawn dimmed. */
+	boolean isIdle()
+	{
+		return isStopped() || !casting;
 	}
 
 	/** The idle logout line as of {@code now}, or null. */

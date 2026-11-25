@@ -101,6 +101,10 @@ class SkillingBadgeRenderer
 	 */
 	Rectangle drawAt(Graphics2D graphics, SkillingReadout readout, int x, int y)
 	{
+		if (config.skillingCardStyle() == CardStyle.CLEAN)
+		{
+			return drawCleanAt(graphics, readout, x, y);
+		}
 		final Layout layout = layout(graphics, readout);
 		if (layout == null)
 		{
@@ -122,6 +126,11 @@ class SkillingBadgeRenderer
 	 */
 	Dimension drawFromCorner(Graphics2D graphics, SkillingReadout readout)
 	{
+		if (config.skillingCardStyle() == CardStyle.CLEAN)
+		{
+			final Rectangle box = drawCleanAt(graphics, readout, 0, 0, true);
+			return new Dimension(box.width, box.height);
+		}
 		final Layout layout = layout(graphics, readout);
 		if (layout == null)
 		{
@@ -132,6 +141,45 @@ class SkillingBadgeRenderer
 		final Rectangle box = layout.box;
 		paintScaled(graphics, readout, layout, (int) Math.ceil(-box.x * scale), (int) Math.ceil(-box.y * scale), scale);
 		return new Dimension((int) Math.ceil(box.width * scale), (int) Math.ceil(box.height * scale));
+	}
+
+	private Rectangle drawCleanAt(Graphics2D graphics, SkillingReadout readout, int x, int y)
+	{
+		return drawCleanAt(graphics, readout, x, y, false);
+	}
+
+	/**
+	 * The Clean style: {@link SkillingCardRows} on the combat card's box, dimmed while
+	 * not doing the skill. Bottom centre at (x, y), or top left there when {@code corner}.
+	 */
+	private Rectangle drawCleanAt(Graphics2D graphics, SkillingReadout readout, int x, int y, boolean corner)
+	{
+		final List<SplashOverlay.Row> rows = SkillingCardRows.rows(readout);
+		final Dimension size = SplashOverlay.size(graphics, rows);
+		final double scale = scale();
+		final int w = (int) Math.ceil(size.width * scale);
+		final int h = (int) Math.ceil(size.height * scale);
+		final int left = corner ? x : x - w / 2;
+		final int top = corner ? y : y - h;
+
+		final AffineTransform saved = graphics.getTransform();
+		final Composite before = graphics.getComposite();
+		graphics.translate(left, top);
+		graphics.scale(scale, scale);
+		if (readout.isIdle())
+		{
+			graphics.setComposite(AlphaComposite.SrcOver.derive(0.55f));
+		}
+		try
+		{
+			SplashOverlay.card(graphics, rows, SkillingCardRows.accent(readout));
+		}
+		finally
+		{
+			graphics.setComposite(before);
+			graphics.setTransform(saved);
+		}
+		return new Rectangle(left, top, w, h);
 	}
 
 	private double scale()

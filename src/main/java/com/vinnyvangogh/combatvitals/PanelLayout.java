@@ -216,7 +216,7 @@ final class PanelLayout
 		return Arrays.asList(
 			new Group("Readout", "overheadStyle", "overheadPosition", "overheadOffset", "barBackground"),
 			new Group("Health colours", "colourGradient", "healthFullColour", "healthMidColour", "healthLowColour"),
-			new Group("Badge", "skillingBadgeLayout", "skillingPosition", "skillingOffset", "skillingScale",
+			new Group("Badge", "skillingCardStyle", "skillingBadgeLayout","skillingPosition", "skillingOffset", "skillingScale",
 				"skillingIdleColour"),
 			Group.more("Skill colours", "skillingFishingColour", "skillingWoodcuttingColour", "skillingMiningColour",
 				"skillingThievingColour", "skillingRunecraftColour", "skillingHunterColour"),

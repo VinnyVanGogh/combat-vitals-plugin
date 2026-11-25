@@ -108,7 +108,7 @@ class SplashOverlay extends Overlay
 			return null;
 		}
 		final long now = System.currentTimeMillis();
-		final boolean dim = crab == null && readout != null && readout.isStopped();
+		final boolean dim = crab == null && readout != null && readout.isIdle();
 		final Color accent = accent(readout, crab, crab != null && crabWatcher.due(crab));
 		final List<Row> rows = rows(readout, crab, crab != null && crabWatcher.due(crab), config.splashMode(), now,
 			accent, idleLogoutMillis(), id -> itemManager.getImage(id));
@@ -128,12 +128,10 @@ class SplashOverlay extends Overlay
 	}
 
 	/** Paints the rounded card with its accent bar around the rows, and returns its size. */
-	static Dimension card(Graphics2D graphics, List<Row> rows, Color accent)
+	static Dimension size(Graphics2D graphics, List<Row> rows)
 	{
-		final Font body = FontManager.getRunescapeSmallFont();
-		final Font bold = FontManager.getRunescapeBoldFont();
-		final FontMetrics bodyMetrics = graphics.getFontMetrics(body);
-		final FontMetrics boldMetrics = graphics.getFontMetrics(bold);
+		final FontMetrics bodyMetrics = graphics.getFontMetrics(FontManager.getRunescapeSmallFont());
+		final FontMetrics boldMetrics = graphics.getFontMetrics(FontManager.getRunescapeBoldFont());
 		final int lineHeight = Math.max(bodyMetrics.getHeight(), boldMetrics.getHeight());
 
 		int width = MIN_WIDTH;
@@ -143,7 +141,19 @@ class SplashOverlay extends Overlay
 			width = Math.max(width, ACCENT + PAD * 2 + row.width(bodyMetrics, boldMetrics));
 			height += row.height(lineHeight) + row.gapAfter();
 		}
-		height -= ROW_GAP;
+		return new Dimension(width, height - ROW_GAP);
+	}
+
+	static Dimension card(Graphics2D graphics, List<Row> rows, Color accent)
+	{
+		final Font body = FontManager.getRunescapeSmallFont();
+		final Font bold = FontManager.getRunescapeBoldFont();
+		final FontMetrics bodyMetrics = graphics.getFontMetrics(body);
+		final FontMetrics boldMetrics = graphics.getFontMetrics(bold);
+		final int lineHeight = Math.max(bodyMetrics.getHeight(), boldMetrics.getHeight());
+		final Dimension size = size(graphics, rows);
+		final int width = size.width;
+		final int height = size.height;
 
 		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 		graphics.setColor(BACK);
@@ -185,7 +195,7 @@ class SplashOverlay extends Overlay
 		Color accent, long logoutMs, IntFunction<BufferedImage> icons)
 	{
 		final List<Row> rows = new ArrayList<>();
-		final String tag = r == null ? null : splashing ? "Splashing mode" : "Casting";
+		final String tag = r == null ? null : splashing ? "Splashing mode" : r.state();
 		rows.add(Row.header(crab != null ? "Gemstone Crab" : title(r), tag, accent));
 		if (crab != null)
 		{
@@ -248,9 +258,22 @@ class SplashOverlay extends Overlay
 				rows.add(Row.text(r.splash.chanceLine, colour, false));
 			}
 		}
+		for (GearAdvice.Step step : r.remove)
+		{
+			rows.add(Row.pair("Remove " + step.name, "-" + step.lowersBy + " (" + step.bonusAfter + ")",
+				step.reaches ? SAFE : LOW));
+		}
 		if (r.isStopped())
 		{
 			rows.add(Row.text(SplashTimer.stoppedAgo(now - r.stoppedAt), MUTED, false));
+			return;
+		}
+		if (!r.casting)
+		{
+			if (r.lastCastAt >= 0)
+			{
+				rows.add(Row.pair("Last cast", SplashTimer.ago(now - r.lastCastAt), MUTED));
+			}
 			return;
 		}
 		final String logout = r.logoutText(now);
@@ -273,7 +296,7 @@ class SplashOverlay extends Overlay
 	{
 		if (r.splash != null)
 		{
-			return title(r.splash.status);
+			return r.state();
 		}
 		return r.spell == null ? "Casting" : r.spell;
 	}
@@ -281,7 +304,7 @@ class SplashOverlay extends Overlay
 	/** The card's accent: the crab's burrow state at the crab, the splash status, else the casts' own warning. */
 	private static Color accent(SplashReadout r, GemstoneCrab.Reading crab, boolean crabDue)
 	{
-		if (r != null && r.isStopped() && crab == null)
+		if (r != null && r.isIdle() && crab == null)
 		{
 			return MUTED;
 		}
@@ -339,10 +362,19 @@ class SplashOverlay extends Overlay
 		private final int[] counts;
 		private final double fraction;
 		private final boolean divider;
+		/** The right-aligned value of a label/value row, or null. */
+		final String value;
 
 		private Row(String text, String tag, Color colour, boolean bold, BufferedImage[] icons, int[] counts,
 			double fraction, boolean divider)
 		{
+			this(text, tag, colour, bold, icons, counts, fraction, divider, null);
+		}
+
+		private Row(String text, String tag, Color colour, boolean bold, BufferedImage[] icons, int[] counts,
+			double fraction, boolean divider, String value)
+		{
+			this.value = value;
 			this.text = text;
 			this.tag = tag;
 			this.colour = colour;
@@ -356,6 +388,12 @@ class SplashOverlay extends Overlay
 		static Row header(String text, String tag, Color colour)
 		{
 			return new Row(text, tag, colour, true, null, null, -1, false);
+		}
+
+		/** A label at the left in muted text and its value at the right in {@code colour}. */
+		static Row pair(String label, String value, Color colour)
+		{
+			return new Row(label, null, colour, false, null, null, -1, false, value);
 		}
 
 		static Row text(String text, Color colour, boolean bold)
@@ -401,6 +439,10 @@ class SplashOverlay extends Overlay
 			if (text != null)
 			{
 				final int w = (bold ? boldMetrics : body).stringWidth(text);
+				if (value != null)
+				{
+					return w + TAG_GAP + body.stringWidth(value);
+				}
 				return tag == null ? w : w + TAG_GAP + body.stringWidth(tag);
 			}
 			if (icons != null)
@@ -428,7 +470,12 @@ class SplashOverlay extends Overlay
 				final FontMetrics m = bold ? boldMetrics : bodyMetrics;
 				g.setFont(bold ? boldFont : body);
 				final int baseline = y + (lineHeight + m.getAscent() - m.getDescent()) / 2;
-				shadowed(g, text, x, baseline, colour);
+				shadowed(g, text, x, baseline, value != null ? MUTED : colour);
+				if (value != null)
+				{
+					g.setFont(body);
+					shadowed(g, value, x + width - bodyMetrics.stringWidth(value), baseline, colour);
+				}
 				if (tag != null)
 				{
 					g.setFont(body);

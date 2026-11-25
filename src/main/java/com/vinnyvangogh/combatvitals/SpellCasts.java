@@ -1,8 +1,13 @@
 package com.vinnyvangogh.combatvitals;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -135,6 +140,8 @@ final class SpellCasts
 
 	private static final Map<String, int[]> SPELLS = new HashMap<>();
 	private static final Map<Integer, String> AUTOCAST = new HashMap<>();
+	private static final Map<String, Integer> LEVELS = new HashMap<>();
+	private static final Set<String> ANCIENT = new HashSet<>();
 
 	private SpellCasts()
 	{
@@ -154,6 +161,80 @@ final class SpellCasts
 	static String autocastName(int varbit)
 	{
 		return AUTOCAST.get(varbit);
+	}
+
+	/** One spell the player can cast now. */
+	static final class Castable
+	{
+		final String name;
+		final int level;
+		final int[] cost;
+		final Result result;
+
+		Castable(String name, int level, int[] cost, Result result)
+		{
+			this.name = name;
+			this.level = level;
+			this.cost = cost;
+			this.result = result;
+		}
+	}
+
+	/** The Magic level a spell needs, or 0 for a spell not in the table. */
+	static int level(String spellName)
+	{
+		final Integer level = spellName == null ? null : LEVELS.get(spellName.toLowerCase(Locale.ROOT).trim());
+		return level == null ? 0 : level;
+	}
+
+	/** Is the spell on the ancient spellbook (else the standard one)? */
+	static boolean ancient(String spellName)
+	{
+		return spellName != null && ANCIENT.contains(spellName.toLowerCase(Locale.ROOT).trim());
+	}
+
+	/**
+	 * Every combat spell the player can cast right now with at least one cast of runes, strongest (highest
+	 * level) first: on the spellbook they have open, within their (boosted) Magic level, and with the staff the
+	 * spell needs worn. Spells with no runes behind them are left out, so an empty list means nothing is
+	 * castable and the card hides.
+	 *
+	 * @param iban Iban's staff is worn (Iban Blast needs it)
+	 * @param dart a slayer's staff or staff of the dead is worn (Magic Dart needs it)
+	 */
+	static List<Castable> castable(int magicLevel, boolean ancientBook, boolean iban, boolean dart, Supply supply)
+	{
+		final List<Castable> out = new ArrayList<>();
+		for (Map.Entry<String, int[]> e : SPELLS.entrySet())
+		{
+			final String key = e.getKey();
+			final int level = LEVELS.getOrDefault(key, Integer.MAX_VALUE);
+			if (level > magicLevel || ANCIENT.contains(key) != ancientBook)
+			{
+				continue;
+			}
+			if (key.equals("iban blast") && !iban || key.equals("magic dart") && !dart)
+			{
+				continue;
+			}
+			final Result r = casts(e.getValue(), supply);
+			if (r.casts == INFINITE || r.casts > 0)
+			{
+				out.add(new Castable(title(key), level, e.getValue(), r));
+			}
+		}
+		out.sort(Comparator.comparingInt((Castable c) -> c.level).reversed().thenComparing(c -> c.name));
+		return out;
+	}
+
+	private static String title(String key)
+	{
+		final StringBuilder sb = new StringBuilder();
+		for (String word : key.split(" "))
+		{
+			sb.append(sb.length() == 0 ? "" : " ").append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+		}
+		return sb.toString();
 	}
 
 	static Result casts(int[] cost, Supply supply)
@@ -275,6 +356,7 @@ final class SpellCasts
 	{
 		// Strike, Bolt, Blast, Wave, Surge: air / water / earth / fire.
 		final String[] tiers = {"Strike", "Bolt", "Blast", "Wave", "Surge"};
+		final String[] elements4 = {"Wind", "Water", "Earth", "Fire"};
 		// Air is shared by the four elements; water and earth have their own columns because they differ from
 		// it at Wave and Surge. Water Wave/Surge, Earth Surge and Crumble Undead checked against the OSRS Wiki
 		// spell pages 2026-11-19; the rest are unchecked.
@@ -315,6 +397,33 @@ final class SpellCasts
 		spell("Ice Burst", cost(0, 4, 0, 0, 0, 4, 2, 0, 0, 0));
 		spell("Ice Blitz", cost(0, 3, 0, 0, 0, 0, 2, 2, 0, 0));
 		spell("Ice Barrage", cost(0, 6, 0, 0, 0, 0, 4, 2, 0, 0));
+
+		// Magic levels (OSRS Wiki spell pages; Surge 81/85/90/95 and Fire Surge 95 seen on the wiki 2026-11-20, the
+		// rest from memory of the same pages: unverified in game). Ancient spells need the ancient spellbook open,
+		// which already means Desert Treasure I is done.
+		final int[][] levels = {{1, 5, 9, 13}, {17, 23, 29, 35}, {41, 47, 53, 59}, {62, 65, 70, 75}, {81, 85, 90, 95}};
+		for (int t = 0; t < tiers.length; t++)
+		{
+			for (int k = 0; k < elements4.length; k++)
+			{
+				LEVELS.put((elements4[k] + " " + tiers[t]).toLowerCase(Locale.ROOT), levels[t][k]);
+			}
+		}
+		LEVELS.put("crumble undead", 39);
+		LEVELS.put("magic dart", 50);
+		LEVELS.put("iban blast", 50);
+		final String[] ancientNames = {"Smoke", "Shadow", "Blood", "Ice"};
+		final int[][] ancientLevels = {{50, 62, 74, 86}, {52, 64, 76, 88}, {56, 68, 80, 92}, {58, 70, 82, 94}};
+		final String[] ancientTierNames = {"Rush", "Burst", "Blitz", "Barrage"};
+		for (int k = 0; k < ancientNames.length; k++)
+		{
+			for (int t = 0; t < ancientTierNames.length; t++)
+			{
+				final String key = (ancientNames[k] + " " + ancientTierNames[t]).toLowerCase(Locale.ROOT);
+				LEVELS.put(key, ancientLevels[k][t]);
+				ANCIENT.add(key);
+			}
+		}
 
 		// AUTOCAST_SPELL counts from 1 at Wind Strike (0 is no spell): strike, bolt, blast, wave in element order
 		// (1 to 16), Crumble Undead 17, Magic Dart 18, the ancient rushes to barrages 31 to 46 (smoke, shadow,
