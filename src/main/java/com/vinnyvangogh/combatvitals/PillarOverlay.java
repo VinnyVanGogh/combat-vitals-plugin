@@ -111,7 +111,10 @@ class PillarOverlay extends Overlay
 	/** Paints the pillar at its gliding fill, and its hover text while the mouse is over it. */
 	private void draw(Graphics2D graphics, Rectangle box, Pillar pillar, PillarAnimation fill, long now)
 	{
-		final Pillar shown = pillar.toBuilder().fraction(fill.next(pillar.getFraction(), now)).build();
+		final double glided = fill.next(pillar.getFraction(), now);
+		// The base glides with the fill, keeping its share of it, so the two colours never fill separately.
+		final double baseShare = pillar.getFraction() > 0 ? pillar.getBaseFraction() / pillar.getFraction() : 0;
+		final Pillar shown = pillar.toBuilder().fraction(glided).baseFraction(baseShare * glided).build();
 		PillarPainter.paint(graphics, box, shown, config.pillarStyle(), config.pillarLabels(), config.barBackground());
 
 		final Point mouse = client.getMouseCanvasPosition();
