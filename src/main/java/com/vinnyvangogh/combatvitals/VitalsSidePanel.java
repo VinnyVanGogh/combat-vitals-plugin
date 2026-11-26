@@ -803,7 +803,10 @@ final class VitalsSidePanel extends PluginPanel
 			addControl(box.body, r.extra);
 		}
 		final Column mine = new Column();
-		for (String key : new String[]{r.sound, r.volume, r.repeat})
+		// One-off events never repeat, so they get no Repeat switch.
+		final String[] keys = SkillingEvents.isEvent(r.type)
+			? new String[]{r.sound, r.volume} : new String[]{r.sound, r.volume, r.repeat};
+		for (String key : keys)
 		{
 			addControl(mine, key);
 		}

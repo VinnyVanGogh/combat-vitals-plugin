@@ -2150,7 +2150,8 @@ public interface CombatVitalsConfig extends Config
 	String VOLUME_HELP = "Volume of this alert's own sounds. RuneLite's sound keeps RuneLite's volume.";
 	String REPEAT_HELP = " again every 'Repeat every (s)', softly, until you click or press a key in the client, "
 		+ "start again, log out, or 'Repeat for (min)' runs out. Only listens; never sends any input.";
-	String SHARED_HELP = " Used by every alert while 'Same for every alert' is on; each alert's own is kept for when "
+	String ONE_OFF_HELP = " Has no effect: one-off event alerts sound once and never repeat.";
+	String SHARED_HELP =" Used by every alert while 'Same for every alert' is on; each alert's own is kept for when "
 		+ "it is off.";
 
 	@ConfigItem(
@@ -2701,7 +2702,7 @@ public interface CombatVitalsConfig extends Config
 	@ConfigItem(
 		keyName = "repeatBirdNest",
 		name = "Repeat bird nest",
-		description = "Sound the bird nest alert" + REPEAT_HELP,
+		description = "Bird nest alert" + ONE_OFF_HELP,
 		section = alertsSection,
 		position = 67
 	)
@@ -2738,7 +2739,7 @@ public interface CombatVitalsConfig extends Config
 	@ConfigItem(
 		keyName = "repeatClueDrop",
 		name = "Repeat clue drop",
-		description = "Sound the clue drop alert" + REPEAT_HELP,
+		description = "Clue drop alert" + ONE_OFF_HELP,
 		section = alertsSection,
 		position = 70
 	)
@@ -2775,7 +2776,7 @@ public interface CombatVitalsConfig extends Config
 	@ConfigItem(
 		keyName = "repeatForestryEvent",
 		name = "Repeat Forestry",
-		description = "Sound the Forestry event alert" + REPEAT_HELP,
+		description = "Forestry event alert" + ONE_OFF_HELP,
 		section = alertsSection,
 		position = 73
 	)
@@ -2812,7 +2813,7 @@ public interface CombatVitalsConfig extends Config
 	@ConfigItem(
 		keyName = "repeatPet",
 		name = "Repeat pet",
-		description = "Sound the pet alert" + REPEAT_HELP,
+		description = "Pet alert" + ONE_OFF_HELP,
 		section = alertsSection,
 		position = 76
 	)
@@ -2849,7 +2850,7 @@ public interface CombatVitalsConfig extends Config
 	@ConfigItem(
 		keyName = "repeatLevelUp",
 		name = "Repeat level up",
-		description = "Sound the level up alert" + REPEAT_HELP,
+		description = "Level up alert" + ONE_OFF_HELP,
 		section = alertsSection,
 		position = 79
 	)
@@ -2886,7 +2887,7 @@ public interface CombatVitalsConfig extends Config
 	@ConfigItem(
 		keyName = "repeatRandomEvent",
 		name = "Repeat random",
-		description = "Sound the random event alert" + REPEAT_HELP,
+		description = "Random event alert" + ONE_OFF_HELP,
 		section = alertsSection,
 		position = 82
 	)
@@ -3034,7 +3035,7 @@ public interface CombatVitalsConfig extends Config
 	@ConfigItem(
 		keyName = "repeatSkillingEvent",
 		name = "Repeat gem/bottle",
-		description = "Sound the mining and fishing events alert" + REPEAT_HELP,
+		description = "Mining and fishing events alert" + ONE_OFF_HELP,
 		section = alertsSection,
 		position = 94
 	)
