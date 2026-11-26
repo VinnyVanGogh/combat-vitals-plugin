@@ -62,9 +62,24 @@ final class GemstoneCrab
 			this.shellMs = shellMs;
 		}
 
+		/** The bar's percent, or, when it cannot be read, the percent the timer says is left; -1 with no crab. */
 		int percent()
 		{
-			return fraction < 0 ? -1 : (int) Math.round(fraction * 100);
+			if (fraction >= 0)
+			{
+				return (int) Math.round(fraction * 100);
+			}
+			if (phase != Phase.CRAB || remainingMs < 0)
+			{
+				return -1;
+			}
+			return (int) Math.round(Math.min(1.0, (double) remainingMs / FIGHT_MS) * 100);
+		}
+
+		/** True when {@link #percent()} comes from the timer, not the bar. */
+		boolean percentEstimated()
+		{
+			return fraction < 0 && percent() >= 0;
 		}
 	}
 
@@ -152,12 +167,9 @@ final class GemstoneCrab
 		}
 		if (phase == Phase.CRAB)
 		{
-			// The crab vanished with no shell. Burrowed only if the timer had run
-			// out (or it was seen about to); otherwise it just left the scene.
-			if (lastLeft <= BURROW_GRACE_MS)
-			{
-				return shell(now, out);
-			}
+			// The crab vanished with no shell: it only left the scene. A burrow is
+			// the shell NPC appearing (wiki: it leaves a shell), never a guess from
+			// the timer, so the arrow and the go alert are never early.
 			phase = Phase.NONE;
 			firstSampleAt = -1;
 			lost = true;

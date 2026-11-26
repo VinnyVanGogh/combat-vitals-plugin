@@ -6,8 +6,8 @@ import java.util.List;
 
 /**
  * The short guide at the top of each tab of the sidebar panel: what the tab
- * does, how to use it, and a walkthrough. README.md's "Sidebar panel" section
- * carries the same pages, with screenshots.
+ * does, how to use it, and a walkthrough. SETUP.md's "Settings tabs
+ * walkthroughs" section carries the same steps word for word.
  */
 final class PanelGuide
 {

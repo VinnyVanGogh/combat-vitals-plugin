@@ -145,18 +145,18 @@ public class PanelLayoutTest
 		}
 	}
 
-	/** README's "Sidebar panel" carries each tab's walkthrough word for word, so the two cannot drift. */
+	/** SETUP.md's "Settings tabs walkthroughs" carries each tab's walkthrough word for word, so the two cannot drift. */
 	@Test
-	public void theReadmeHasEachTabsWalkthrough() throws IOException
+	public void setupHasEachTabsWalkthrough() throws IOException
 	{
-		final String readme = new String(Files.readAllBytes(Paths.get("README.md")), StandardCharsets.UTF_8);
+		final String readme = new String(Files.readAllBytes(Paths.get("SETUP.md")), StandardCharsets.UTF_8);
 		for (PanelLayout.Tab tab : PanelLayout.Tab.values())
 		{
 			final List<String> steps = PanelGuide.of(tab).walkthrough;
 			for (int i = 0; i < steps.size(); i++)
 			{
 				final String line = (i + 1) + ". " + steps.get(i);
-				assertTrue(tab.label + " step missing from README: " + line, readme.contains(line));
+				assertTrue(tab.label + " step missing from SETUP.md: " + line, readme.contains(line));
 			}
 		}
 	}

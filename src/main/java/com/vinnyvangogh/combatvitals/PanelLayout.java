@@ -207,7 +207,8 @@ final class PanelLayout
 			new Group("New activity", "autoResetSession", "sessionIdleResetMinutes"),
 			Group.more("Forestry highlights", "forestryHighlights", "forestryHighlightColour", "highlightRisingRoots",
 				"highlightStrugglingSapling", "highlightFloweringBush", "highlightLeprechaun", "highlightPoachers",
-				"highlightPheasantControl", "highlightBeeHive", "highlightEnchantmentRitual", "highlightFriendlyEnt"));
+				"highlightPheasantControl", "highlightBeeHive", "highlightEnchantmentRitual", "highlightFriendlyEnt",
+				"forestryCorrectColour", "forestryLabels", "forestryHighlightAll"));
 	}
 
 	private static List<Group> lookGroups()

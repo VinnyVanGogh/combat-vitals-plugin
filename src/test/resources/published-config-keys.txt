@@ -261,3 +261,7 @@ autoSplashThreshold int
 # 2026-11-20: Paused Live cards, all-time stats, idle session reset (RUNELITE-486).
 sessionIdleResetMinutes int
 liveCardClear boolean
+# 2026-11-20: Forestry correct-target highlights (RUNELITE-519).
+forestryCorrectColour Color
+forestryLabels boolean
+forestryHighlightAll boolean
