@@ -3206,4 +3206,30 @@ public interface CombatVitalsConfig extends Config
 	{
 		return "";
 	}
+
+	@Range(min = 0, max = 240)
+	@ConfigItem(
+		keyName = "sessionIdleResetMinutes",
+		name = "Idle reset (min)",
+		description = "Reset This session after this many minutes with no experience, so the next gain starts a fresh "
+			+ "one. 0 never resets it by itself. Total and All time are not touched. The Live cards count down to it.",
+		section = skillingSection,
+		position = 41
+	)
+	default int sessionIdleResetMinutes()
+	{
+		return 0;
+	}
+
+	/** Set by the Live cards' right-click Clear; the plugin acts on it and unticks it. */
+	@ConfigItem(
+		keyName = LiveSection.CLEAR_KEY,
+		name = "",
+		description = "",
+		hidden = true
+	)
+	default boolean liveCardClear()
+	{
+		return false;
+	}
 }

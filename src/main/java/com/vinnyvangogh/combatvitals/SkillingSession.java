@@ -128,6 +128,19 @@ final class SkillingSession
 		return actions[i] > 0 && idleMillis > 0 && nowMillis - lastGain[i] > idleMillis;
 	}
 
+	/** How long without a gain pauses the clock; 0 or less never pauses. */
+	long idleMillis()
+	{
+		return idleMillis;
+	}
+
+	/** Milliseconds since the skill's last gain this session; -1 before the first. */
+	long sinceLastGain(Skill skill, long nowMillis)
+	{
+		final int i = skill.ordinal();
+		return actions[i] == 0 ? -1 : Math.max(0, nowMillis - lastGain[i]);
+	}
+
 	/** Milliseconds of active time since this session's first gain in the skill, paused time left out; -1 before it. */
 	long elapsed(Skill skill, long nowMillis)
 	{

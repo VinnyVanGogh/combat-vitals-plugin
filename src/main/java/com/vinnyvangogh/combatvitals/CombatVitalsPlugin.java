@@ -468,6 +468,18 @@ public class CombatVitalsPlugin extends Plugin
 	private final SkillingSession session = new SkillingSession();
 	/** The same gains, never reset by an activity change or Reset session: the Total next to This session. Cleared at logout. */
 	private final SkillingSession totalSession = new SkillingSession();
+	/** Time trained, XP and actions across logins: the All time row. Kept in the account's profile config. */
+	private final AllTime allTime = new AllTime();
+	/** The skill the sidebar's Skilling card stays on after the work stops, until the user clears it. */
+	private final LiveCardHold cardHold = new LiveCardHold();
+	/** The profile's All time numbers were read ({@link #keepAllTime}); false again at logout. */
+	private boolean allTimeLoaded;
+	private long allTimeSavedAt;
+
+	/** The profile config key All time is kept under. */
+	static final String ALL_TIME_KEY = "allTimeStats";
+	/** How often changed All time numbers are written to the profile. */
+	private static final long ALL_TIME_SAVE_MILLIS = 30_000;
 
 	/** Status Bars as last read, refreshed each tick for the pillar overlay. */
 	private volatile SidePillars.StatusBars statusBars = SidePillars.StatusBars.OFF;
@@ -801,8 +813,7 @@ public class CombatVitalsPlugin extends Plugin
 		opponent = null;
 		combat.clear();
 		clearSkilling();
-		session.clear();
-		totalSession.clear();
+		endLogin();
 		stockPlugin = null;
 		badgeBounds = null;
 		statusBarsPlugin = null;
@@ -868,9 +879,26 @@ public class CombatVitalsPlugin extends Plugin
 		}
 		if (config.skillingSessionReset())
 		{
-			session.reset();
-			agilityLaps.clear();
+			// On the client thread, where the tick reads the session.
+			clientThread.invoke(() ->
+			{
+				session.reset();
+				agilityLaps.clear();
+			});
 			configManager.setConfiguration(CombatVitalsConfig.GROUP, "skillingSessionReset", false);
+		}
+		if (config.liveCardClear())
+		{
+			// The Live cards' right-click Clear: the session is zeroed and the Skilling card lets go of its skill.
+			// On the client thread, where the tick reads all of these.
+			clientThread.invoke(() ->
+			{
+				cardHold.clear();
+				idleBadge.clear();
+				session.reset();
+				agilityLaps.clear();
+			});
+			configManager.setConfiguration(CombatVitalsConfig.GROUP, LiveSection.CLEAR_KEY, false);
 		}
 		final VitalsSidePanel panel = sidePanel;
 		if (panel == null)
@@ -943,8 +971,7 @@ public class CombatVitalsPlugin extends Plugin
 				break;
 			case LOGIN_SCREEN:
 				// Logging out ends the session's counts; a hop does not.
-				session.clear();
-				totalSession.clear();
+				endLogin();
 				sessionActivity.clear();
 				goalsHub.loggedOut();
 				goalsChanged();
@@ -2188,6 +2215,8 @@ public class CombatVitalsPlugin extends Plugin
 		stepSkillingObject();
 		expireSkillingTarget();
 		stepXpSkilling();
+		keepAllTime();
+		tickIdleReset();
 		seedBoosts();
 		tickBoostTimer();
 		tickAlerts();
@@ -2234,6 +2263,8 @@ public class CombatVitalsPlugin extends Plugin
 		readout = VitalsHalves.combat(config) ? buildReadout() : null;
 		selfReadout = VitalsHalves.combat(config) ? buildSelfReadout() : null;
 		skillingReadout = VitalsHalves.skilling(config) ? buildSkillingReadout() : null;
+		// Followed every tick, not only while the sidebar is open, so the card knows its skill when it is opened.
+		cardHold.seen(skillingReadout == null ? null : skillingReadout.getSkill());
 		publishLive();
 	}
 
@@ -2292,7 +2323,17 @@ public class CombatVitalsPlugin extends Plugin
 			VitalsHalves.combat(config) ? liveCombat(now) : null,
 			VitalsHalves.skilling(config) ? liveSkilling(now) : null,
 			LiveVitals.session(session, now, this::skillColour),
-			LiveVitals.session(totalSession, now, this::skillColour));
+			LiveVitals.session(totalSession, now, this::skillColour))
+			.withOverall(java.util.Collections.singletonList(LiveVitals.allTime(allTime.overall(totalSession))));
+	}
+
+	/** This session, Total and All time rows for the skills of one card. */
+	private java.util.List<LiveVitals.Period> livePeriods(Skill[] skills, AllTime.Stats all, long now)
+	{
+		final java.util.List<LiveVitals.Period> rows = new java.util.ArrayList<>(
+			LiveVitals.periods(session, totalSession, skills, now));
+		rows.add(LiveVitals.allTime(all));
+		return rows;
 	}
 
 	/** Every skill a fight trains, Hitpoints included, by the game's names: the Combat card's goal skills. */
@@ -2302,12 +2343,23 @@ public class CombatVitalsPlugin extends Plugin
 	/** The badge's readout for the Skilling card, with the skill's small icon for its title. */
 	private LiveVitals.Skilling liveSkilling(long now)
 	{
-		final SkillingReadout r = skillingReadout;
-		return LiveVitals.skilling(r, r == null ? null : skillIconManager.getSkillImage(r.getSkill(), true),
-			r == null ? java.util.Collections.emptyList()
-				: goalsHub.book().skillLines(r.getSkill().getName(), now / 1000))
-			.withPeriods(r == null ? java.util.Collections.emptyList()
-				: LiveVitals.periods(session, totalSession, new Skill[]{r.getSkill()}, now));
+		SkillingReadout r = skillingReadout;
+		final boolean working = r != null && !r.isIdle();
+		final Skill held = cardHold.held(this::skillShown);
+		if (r == null && held != null)
+		{
+			// The badge is gone, the card is not: it stays on the skill, marked Paused, until the user clears it.
+			r = baseReadout(held, now).idle(true).build();
+		}
+		if (r == null)
+		{
+			return LiveVitals.skilling(null);
+		}
+		final Skill[] skills = {r.getSkill()};
+		return LiveVitals.skilling(r, skillIconManager.getSkillImage(r.getSkill(), true),
+			goalsHub.book().skillGoals(r.getSkill().getName(), now / 1000))
+			.withPeriods(livePeriods(skills, allTime.skill(r.getSkill(), totalSession), now))
+			.withTimers(CardTimers.of(session, skills, now, working, config.sessionIdleResetMinutes()));
 	}
 
 	/** Your vitals, the target as the overhead readout has it, and the combat skill gained in last. */
@@ -2327,8 +2379,9 @@ public class CombatVitalsPlugin extends Plugin
 			LiveVitals.target(target, config.percentageDecimals()),
 			skill == null ? null : LiveVitals.training(skill, xp, skillColour(skill)),
 			skill == null ? null : LiveVitals.trainingRate(xp, session.xpPerHour(skill, now)))
-			.with(goalsHub.book().skillLines(combatGoalNames(), now / 1000),
-				LiveVitals.periods(session, totalSession, LiveVitals.COMBAT_SKILLS, now));
+			.with(goalsHub.book().skillGoals(combatGoalNames(), now / 1000),
+				livePeriods(LiveVitals.COMBAT_SKILLS, allTime.combat(totalSession), now))
+			.withTimers(CardTimers.of(session, LiveVitals.COMBAT_SKILLS, now, true, config.sessionIdleResetMinutes()));
 	}
 
 	private static java.util.List<String> combatGoalNames()
@@ -2358,6 +2411,66 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			containerDialog = message;
 			containerContents.message(message, client.getTickCount());
+		}
+	}
+
+	/**
+	 * All time: read from the profile once it is known after a login, grown every tick, and written back when it
+	 * changed (at most every {@link #ALL_TIME_SAVE_MILLIS}), so a crash loses seconds, not hours.
+	 */
+	private void keepAllTime()
+	{
+		if (client.getGameState() != GameState.LOGGED_IN || configManager.getRSProfileKey() == null)
+		{
+			return;
+		}
+		final long now = System.currentTimeMillis();
+		if (!allTimeLoaded)
+		{
+			allTime.load(configManager.getRSProfileConfiguration(CombatVitalsConfig.GROUP, ALL_TIME_KEY, String.class));
+			allTimeLoaded = true;
+			allTimeSavedAt = now;
+		}
+		allTime.tick(now, totalSession);
+		if (allTime.isDirty() && now - allTimeSavedAt >= ALL_TIME_SAVE_MILLIS)
+		{
+			writeAllTime(now);
+		}
+	}
+
+	private void writeAllTime(long now)
+	{
+		configManager.setRSProfileConfiguration(CombatVitalsConfig.GROUP, ALL_TIME_KEY, allTime.save(totalSession));
+		allTime.saved();
+		allTimeSavedAt = now;
+	}
+
+	/**
+	 * A login ends (logout or shutdown): its gains join All time, which is written, and the session totals clear.
+	 * Nothing is written for a profile that was never read, so a short-lived login cannot blank the stored numbers.
+	 */
+	private void endLogin()
+	{
+		if (allTimeLoaded && configManager.getRSProfileKey() != null)
+		{
+			allTime.commit(totalSession);
+			totalSession.clear();
+			writeAllTime(System.currentTimeMillis());
+		}
+		allTime.clear();
+		allTimeLoaded = false;
+		cardHold.clear();
+		session.clear();
+		totalSession.clear();
+	}
+
+	/** With "Reset session after idle" set, a session with no gain for that long resets itself; Total and All time stay. */
+	private void tickIdleReset()
+	{
+		if (CardTimers.resetDue(session, Skill.values(), System.currentTimeMillis(), config.sessionIdleResetMinutes()))
+		{
+			session.reset();
+			agilityLaps.clear();
 		}
 	}
 
