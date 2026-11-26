@@ -42,7 +42,27 @@ public class GemstoneCrabTest
 		final GemstoneCrab.Reading r = step(c, true, false, -1, 60_000, new GemstoneCrab.Alerts());
 		assertEquals(GemstoneCrab.Source.CLOCK, r.source);
 		assertEquals(540_000L, r.remainingMs);
+		// The bar cannot be read, so the percent is the timer's: 9 of 10 minutes left.
+		assertEquals(90, r.percent());
+		assertTrue(r.percentEstimated());
+	}
+
+	@Test
+	public void aReadableBarIsExactAndNeverMarkedAsAnEstimate()
+	{
+		final GemstoneCrab c = new GemstoneCrab(30);
+		final GemstoneCrab.Reading r = step(c, true, false, 0.42, 0, new GemstoneCrab.Alerts());
+		assertEquals(42, r.percent());
+		assertFalse(r.percentEstimated());
+	}
+
+	@Test
+	public void noCrabMeansNoPercent()
+	{
+		final GemstoneCrab c = new GemstoneCrab(30);
+		final GemstoneCrab.Reading r = step(c, false, false, -1, 0, new GemstoneCrab.Alerts());
 		assertEquals(-1, r.percent());
+		assertFalse(r.percentEstimated());
 	}
 
 	@Test
@@ -125,12 +145,16 @@ public class GemstoneCrabTest
 	}
 
 	@Test
-	public void crabGoneWithTimerRunOutCountsAsBurrowed()
+	public void crabGoneWithTimerRunOutIsNotABurrowUntilTheShellAppears()
 	{
 		final GemstoneCrab c = new GemstoneCrab(30);
 		step(c, true, false, 0.01, 0, new GemstoneCrab.Alerts());
-		final GemstoneCrab.Alerts a = new GemstoneCrab.Alerts();
-		final GemstoneCrab.Reading r = step(c, false, false, -1, 1000, a);
+		GemstoneCrab.Alerts a = new GemstoneCrab.Alerts();
+		GemstoneCrab.Reading r = step(c, false, false, -1, 1000, a);
+		assertEquals(GemstoneCrab.Phase.NONE, r.phase);
+		assertFalse(a.goNow);
+		a = new GemstoneCrab.Alerts();
+		r = step(c, false, true, -1, 2000, a);
 		assertEquals(GemstoneCrab.Phase.SHELL, r.phase);
 		assertTrue(a.goNow);
 	}
