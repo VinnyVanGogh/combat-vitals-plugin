@@ -29,6 +29,133 @@ import org.junit.Test;
  */
 public class AlertSoundsTest
 {
+	private static ConfigStore fake(java.util.Map<String, String> m)
+	{
+		return new ConfigStore()
+		{
+			public String raw(String k)
+			{
+				return m.get(k);
+			}
+
+			public void setRaw(String k, String v)
+			{
+				m.put(k, v);
+			}
+
+			public <T> T get(String k, Class<T> t)
+			{
+				return m.containsKey(k) ? t.cast(Boolean.valueOf(m.get(k))) : null;
+			}
+
+			public void set(String k, Object v)
+			{
+				m.put(k, String.valueOf(v));
+			}
+		};
+	}
+
+	@Test
+	public void staleFollowClearedOnceThenPlayerChoiceKept()
+	{
+		final java.util.Map<String, String> m = new java.util.HashMap<>();
+		m.put("alertFollowGameVolume", "true");
+		AlertSounds.resetStaleFollowGameVolume(fake(m));
+		assertEquals("false", m.get("alertFollowGameVolume"));
+		m.put("alertFollowGameVolume", "true");
+		AlertSounds.resetStaleFollowGameVolume(fake(m));
+		assertEquals("true", m.get("alertFollowGameVolume"));
+	}
+
+	@Test
+	public void freshConfigLeftUnset()
+	{
+		final java.util.Map<String, String> m = new java.util.HashMap<>();
+		AlertSounds.resetStaleFollowGameVolume(fake(m));
+		assertEquals(null, m.get("alertFollowGameVolume"));
+	}
+
+	@Test
+	public void silentHintOnlyWhenFollowingAndMuted()
+	{
+		org.junit.Assert.assertTrue(AlertSounds.silentByGameVolume(true, 0));
+		org.junit.Assert.assertFalse(AlertSounds.silentByGameVolume(false, 0));
+		org.junit.Assert.assertFalse(AlertSounds.silentByGameVolume(true, 50));
+	}
+
+	@Test
+	public void silentHintSaidOncePerRunAndNeverWhenAudible()
+	{
+		final AlertSounds sounds = new AlertSounds();
+		assertFalse(sounds.shouldHintSilent(false, 0));
+		assertFalse(sounds.shouldHintSilent(true, 60));
+		assertTrue(sounds.shouldHintSilent(true, 0));
+		assertFalse(sounds.shouldHintSilent(true, 0));
+		assertTrue(AlertSounds.SILENT_HINT.contains("game sound is muted"));
+	}
+
+	@Test
+	public void playerWhoTurnedItOffKeepsItOffAcrossRelogs()
+	{
+		final java.util.Map<String, String> m = new java.util.HashMap<>();
+		m.put("alertFollowGameVolume", "true");
+		AlertSounds.resetStaleFollowGameVolume(fake(m));
+		assertEquals("false", m.get("alertFollowGameVolume"));
+		// Each later start (a relog, a restart) runs the same check against the marker.
+		for (int start = 0; start < 3; start++)
+		{
+			AlertSounds.resetStaleFollowGameVolume(fake(m));
+			assertEquals("false", m.get("alertFollowGameVolume"));
+		}
+	}
+
+	@Test
+	public void pluginUpdateLeavesAChoiceAndMarkerAlone()
+	{
+		// A config that already carries the marker, as after the one-time reset: an update changes neither key.
+		final java.util.Map<String, String> m = new java.util.HashMap<>();
+		m.put("followGameVolumeReset", "true");
+		m.put("alertFollowGameVolume", "true");
+		AlertSounds.resetStaleFollowGameVolume(fake(m));
+		assertEquals("true", m.get("alertFollowGameVolume"));
+		assertEquals("true", m.get("followGameVolumeReset"));
+		m.put("alertFollowGameVolume", "false");
+		AlertSounds.resetStaleFollowGameVolume(fake(m));
+		assertEquals("false", m.get("alertFollowGameVolume"));
+		assertEquals("true", m.get("followGameVolumeReset"));
+	}
+
+	@Test
+	public void noPresetTouchesFollowGameVolume()
+	{
+		for (Presets.Preset p : Presets.Preset.values())
+		{
+			assertFalse(p.name(), Presets.values(p).containsKey(AlertSounds.FOLLOW_KEY));
+			assertFalse(p.name(), Presets.values(p).containsKey(AlertSounds.FOLLOW_RESET_KEY));
+			final PanelFixture.Store store = PanelFixture.store();
+			store.set(AlertSounds.FOLLOW_KEY, true);
+			store.writes.clear();
+			Presets.apply(p, store).restore(store);
+			assertFalse(p.name(), store.writes.contains(AlertSounds.FOLLOW_KEY));
+			assertEquals(p.name(), "true", store.raw(AlertSounds.FOLLOW_KEY));
+		}
+	}
+
+	@Test
+	public void freshStoreDefaultsOffAndResetLeavesItOff()
+	{
+		final PanelFixture.Store store = PanelFixture.store();
+		assertEquals("false", store.raw(AlertSounds.FOLLOW_KEY));
+		AlertSounds.resetStaleFollowGameVolume(store);
+		assertEquals("false", store.raw(AlertSounds.FOLLOW_KEY));
+	}
+
+	@Test
+	public void defaultIsOff()
+	{
+		org.junit.Assert.assertFalse(((CombatVitalsConfig) new CombatVitalsConfig(){}).alertFollowGameVolume());
+	}
+
 	@Test
 	public void gameVolumeMuteSilencesOwnSounds()
 	{

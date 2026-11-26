@@ -607,6 +607,10 @@ public class CombatVitalsPlugin extends Plugin
 	 */
 	private void startSidePanel()
 	{
+		if (!config.followGameVolumeReset())
+		{
+			AlertSounds.resetStaleFollowGameVolume(ConfigStore.of(configManager, Runnable::run));
+		}
 		final Map<String, ConfigItemDescriptor> items = new HashMap<>();
 		for (ConfigItemDescriptor d : configManager.getConfigDescriptor(config).getItems())
 		{
@@ -3297,10 +3301,15 @@ public class CombatVitalsPlugin extends Plugin
 			return;
 		}
 		// Read here, on the client thread: preferences are the game's own.
-		final int effective = AlertSounds.effectiveVolume(volume, config.alertFollowGameVolume(),
-			client.getPreferences().getSoundEffectVolume());
+		final boolean follow = config.alertFollowGameVolume();
+		final int gameVolume = client.getPreferences().getSoundEffectVolume();
+		final int effective = AlertSounds.effectiveVolume(volume, follow, gameVolume);
 		if (effective <= 0)
 		{
+			if (alertSounds.shouldHintSilent(follow, gameVolume))
+			{
+				consoleLine(ChatColorType.HIGHLIGHT, AlertSounds.SILENT_HINT);
+			}
 			return;
 		}
 		final float gain = AlertSounds.gain(effective);

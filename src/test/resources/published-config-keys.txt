@@ -262,3 +262,5 @@ autoSplashThreshold int
 forestryCorrectColour Color
 forestryLabels boolean
 forestryHighlightAll boolean
+# 2026-11-20: one-time clear of stale default-on Follow game volume (RUNELITE-481).
+followGameVolumeReset boolean
