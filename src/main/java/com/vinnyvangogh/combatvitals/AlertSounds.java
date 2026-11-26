@@ -145,6 +145,23 @@ final class AlertSounds
 		return effectiveVolume(100, followGame, gameVolume) <= 0;
 	}
 
+	/** The line said, once per client run, when Follow game volume made an alert silent. */
+	static final String SILENT_HINT = PluginName.NAME + ": alerts are silent because game sound is muted"
+		+ " (Follow game volume is on).";
+
+	private boolean silentHinted;
+
+	/** Whether to say {@link #SILENT_HINT} now: once while the client runs, never when the game is audible. Client thread only. */
+	boolean shouldHintSilent(boolean followGame, int gameVolume)
+	{
+		if (!silentByGameVolume(followGame, gameVolume) || silentHinted)
+		{
+			return false;
+		}
+		silentHinted = true;
+		return true;
+	}
+
 	/** The game's sound effects volume runs 0 to 127. */
 	static final int GAME_VOLUME_MAX = 127;
 
