@@ -31,6 +31,24 @@ final class GemstoneCrab
 	private static final long MIN_SPAN_MS = 30_000L;
 	private static final double MIN_DROP = 0.05;
 
+	/** Farther than this from where the crab or its shell was last seen, the player has left the crab area. */
+	static final int AREA_TILES = 32;
+
+	/** True when the player is on another plane or more than {@link #AREA_TILES} tiles from the last sighting. */
+	static boolean left(int fromX, int fromY, int fromPlane, int x, int y, int plane)
+	{
+		return plane != fromPlane || Math.max(Math.abs(x - fromX), Math.abs(y - fromY)) > AREA_TILES;
+	}
+
+	/** A cave farther than this from the crab or its shell is not the one to crawl through. */
+	static final int CAVE_TILES = 12;
+
+	/** True when a cave is on the crab's plane and within {@link #CAVE_TILES} tiles of where it was last seen. */
+	static boolean nearCrab(int crabX, int crabY, int crabPlane, int caveX, int caveY, int cavePlane)
+	{
+		return cavePlane == crabPlane && Math.max(Math.abs(caveX - crabX), Math.abs(caveY - crabY)) <= CAVE_TILES;
+	}
+
 	/** Where the remaining time came from. */
 	enum Source
 	{
