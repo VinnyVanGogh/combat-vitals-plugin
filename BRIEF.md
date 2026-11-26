@@ -887,6 +887,43 @@ licence is required and is already in `LICENSE`.
 
 ---
 
+## Runecrafting suite and Kourend Library: compliance verdicts (RUNELITE-467)
+
+Status: verdicts only, no code yet. Written from the task brief and the rules in
+`AGENTS.md`. Hub-plugin licences and page contents were **not** fetched (no
+network in this run) and are marked UNVERIFIED; check each before any code is
+borrowed. Default for every Hub plugin: reimplement from the behaviour, do not
+copy, unless its licence is confirmed BSD-compatible, and credit the source in
+`NOTICE`.
+
+Rule applied everywhere: information, highlight or alert only. Nothing sends
+input, adds server-bound menu entries, or removes menu options.
+
+| Source feature | Verdict | Shape in CV |
+|---|---|---|
+| Stock Runecraft: altar/rift highlights, Abyss obstacle highlights, pouch contents and degrade, essence counts | KEEP | Highlights and a Live-tab card. Stock code is BSD-2; `EssencePouch` already ports it with credit. |
+| Stock Kourend Library: book locations, customer request, shelf highlight | KEEP | Highlight of the shelf holding the requested book. Information only. |
+| GOTR progress bar, portal timer, points, elemental/catalytic balance | KEEP | Information only. Not a boss prediction: GOTR is a minigame, so keep to current state (no next-attack or hazard forecasting). |
+| GOTR "which guardians to use next" | RESHAPE | Guidance from current points balance only. Must not predict future spawns or highlight where to stand. Needs a second compliance read before building. |
+| GOTR equip alert (missing robe/talisman) | KEEP | Alert only. |
+| GOTR pouch time-to-degrade | KEEP | Computed from pouch degradation counter. |
+| GOTR Autopilot (gotr-autopilot) | DROP the automation, RESHAPE to guidance | Never acts for the player. Only the equip alert and pouch degrade time survive. |
+| Runecrafting Utilities (easy-empty) | RESHAPE | Any menu change that swaps or reorders entries (easy-empty) is risky. Keep only a visual "pouches ready to empty" hint, no menu edits. |
+| Dense runecrafting (zom-dense-essence): blocks, chunks, dark/blood/soul altar progress | KEEP | Progress counters and highlights of currently available blocks/chunks. |
+| Lap tracker (laps, runes/hour, xp/hour, lap time) | KEEP | Pure stats. |
+| ZMI helper: runes from ZMI | KEEP | Counter. |
+| ZMI helper: optimal path | RESHAPE | Highlights for the current step only; no multi-step route that tells the player where to stand. UNVERIFIED against precedent. |
+| Pneck reminder | KEEP | Charge count and alert. |
+| Pouch usage: fill/empty counts, essence held | KEEP | Counters. |
+| Immersive Skilling | UNVERIFIED | Page not read. Build only our own "focus mode" (hide clutter while skilling) after checking it does not unhide hidden interface components or alter click zones. |
+
+Open items before code: fetch each Hub page and licence, run
+`runelite-compliance` on the two RESHAPE guidance items, then build in this order:
+Runecraft parity, Kourend Library parity, GOTR, lap/ZMI/dense/pneck/pouch,
+focus mode. Each needs tests and a source-feature to CV-feature map in the PR.
+
+---
+
 ## Reporting
 
 At the end of Phase 0 and Phase 0.5, stop and report before continuing. If any
