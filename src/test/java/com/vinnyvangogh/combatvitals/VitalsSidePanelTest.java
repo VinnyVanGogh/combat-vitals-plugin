@@ -162,6 +162,26 @@ public class VitalsSidePanelTest
 	}
 
 	@Test
+	public void oneOffEventCardsHaveNoRepeatControlButStopAlertsDo()
+	{
+		onEdt(() -> panel.show(PanelLayout.Tab.ALERTS));
+		onEdt(() -> openAlert("INVENTORY_FULL"));
+		ui.assertShows("Repeat full inv");
+		for (String type : new String[]{"BIRD_NEST", "CLUE_DROP", "FORESTRY_EVENT", "PET", "LEVEL_UP",
+			"RANDOM_EVENT", "SKILLING_EVENT"})
+		{
+			onEdt(() -> openAlert(type));
+		}
+		// The sound row of an opened event card is there; its Repeat row is not.
+		ui.assertShows("Level up sound");
+		for (String name : new String[]{"Repeat bird nest", "Repeat clue drop", "Repeat Forestry", "Repeat pet",
+			"Repeat level up", "Repeat random", "Repeat gem/bottle"})
+		{
+			ui.assertHides(name);
+		}
+	}
+
+	@Test
 	public void testPlaysThatAlert()
 	{
 		onEdt(() -> panel.show(PanelLayout.Tab.ALERTS));

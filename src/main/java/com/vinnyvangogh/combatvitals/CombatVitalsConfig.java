@@ -2150,6 +2150,7 @@ public interface CombatVitalsConfig extends Config
 	String VOLUME_HELP = "Volume of this alert's own sounds. RuneLite's sound keeps RuneLite's volume.";
 	String REPEAT_HELP = " again every 'Repeat every (s)', softly, until you click or press a key in the client, "
 		+ "start again, log out, or 'Repeat for (min)' runs out. Only listens; never sends any input.";
+	String ONE_OFF_HELP = " Has no effect: one-off event alerts sound once and never repeat.";
 	String SHARED_HELP = " Used by every alert while 'Same for every alert' is on; each alert's own is kept for when "
 		+ "it is off.";
 
@@ -2194,7 +2195,7 @@ public interface CombatVitalsConfig extends Config
 	@ConfigItem(
 		keyName = "alertRepeatAll",
 		name = "Repeat every alert",
-		description = "Sound every alert" + REPEAT_HELP + SHARED_HELP,
+		description = "Sound every 'you stopped' alert (not one-off events like level-ups)" + REPEAT_HELP + SHARED_HELP,
 		section = alertsSection,
 		position = 26
 	)
@@ -2701,9 +2702,10 @@ public interface CombatVitalsConfig extends Config
 	@ConfigItem(
 		keyName = "repeatBirdNest",
 		name = "Repeat bird nest",
-		description = "Sound the bird nest alert" + REPEAT_HELP,
+		description = "Bird nest alert" + ONE_OFF_HELP,
 		section = alertsSection,
-		position = 67
+		position = 67,
+		hidden = true
 	)
 	default boolean repeatBirdNest()
 	{
@@ -2738,9 +2740,10 @@ public interface CombatVitalsConfig extends Config
 	@ConfigItem(
 		keyName = "repeatClueDrop",
 		name = "Repeat clue drop",
-		description = "Sound the clue drop alert" + REPEAT_HELP,
+		description = "Clue drop alert" + ONE_OFF_HELP,
 		section = alertsSection,
-		position = 70
+		position = 70,
+		hidden = true
 	)
 	default boolean repeatClueDrop()
 	{
@@ -2775,9 +2778,10 @@ public interface CombatVitalsConfig extends Config
 	@ConfigItem(
 		keyName = "repeatForestryEvent",
 		name = "Repeat Forestry",
-		description = "Sound the Forestry event alert" + REPEAT_HELP,
+		description = "Forestry event alert" + ONE_OFF_HELP,
 		section = alertsSection,
-		position = 73
+		position = 73,
+		hidden = true
 	)
 	default boolean repeatForestryEvent()
 	{
@@ -2812,9 +2816,10 @@ public interface CombatVitalsConfig extends Config
 	@ConfigItem(
 		keyName = "repeatPet",
 		name = "Repeat pet",
-		description = "Sound the pet alert" + REPEAT_HELP,
+		description = "Pet alert" + ONE_OFF_HELP,
 		section = alertsSection,
-		position = 76
+		position = 76,
+		hidden = true
 	)
 	default boolean repeatPet()
 	{
@@ -2849,9 +2854,10 @@ public interface CombatVitalsConfig extends Config
 	@ConfigItem(
 		keyName = "repeatLevelUp",
 		name = "Repeat level up",
-		description = "Sound the level up alert" + REPEAT_HELP,
+		description = "Level up alert" + ONE_OFF_HELP,
 		section = alertsSection,
-		position = 79
+		position = 79,
+		hidden = true
 	)
 	default boolean repeatLevelUp()
 	{
@@ -2886,9 +2892,10 @@ public interface CombatVitalsConfig extends Config
 	@ConfigItem(
 		keyName = "repeatRandomEvent",
 		name = "Repeat random",
-		description = "Sound the random event alert" + REPEAT_HELP,
+		description = "Random event alert" + ONE_OFF_HELP,
 		section = alertsSection,
-		position = 82
+		position = 82,
+		hidden = true
 	)
 	default boolean repeatRandomEvent()
 	{
@@ -3034,9 +3041,10 @@ public interface CombatVitalsConfig extends Config
 	@ConfigItem(
 		keyName = "repeatSkillingEvent",
 		name = "Repeat gem/bottle",
-		description = "Sound the mining and fishing events alert" + REPEAT_HELP,
+		description = "Mining and fishing events alert" + ONE_OFF_HELP,
 		section = alertsSection,
-		position = 94
+		position = 94,
+		hidden = true
 	)
 	default boolean repeatSkillingEvent()
 	{

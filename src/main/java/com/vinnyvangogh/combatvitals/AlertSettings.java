@@ -26,13 +26,15 @@ final class AlertSettings
 	 */
 	static AlertSettings of(CombatVitalsConfig config, ActivityAlerts.Type type)
 	{
-		final AlertSettings own = SkillingEvents.isEvent(type) ? ofEvent(config, type) : ofActivity(config, type);
+		final boolean event = SkillingEvents.isEvent(type);
+		final AlertSettings own = event ? ofEvent(config, type) : ofActivity(config, type);
 		if (!config.alertSoundShared())
 		{
-			return own;
+			// One-off events (level-up, bird nest, clue...) never repeat.
+			return event ? new AlertSettings(own.notification, own.sound, own.volume, false) : own;
 		}
 		return new AlertSettings(own.notification, config.alertSoundAll(), config.alertVolumeAll(),
-			config.alertRepeatAll());
+			!event && config.alertRepeatAll());
 	}
 
 	private static AlertSettings ofActivity(CombatVitalsConfig config, ActivityAlerts.Type type)
