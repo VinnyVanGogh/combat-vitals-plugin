@@ -7,6 +7,8 @@ import java.awt.Shape;
 import javax.inject.Inject;
 import net.runelite.api.GameObject;
 import net.runelite.api.NPC;
+import net.runelite.api.Point;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -39,13 +41,62 @@ class ForestryHighlightOverlay extends Overlay
 			return null;
 		}
 		final Color colour = config.forestryHighlightColour();
-		for (Object thing : plugin.getForestryMarks().wanted(kind -> wants(config, kind)))
+		final Color correct = config.forestryCorrectColour();
+		final boolean labels = config.forestryLabels();
+		for (ForestryMarks.Target target : plugin.getForestryMarks()
+			.targets(kind -> wants(config, kind), config.forestryHighlightAll(), VIEW))
 		{
-			final Shape hull = hull(thing);
+			final Color paint = target.correct ? correct : colour;
+			final Shape hull = hull(target.thing);
 			if (hull != null)
 			{
-				OverlayUtil.renderPolygon(graphics, hull, colour);
+				OverlayUtil.renderPolygon(graphics, hull, paint);
 			}
+			if (labels && target.label != null)
+			{
+				final Point at = labelAt(graphics, target);
+				if (at != null)
+				{
+					OverlayUtil.renderTextLocation(graphics, at, target.label, paint);
+				}
+			}
+		}
+		return null;
+	}
+
+	private static final ForestryMarks.View VIEW = new ForestryMarks.View()
+	{
+		@Override
+		public int idOf(Object thing)
+		{
+			if (thing instanceof GameObject)
+			{
+				return ((GameObject) thing).getId();
+			}
+			return thing instanceof NPC ? ((NPC) thing).getId() : -1;
+		}
+
+		@Override
+		public WorldPoint tile(Object thing)
+		{
+			if (thing instanceof GameObject)
+			{
+				return ((GameObject) thing).getWorldLocation();
+			}
+			return thing instanceof NPC ? ((NPC) thing).getWorldLocation() : null;
+		}
+	};
+
+	private static Point labelAt(Graphics2D graphics, ForestryMarks.Target target)
+	{
+		if (target.thing instanceof GameObject)
+		{
+			return ((GameObject) target.thing).getCanvasTextLocation(graphics, target.label, 0);
+		}
+		if (target.thing instanceof NPC)
+		{
+			final NPC npc = (NPC) target.thing;
+			return npc.getCanvasTextLocation(graphics, target.label, npc.getLogicalHeight() + 40);
 		}
 		return null;
 	}

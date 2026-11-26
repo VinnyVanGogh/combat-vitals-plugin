@@ -1,11 +1,13 @@
 package com.vinnyvangogh.combatvitals;
 
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Polygon;
 import java.awt.RenderingHints;
 import java.awt.Shape;
+import java.awt.Stroke;
 import javax.inject.Inject;
 import net.runelite.api.GameObject;
 import net.runelite.api.Point;
@@ -22,9 +24,10 @@ class GemstoneCrabArrowOverlay extends Overlay
 {
 	private static final Color ARROW = new Color(0, 200, 83);
 	private static final Color EDGE = new Color(0, 0, 0, 200);
-	private static final int HEIGHT = 18;
-	private static final int HALF_WIDTH = 10;
-	private static final int LIFT = 60;
+	private static final Color FILL = new Color(0, 200, 83, 70);
+	private static final int HEIGHT = 30;
+	private static final int HALF_WIDTH = 17;
+	private static final int LIFT = 80;
 
 	private final GemstoneCrabWatcher watcher;
 
@@ -48,8 +51,13 @@ class GemstoneCrabArrowOverlay extends Overlay
 		final Shape hull = cave.getConvexHull();
 		if (hull != null)
 		{
+			graphics.setColor(FILL);
+			graphics.fill(hull);
+			final Stroke before = graphics.getStroke();
+			graphics.setStroke(new BasicStroke(3f));
 			graphics.setColor(ARROW);
 			graphics.draw(hull);
+			graphics.setStroke(before);
 		}
 		final Point top = cave.getCanvasLocation(LIFT);
 		if (top != null)

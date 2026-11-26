@@ -514,6 +514,50 @@ looks "Lots" until it drops.
 Nothing is sent anywhere, no input is made, and nothing reads another
 player.
 
+### Forestry events: highlight the correct target, compliance (added 2026-11-20, task-6d52c576)
+
+Board, 2026-11-20: "highlight like the other plugins do, showing which object
+is the correct one." Run through `runelite-compliance`. Forestry events are
+gathering events, not bosses or wave minigames, so the Boss & Combat list does
+not apply; the feature as information given to the player is "which of the
+objects on screen the event wants you to use".
+
+Sources, read 2026-11-20: base `WoodcuttingPlugin` disassembled from the
+`net.runelite:client:1.13.6` jar (`solveCircles`: ritual circle NPC ids
+12520 to 12535, shape = offset / 4, colour = offset % 4, XOR of
+`(16 << shape) | (1 << colour)`, the circle whose bit survives; `activeFlowers`:
+a player on `HUMAN_PICKUPTABLE` (832) beside a bush NPC; `saplingOrder`: the
+chat line "The sapling seems to love X as the first/second/third ingredient");
+OSRS Wiki [Forestry](https://oldschool.runescape.wiki/w/Forestry),
+[Enchantment Ritual](https://oldschool.runescape.wiki/w/Enchantment_Ritual),
+[Pheasant Control](https://oldschool.runescape.wiki/w/Pheasant_Control),
+[Rising roots](https://oldschool.runescape.wiki/w/Rising_roots),
+[Friendly Ent](https://oldschool.runescape.wiki/w/Friendly_Ent_(Forestry_event)),
+[Struggling sapling](https://oldschool.runescape.wiki/w/Struggling_sapling_(Forestry_event)),
+[Flowering Tree](https://oldschool.runescape.wiki/w/Flowering_Tree_(Forestry_event)),
+[Poachers](https://oldschool.runescape.wiki/w/Poachers_(Forestry_event)),
+[Beehive](https://oldschool.runescape.wiki/w/Beehive_(Forestry_event)),
+[Woodcutting Leprechaun](https://oldschool.runescape.wiki/w/Woodcutting_Leprechaun_(Forestry_event)).
+Gameval ids from `runelite-api:1.13.6` (`NpcID`, `ObjectID`, `ObjectID1`,
+`AnimationID.HUMAN_PICKUPTABLE`). The Hub search found no Forestry plugin
+with real solver code (two candidates are unmodified templates); the base
+plugin is the only precedent.
+
+| Element | Nearest rule | Precedent | Verdict |
+|---|---|---|---|
+| Ritual circle to stand on, from the five circle NPC ids | "No automatic indicators showing where to stand" is under Boss & Combat (bosses, wave minigames); a Forestry event is neither | Base Woodcutting plugin computes and highlights the same circle (`solveCircles`) | Allowed, with precedent |
+| Flowering bush pair, from animations beside the bush and the "no flowers" chat lines | None | Base Woodcutting plugin's `activeFlowers`, which reads other players' pick-up animations the same way; nothing is kept beyond the scene or sent anywhere | Allowed, with precedent |
+| Sapling ingredient order, from the game's own chat lines | None | Base Woodcutting plugin's `saplingOrder` | Allowed, with precedent |
+| Special Rising Root, fox traps, rainbow, beeboxes, entlings, Freaky Forester: highlighted by spawn id | None | Base Woodcutting plugin outlines the same objects (roots, rainbows, nests, NPCs) | Allowed, with precedent |
+| Empty pheasant nest: a nest with no pheasant NPC within one tile | None: public scene state | The wiki's "retrieve a pheasant egg from an unoccupied nest" | Allowed; **rule unverified in game** |
+| Entling's prune, from its overhead request text | None: reads `OverheadTextChanged`, changes nothing | Wiki Friendly Ent request table (Breezy at the back = back; A leafy mullet = top and sides; Short back and sides = back and sides; Short on top = top) | Allowed; **table unverified in game** |
+
+Not done, deliberately: no clicking, no menu change, no prediction of which
+nest the pheasant lands in next, no hint arrows. The flowering bush pair is
+only shown once the game has shown it (someone tended both), and the
+sapling order only as the game says it; neither is guessed. Redwood trees,
+tree respawn timers and the leprechaun's luck remain with the base plugin.
+
 ### Splashing mode (AFK Magic), compliance (added 2026-11-18, task-56b61cd3)
 
 Board idea, 2026-11-18: when you attack a monster with a combat spell, show
