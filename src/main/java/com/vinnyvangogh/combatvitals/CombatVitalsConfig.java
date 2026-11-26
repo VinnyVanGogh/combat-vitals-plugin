@@ -1528,6 +1528,452 @@ public interface CombatVitalsConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "pillarLeftSplit",
+		name = "Left split",
+		description = "Split the left pillar in two: side by side (two thin lanes, full height) or top and "
+			+ "bottom (an upper and a lower half). Off keeps one pillar.",
+		section = pillarsSection,
+		position = 40
+	)
+	default PillarSplit pillarLeftSplit()
+	{
+		return PillarSplit.OFF;
+	}
+
+	@ConfigItem(
+		keyName = "pillarLeftSource",
+		name = "Left 1st source",
+		description = "What the left pillar shows: the whole pillar, or with a split its left lane or upper half. "
+			+ "Default is the pillar as it always was: your target's health while fighting, XP while skilling.",
+		section = pillarsSection,
+		position = 41
+	)
+	default PillarSource pillarLeftSource()
+	{
+		return PillarSource.DEFAULT;
+	}
+
+	@ConfigItem(
+		keyName = "pillarLeftSource2",
+		name = "Left 2nd source",
+		description = "With the left pillar split: what its right lane or lower half shows.",
+		section = pillarsSection,
+		position = 42
+	)
+	default PillarSource pillarLeftSource2()
+	{
+		return PillarSource.NONE;
+	}
+
+	@ConfigItem(
+		keyName = "pillarRightSplit",
+		name = "Right split",
+		description = "Split the right pillar in two: side by side (two thin lanes, full height) or top and "
+			+ "bottom (an upper and a lower half). Off keeps one pillar.",
+		section = pillarsSection,
+		position = 43
+	)
+	default PillarSplit pillarRightSplit()
+	{
+		return PillarSplit.OFF;
+	}
+
+	@ConfigItem(
+		keyName = "pillarRightSource",
+		name = "Right 1st source",
+		description = "What the right pillar shows: the whole pillar, or with a split its left lane or upper half. "
+			+ "Default is the pillar as it always was: inventory fill while skilling.",
+		section = pillarsSection,
+		position = 44
+	)
+	default PillarSource pillarRightSource()
+	{
+		return PillarSource.DEFAULT;
+	}
+
+	@ConfigItem(
+		keyName = "pillarRightSource2",
+		name = "Right 2nd source",
+		description = "With the right pillar split: what its right lane or lower half shows.",
+		section = pillarsSection,
+		position = 45
+	)
+	default PillarSource pillarRightSource2()
+	{
+		return PillarSource.NONE;
+	}
+
+	@ConfigItem(
+		keyName = "pillarRune",
+		name = "Rune counted",
+		description = "Which rune the Runes source counts: those in your inventory and rune pouch.",
+		section = pillarsSection,
+		position = 46
+	)
+	default PillarRune pillarRune()
+	{
+		return PillarRune.DEATH;
+	}
+
+	@ConfigItem(
+		keyName = "pillarRuneFull",
+		name = "Runes bar full at",
+		description = "How many runes fill the Runes bar.",
+		section = pillarsSection,
+		position = 47
+	)
+	@Range(min = 1, max = 100000)
+	default int pillarRuneFull()
+	{
+		return 1000;
+	}
+
+	@ConfigItem(
+		keyName = "pillarAmmoFull",
+		name = "Ammo bar full at",
+		description = "How many arrows, bolts, darts or cannonballs fill the Ammo and Cannonballs bars.",
+		section = pillarsSection,
+		position = 48
+	)
+	@Range(min = 1, max = 100000)
+	default int pillarAmmoFull()
+	{
+		return 200;
+	}
+
+	@ConfigItem(
+		keyName = "pillarAmmoLow",
+		name = "Ammo low at",
+		description = "The Ammo bar turns the low colour at or below this many. 0 turns the warning off.",
+		section = pillarsSection,
+		position = 49
+	)
+	@Range(min = 0, max = 100000)
+	default int pillarAmmoLow()
+	{
+		return 25;
+	}
+
+	@Alpha
+	@ConfigItem(
+		keyName = "pillarColourLow",
+		name = "Running low colour",
+		description = "The Ammo and Casts bars when they are at or below their warning level (Casts uses the "
+			+ "casts warning level).",
+		section = pillarsSection,
+		position = 50
+	)
+	default Color pillarColourLow()
+	{
+		return new Color(255, 60, 40);
+	}
+
+	@Alpha
+	@ConfigItem(
+		keyName = "pillarColourHitpoints",
+		name = "Hitpoints colour",
+		description = "The Hitpoints source's fill.",
+		section = pillarsSection,
+		position = 51
+	)
+	default Color pillarColourHitpoints()
+	{
+		return PillarSource.HITPOINTS.getDefaultColour();
+	}
+
+	@Alpha
+	@ConfigItem(
+		keyName = "pillarColourPrayer",
+		name = "Prayer colour",
+		description = "The Prayer source's fill.",
+		section = pillarsSection,
+		position = 52
+	)
+	default Color pillarColourPrayer()
+	{
+		return PillarSource.PRAYER.getDefaultColour();
+	}
+
+	@Alpha
+	@ConfigItem(
+		keyName = "pillarColourRun",
+		name = "Run energy colour",
+		description = "The Run energy source's fill.",
+		section = pillarsSection,
+		position = 53
+	)
+	default Color pillarColourRun()
+	{
+		return PillarSource.RUN_ENERGY.getDefaultColour();
+	}
+
+	@Alpha
+	@ConfigItem(
+		keyName = "pillarColourSpec",
+		name = "Special attack colour",
+		description = "The Special attack source's fill.",
+		section = pillarsSection,
+		position = 54
+	)
+	default Color pillarColourSpec()
+	{
+		return PillarSource.SPEC.getDefaultColour();
+	}
+
+	@Alpha
+	@ConfigItem(
+		keyName = "pillarColourAmmo",
+		name = "Ammo colour",
+		description = "The Ammo source's fill.",
+		section = pillarsSection,
+		position = 55
+	)
+	default Color pillarColourAmmo()
+	{
+		return PillarSource.AMMO.getDefaultColour();
+	}
+
+	@Alpha
+	@ConfigItem(
+		keyName = "pillarColourRunes",
+		name = "Runes colour",
+		description = "The Runes source's fill.",
+		section = pillarsSection,
+		position = 56
+	)
+	default Color pillarColourRunes()
+	{
+		return PillarSource.RUNES.getDefaultColour();
+	}
+
+	@Alpha
+	@ConfigItem(
+		keyName = "pillarColourCasts",
+		name = "Casts colour",
+		description = "The Casts left source's fill.",
+		section = pillarsSection,
+		position = 57
+	)
+	default Color pillarColourCasts()
+	{
+		return PillarSource.CASTS.getDefaultColour();
+	}
+
+	@Alpha
+	@ConfigItem(
+		keyName = "pillarColourCharges",
+		name = "Charges colour",
+		description = "The Charges source's fill.",
+		section = pillarsSection,
+		position = 58
+	)
+	default Color pillarColourCharges()
+	{
+		return PillarSource.CHARGES.getDefaultColour();
+	}
+
+	@Alpha
+	@ConfigItem(
+		keyName = "pillarColourCannonballs",
+		name = "Cannonballs colour",
+		description = "The Cannonballs source's fill.",
+		section = pillarsSection,
+		position = 59
+	)
+	default Color pillarColourCannonballs()
+	{
+		return PillarSource.CANNONBALLS.getDefaultColour();
+	}
+
+	@Alpha
+	@ConfigItem(
+		keyName = "pillarColourFood",
+		name = "Food colour",
+		description = "The Food source's fill.",
+		section = pillarsSection,
+		position = 60
+	)
+	default Color pillarColourFood()
+	{
+		return PillarSource.FOOD.getDefaultColour();
+	}
+
+	@Alpha
+	@ConfigItem(
+		keyName = "pillarColourDoses",
+		name = "Prayer doses colour",
+		description = "The Prayer doses source's fill.",
+		section = pillarsSection,
+		position = 61
+	)
+	default Color pillarColourDoses()
+	{
+		return PillarSource.PRAYER_DOSES.getDefaultColour();
+	}
+
+	@Alpha
+	@ConfigItem(
+		keyName = "pillarColourStamina",
+		name = "Stamina colour",
+		description = "The Stamina doses source's fill.",
+		section = pillarsSection,
+		position = 62
+	)
+	default Color pillarColourStamina()
+	{
+		return PillarSource.STAMINA.getDefaultColour();
+	}
+
+	@Alpha
+	@ConfigItem(
+		keyName = "pillarColourBoost",
+		name = "Stat boost colour",
+		description = "The Stat boost source's fill.",
+		section = pillarsSection,
+		position = 63
+	)
+	default Color pillarColourBoost()
+	{
+		return PillarSource.BOOST.getDefaultColour();
+	}
+
+	@ConfigItem(
+		keyName = "pillarPreset",
+		name = "Apply preset",
+		description = "Set both pillars to a built-in setup: Melee, Ranged, Magic, Bossing, Skilling or Minimal. "
+			+ "The setting returns to Keep current once applied.",
+		section = pillarsSection,
+		position = 64
+	)
+	default PillarPresetChoice pillarPreset()
+	{
+		return PillarPresetChoice.KEEP;
+	}
+
+	@ConfigItem(
+		keyName = "pillarSaveAs",
+		name = "Save pillars as",
+		description = "Type a name and press Enter to save the pillars as set now as your own preset (up to 24 "
+			+ "characters; the same name replaces it). The box clears when saved.",
+		section = pillarsSection,
+		position = 65
+	)
+	default String pillarSaveAs()
+	{
+		return "";
+	}
+
+	@ConfigItem(
+		keyName = "pillarLoad",
+		name = "Load preset named",
+		description = "Type the name of a built-in or saved preset and press Enter to apply it. The box clears.",
+		section = pillarsSection,
+		position = 66
+	)
+	default String pillarLoad()
+	{
+		return "";
+	}
+
+	@ConfigItem(
+		keyName = "pillarRename",
+		name = "Rename preset",
+		description = "Type \"old name > new name\" and press Enter to rename one of your saved presets.",
+		section = pillarsSection,
+		position = 67
+	)
+	default String pillarRename()
+	{
+		return "";
+	}
+
+	@ConfigItem(
+		keyName = "pillarDelete",
+		name = "Delete preset named",
+		description = "Type the name of one of your saved presets and press Enter to delete it.",
+		section = pillarsSection,
+		position = 68
+	)
+	default String pillarDelete()
+	{
+		return "";
+	}
+
+	@ConfigItem(
+		keyName = "pillarAutoSwitch",
+		name = "Auto-switch preset",
+		description = "Switch presets by itself: Skilling while a skilling session runs, otherwise Ranged, Magic or "
+			+ "Melee by the weapon you wield, using the four preset names below. It changes only when the weapon or "
+			+ "activity does, so a preset you pick by hand stays until then. Off by default.",
+		section = pillarsSection,
+		position = 69
+	)
+	default boolean pillarAutoSwitch()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "pillarAutoMelee",
+		name = "Auto: melee preset",
+		description = "The preset (built-in or yours) auto-switch uses with a melee weapon or none.",
+		section = pillarsSection,
+		position = 70
+	)
+	default String pillarAutoMelee()
+	{
+		return "Melee";
+	}
+
+	@ConfigItem(
+		keyName = "pillarAutoRanged",
+		name = "Auto: ranged preset",
+		description = "The preset (built-in or yours) auto-switch uses with a bow, crossbow, blowpipe or thrown weapon.",
+		section = pillarsSection,
+		position = 71
+	)
+	default String pillarAutoRanged()
+	{
+		return "Ranged";
+	}
+
+	@ConfigItem(
+		keyName = "pillarAutoMagic",
+		name = "Auto: magic preset",
+		description = "The preset (built-in or yours) auto-switch uses with a staff, wand or other magic weapon.",
+		section = pillarsSection,
+		position = 72
+	)
+	default String pillarAutoMagic()
+	{
+		return "Magic";
+	}
+
+	@ConfigItem(
+		keyName = "pillarAutoSkilling",
+		name = "Auto: skilling preset",
+		description = "The preset (built-in or yours) auto-switch uses while a skilling session runs.",
+		section = pillarsSection,
+		position = 73
+	)
+	default String pillarAutoSkilling()
+	{
+		return "Skilling";
+	}
+
+	/** Your saved pillar presets as JSON ({@link PillarPresets}); written by the plugin, never shown. */
+	@ConfigItem(
+		keyName = "pillarUserPresets",
+		name = "",
+		description = "",
+		hidden = true
+	)
+	default String pillarUserPresets()
+	{
+		return "";
+	}
+
+	@ConfigItem(
 		keyName = "pillarContainers",
 		name = "Containers on the pillar",
 		description = "With a log basket or fish barrel carried open and its contents known, the inventory "
