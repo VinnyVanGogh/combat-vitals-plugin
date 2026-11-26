@@ -67,6 +67,15 @@ final class UpdateNotes
 		return lines;
 	}
 
+	/** The title and every note, for a replay or a development build: no version check. */
+	static List<String> all()
+	{
+		final List<String> lines = new ArrayList<>(NOTES.size() + 1);
+		lines.add(TITLE);
+		lines.addAll(NOTES);
+		return lines;
+	}
+
 	/** Whether this version still has to be stored as seen; true with the setting off too. */
 	static boolean needsRecord(String lastSeen)
 	{

@@ -24,6 +24,7 @@ class GemstoneCrabWatcher
 	private final Client client;
 	private final CombatVitalsConfig config;
 	private final List<GameObject> caves = new ArrayList<>();
+	private final CaveArrow arrow = new CaveArrow();
 
 	/** Where the player stood when the crab or its shell was last in view. */
 	private WorldPoint anchor;
@@ -51,6 +52,7 @@ class GemstoneCrabWatcher
 		caves.clear();
 		crab = null;
 		anchor = null;
+		arrow.reset();
 	}
 
 	void caveSpawned(GameObject object)
@@ -72,8 +74,7 @@ class GemstoneCrabWatcher
 	 */
 	GameObject arrowTarget()
 	{
-		final GemstoneCrab.Reading r = reading();
-		if (r == null || !config.gemstoneCrabArrow() || !due(r))
+		if (!config.gemstoneCrab() || !config.gemstoneCrabArrow() || !arrow.shown())
 		{
 			return null;
 		}
@@ -145,6 +146,10 @@ class GemstoneCrabWatcher
 			// Teleported or walked away: the card, arrow and outline go with the crab.
 			reset();
 			return null;
+		}
+		if (here != null)
+		{
+			arrow.update(crabSeen, shellSeen, here.getX(), here.getY(), here.getPlane());
 		}
 		final GemstoneCrab.Alerts alerts = new GemstoneCrab.Alerts();
 		reading = crab.step(crabSeen, shellSeen, fraction, System.currentTimeMillis(), alerts);

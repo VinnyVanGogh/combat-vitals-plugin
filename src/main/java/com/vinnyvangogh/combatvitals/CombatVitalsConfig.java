@@ -750,8 +750,8 @@ public interface CombatVitalsConfig extends Config
 	@ConfigItem(
 		keyName = "gemstoneCrabArrow",
 		name = "Crab: cave arrow",
-		description = "Draw an arrow and an outline over the cave to crawl through, from the burrow warning until "
-			+ "the shell is gone. Drawing only: nothing is clicked for you.",
+		description = "Draw an arrow and an outline over the cave to crawl through, once the crab has burrowed, "
+			+ "until you crawl through or the next crab spawns. Drawing only: nothing is clicked for you.",
 		section = targetSection,
 		position = 26
 	)
@@ -1973,10 +1973,10 @@ public interface CombatVitalsConfig extends Config
 	@ConfigItem(
 		keyName = "forestryHighlights",
 		name = "Highlight Forestry events",
-		description = "Outline the parts of a Forestry event in the game view (glowing roots, the sapling, the "
-			+ "flowering bush, the leprechaun and the rest), as RuneLite's Woodcutting plugin does. Not covered "
-			+ "yet: mulch ingredients, fox trap, pheasant nest, ritual circle and the leprechaun's rainbow, so keep "
-			+ "RuneLite's Woodcutting plugin on for those for now.",
+		description = "Outline the right part of a Forestry event in the game view: the ritual circle to stand "
+			+ "on, the matching bush pair, the sapling's ingredients in order, an empty pheasant nest, the "
+			+ "special root, the rainbow, the fox traps, the beeboxes and the entlings. See 'All Forestry "
+			+ "parts' to outline the rest too.",
 		section = skillingSection,
 		position = 42
 	)
@@ -2105,7 +2105,46 @@ public interface CombatVitalsConfig extends Config
 		return true;
 	}
 
-	String SOUND_HELP = " RuneLite: your RuneLite notification sound, as before. Soft chime, Music box, Retro blip: "
+	@ConfigItem(
+		keyName = "forestryCorrectColour",
+		name = "Correct target colour",
+		description = "The outline colour for the part of a Forestry event to use: the circle to stand on, "
+			+ "the bush pair, the sapling ingredient in order, an empty nest, the special root.",
+		section = skillingSection,
+		position = 53
+	)
+	default Color forestryCorrectColour()
+	{
+		return new Color(0xFFD700);
+	}
+
+	@ConfigItem(
+		keyName = "forestryLabels",
+		name = "Forestry labels",
+		description = "A short label over the correct target, such as 'Step here' or '2nd'.",
+		section = skillingSection,
+		position = 54
+	)
+	default boolean forestryLabels()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "forestryHighlightAll",
+		name = "All Forestry parts",
+		description = "Also outline the parts that are not the right one (every circle, bush, nest and "
+			+ "ingredient), as RuneLite's Woodcutting plugin does. Off: only the correct target, once the "
+			+ "game has shown which it is. A bush pair and a sapling's order appear as the game tells you.",
+		section = skillingSection,
+		position = 55
+	)
+	default boolean forestryHighlightAll()
+	{
+		return false;
+	}
+
+	String SOUND_HELP =" RuneLite: your RuneLite notification sound, as before. Soft chime, Music box, Retro blip: "
 		+ "bundled sounds. Voice line: says what happened. My sounds: your own WAV in "
 		+ ".runelite/plugin-data/combat-vitals/sounds/";
 	String VOLUME_HELP = "Volume of this alert's own sounds. RuneLite's sound keeps RuneLite's volume.";
@@ -3080,6 +3119,18 @@ public interface CombatVitalsConfig extends Config
 	default boolean showUpdateNotes()
 	{
 		return true;
+	}
+
+	@ConfigItem(
+		keyName = "replayUpdateNotes",
+		name = "Show what's new again",
+		description = "Turn on to post the update notes in the game chat again, now or on your next login. It switches itself off.",
+		section = advancedSection,
+		position = 4
+	)
+	default boolean replayUpdateNotes()
+	{
+		return false;
 	}
 
 	/** The last version whose update notes were handled; written by the plugin, never shown. */

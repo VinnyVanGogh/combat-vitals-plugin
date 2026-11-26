@@ -140,7 +140,8 @@ final class PanelLayout
 
 	/** In the settings list only: the panel says where to find them. */
 	static final List<String> ADVANCED = Collections.unmodifiableList(Arrays.asList(
-		"opponentTimeout", "hideWhenHpHud", "hideWhenStockEnabled", "showUpdateNotes"));
+		"opponentTimeout", "hideWhenHpHud", "hideWhenStockEnabled", "showUpdateNotes",
+		"replayUpdateNotes"));
 
 	private static AlertRow row(ActivityAlerts.Type type, String label, String suffix, String toggle, String extra)
 	{
@@ -206,7 +207,8 @@ final class PanelLayout
 			new Group("New activity", "autoResetSession"),
 			Group.more("Forestry highlights", "forestryHighlights", "forestryHighlightColour", "highlightRisingRoots",
 				"highlightStrugglingSapling", "highlightFloweringBush", "highlightLeprechaun", "highlightPoachers",
-				"highlightPheasantControl", "highlightBeeHive", "highlightEnchantmentRitual", "highlightFriendlyEnt"));
+				"highlightPheasantControl", "highlightBeeHive", "highlightEnchantmentRitual", "highlightFriendlyEnt",
+				"forestryCorrectColour", "forestryLabels", "forestryHighlightAll"));
 	}
 
 	private static List<Group> lookGroups()

@@ -22,6 +22,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import javax.inject.Inject;
+import javax.inject.Named;
 import javax.swing.SwingUtilities;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -54,6 +55,7 @@ import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.HitsplatApplied;
+import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.InteractingChanged;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.ItemSpawned;
@@ -67,6 +69,7 @@ import net.runelite.client.ui.overlay.OverlayMenuEntry;
 import net.runelite.api.events.OverheadTextChanged;
 import net.runelite.api.events.StatChanged;
 import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.gameval.AnimationID;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.ItemID;
@@ -278,6 +281,11 @@ public class CombatVitalsPlugin extends Plugin
 
 	/** Whether this start found the player logged in: with no stored version, a fresh install (UpdateNotes). */
 	private boolean startedLoggedIn;
+
+	/** RuneLite's developer mode (a dev build started with --developer-mode): update notes show every login. */
+	@Inject
+	@Named("developerMode")
+	private boolean developerMode;
 
 	@Inject
 	private NextSpotOverlay nextSpotOverlay;
@@ -687,13 +695,39 @@ public class CombatVitalsPlugin extends Plugin
 	 */
 	private void postUpdateNotes()
 	{
+		// A development build keeps the version it was first run at, so the stored
+		// version would hide the notes for good: show them on every login there.
+		if (developerMode && config.showUpdateNotes())
+		{
+			postLines(UpdateNotes.all());
+			return;
+		}
 		final String lastSeen = config.lastSeenVersion();
 		if (!UpdateNotes.needsRecord(lastSeen))
 		{
 			return;
 		}
 		configManager.setConfiguration(CombatVitalsConfig.GROUP, CombatVitalsConfig.LAST_SEEN_VERSION, UpdateNotes.VERSION);
-		final List<String> lines = UpdateNotes.toShow(lastSeen, config.showUpdateNotes(), startedLoggedIn);
+		postLines(UpdateNotes.toShow(lastSeen, config.showUpdateNotes(), startedLoggedIn));
+	}
+
+	/** The "Show what's new again" setting: posts the notes now when logged in, and switches itself off. Client thread. */
+	private void replayUpdateNotes()
+	{
+		configManager.setConfiguration(CombatVitalsConfig.GROUP, "replayUpdateNotes", false);
+		if (client.getGameState() == GameState.LOGGED_IN)
+		{
+			postLines(UpdateNotes.all());
+		}
+		else
+		{
+			// Not logged in: nothing can be posted yet, so make the next login do it.
+			configManager.setConfiguration(CombatVitalsConfig.GROUP, CombatVitalsConfig.LAST_SEEN_VERSION, "");
+		}
+	}
+
+	private void postLines(List<String> lines)
+	{
 		for (int i = 0; i < lines.size(); i++)
 		{
 			consoleLine(i == 0 ? ChatColorType.HIGHLIGHT : ChatColorType.NORMAL, lines.get(i));
@@ -822,6 +856,10 @@ public class CombatVitalsPlugin extends Plugin
 		if (!CombatVitalsConfig.GROUP.equals(event.getGroup()))
 		{
 			return;
+		}
+		if ("replayUpdateNotes".equals(event.getKey()) && config.replayUpdateNotes())
+		{
+			clientThread.invoke(this::replayUpdateNotes);
 		}
 		splashOverlay.showMode(config.splashMode());
 		if ("splashMode".equals(event.getKey()) && !autoSwitching)
@@ -1013,6 +1051,10 @@ public class CombatVitalsPlugin extends Plugin
 	{
 		randomEventTurnedTo(event.getSource(), event.getTarget());
 		npcTurnedOnPlayer(event.getSource(), event.getTarget());
+		if (event.getSource() == client.getLocalPlayer())
+		{
+			forestryMarks.flowerClicked(event.getTarget());
+		}
 
 		// The single gate the whole compliance argument rests on: this plugin
 		// only ever tracks the target the user themselves engaged.
@@ -1600,6 +1642,7 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			// The base Woodcutting plugin reads the nest line from MESBOX too.
 			skillingEvents.chat(Text.removeTags(event.getMessage()));
+			forestryMarks.chat(Text.removeTags(event.getMessage()), this::forestryObjectName);
 			return;
 		}
 		if (event.getType() != ChatMessageType.GAMEMESSAGE && event.getType() != ChatMessageType.SPAM)
@@ -1608,6 +1651,7 @@ public class CombatVitalsPlugin extends Plugin
 		}
 
 		final String message = Text.removeTags(event.getMessage());
+		forestryMarks.chat(message, this::forestryObjectName);
 		if (ActivityAlerts.isStunMessage(message))
 		{
 			activityAlerts.stunned();
@@ -1729,10 +1773,10 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			stove = event.getGameObject();
 		}
+		forestryMarks.objectSpawned(event.getGameObject(), event.getGameObject().getId());
 		final SkillingEvents.Forestry kind = SkillingEvents.forestryObject(event.getGameObject().getId());
 		if (kind != null)
 		{
-			forestryMarks.spawned(kind, event.getGameObject());
 			skillingEvents.forestrySpawned(kind, event.getGameObject(), near(event.getGameObject().getWorldLocation()),
 				client.getTickCount());
 		}
@@ -1746,10 +1790,10 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			stove = null;
 		}
+		forestryMarks.despawned(event.getGameObject());
 		final SkillingEvents.Forestry kind = SkillingEvents.forestryObject(event.getGameObject().getId());
 		if (kind != null)
 		{
-			forestryMarks.despawned(kind, event.getGameObject());
 			skillingEvents.forestryDespawned(kind, event.getGameObject(), client.getTickCount());
 		}
 	}
@@ -1757,10 +1801,10 @@ public class CombatVitalsPlugin extends Plugin
 	@Subscribe
 	public void onNpcSpawned(NpcSpawned event)
 	{
+		forestryMarks.npcSpawned(event.getNpc(), event.getNpc().getId());
 		final SkillingEvents.Forestry kind = SkillingEvents.forestryNpc(event.getNpc().getId());
 		if (kind != null)
 		{
-			forestryMarks.spawned(kind, event.getNpc());
 			skillingEvents.forestrySpawned(kind, event.getNpc(), near(event.getNpc().getWorldLocation()),
 				client.getTickCount());
 		}
@@ -1839,10 +1883,10 @@ public class CombatVitalsPlugin extends Plugin
 			spotPathing.despawned(event.getNpc());
 		}
 
+		forestryMarks.despawned(event.getNpc());
 		final SkillingEvents.Forestry kind = SkillingEvents.forestryNpc(event.getNpc().getId());
 		if (kind != null)
 		{
-			forestryMarks.despawned(kind, event.getNpc());
 			skillingEvents.forestryDespawned(kind, event.getNpc(), client.getTickCount());
 		}
 
@@ -2042,11 +2086,37 @@ public class CombatVitalsPlugin extends Plugin
 	@Subscribe
 	public void onOverheadTextChanged(OverheadTextChanged event)
 	{
+		if (event.getActor() instanceof NPC)
+		{
+			forestryMarks.entlingSaid(event.getActor(), event.getOverheadText());
+		}
 		final OverheadChatHolder<Actor> holder = chatHolder;
 		if (holder != null && hidingChat() && chatCovered.contains(event.getActor()))
 		{
 			holder.hold(event.getActor(), event.getOverheadText());
 		}
+	}
+
+	/** A player picking from a flowering bush: the base Woodcutting plugin's pair rule. */
+	@Subscribe
+	public void onAnimationChanged(AnimationChanged event)
+	{
+		final Actor actor = event.getActor();
+		if (actor != null && actor.getAnimation() == AnimationID.HUMAN_PICKUPTABLE)
+		{
+			forestryMarks.flowerTended(actor.getInteracting());
+		}
+	}
+
+	/** A Forestry object's name, for matching the sapling's "loves X" line. */
+	private String forestryObjectName(Object thing)
+	{
+		if (thing instanceof GameObject)
+		{
+			final ObjectComposition def = client.getObjectDefinition(((GameObject) thing).getId());
+			return def == null ? null : def.getName();
+		}
+		return null;
 	}
 
 	private boolean hidingChat()
@@ -2176,19 +2246,24 @@ public class CombatVitalsPlugin extends Plugin
 		{
 			return;
 		}
-		if (crab.spawned)
+		// Gated by Gemstone Crab mode itself, not the combat half: the Board hears
+		// them while fighting the crab. See CrabAlerts for what is due and the sound.
+		for (CrabAlerts.Due due : CrabAlerts.due(crab, config))
 		{
-			notifier.notify(muted(config.gemstoneCrabAlertSpawn()), "A Gemstone Crab has appeared.");
+			crabAlert(due);
 		}
-		if (crab.aboutToBurrow)
-		{
-			notifier.notify(muted(config.gemstoneCrabAlertBurrow()), "The Gemstone Crab is about to burrow.");
-		}
-		if (crab.goNow)
-		{
-			notifier.notify(muted(config.gemstoneCrabAlertGo()),
-				"The Gemstone Crab has burrowed: crawl through the cave now.");
-		}
+	}
+
+	/**
+	 * One crab alert. RuneLite's notification alone is silent while the game
+	 * is focused, so the plugin's own sound plays too (see {@link CrabAlerts#sound}).
+	 */
+	private void crabAlert(CrabAlerts.Due due)
+	{
+		final AlertSounds.Plan plan = AlertSounds.plan(CrabAlerts.sound(config),
+			new ActivityAlerts.Alert(ActivityAlerts.Type.STUNNED, null), null, voiceLines, BUNDLED, name -> false);
+		notifier.notify(AlertSettings.quiet(due.notification, runeLiteConfig), due.message);
+		play(plan, CrabAlerts.volume(config));
 	}
 
 	/**
