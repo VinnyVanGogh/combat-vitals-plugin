@@ -28,6 +28,8 @@ class GemstoneCrabWatcher
 
 	/** Where the player stood when the crab or its shell was last in view. */
 	private WorldPoint anchor;
+	/** Where the crab or its shell was last seen; only a cave near it is worth an arrow. */
+	private WorldPoint crabAt;
 	private GemstoneCrab crab;
 	private int crabWarn = -1;
 	private volatile GemstoneCrab.Reading reading;
@@ -46,12 +48,30 @@ class GemstoneCrabWatcher
 		return config.gemstoneCrab() && r != null && r.phase != GemstoneCrab.Phase.NONE ? r : null;
 	}
 
+	/** Everything, caves included: logout, hop, or the mode switched off. */
 	void reset()
 	{
-		reading = null;
+		leave();
+		clearCaves();
+	}
+
+	/**
+	 * The scene is reloading: the caves seen belong to the old one. Caves of the
+	 * new area are added after this, as it loads, so they must not be wiped by
+	 * the leave reset a tick later.
+	 */
+	void clearCaves()
+	{
 		caves.clear();
+	}
+
+	/** The player left the crab area: the crab's card, timers and arrow go; the caves stay. */
+	private void leave()
+	{
+		reading = null;
 		crab = null;
 		anchor = null;
+		crabAt = null;
 		arrow.reset();
 	}
 
@@ -80,12 +100,22 @@ class GemstoneCrabWatcher
 		}
 		final Player self = client.getLocalPlayer();
 		final WorldPoint from = self == null ? null : self.getWorldLocation();
+		final WorldPoint crabSpot = crabAt;
+		if (crabSpot == null)
+		{
+			return null;
+		}
 		GameObject best = null;
 		int bestDistance = Integer.MAX_VALUE;
 		for (GameObject cave : caves)
 		{
 			final WorldPoint at = cave.getWorldLocation();
-			final int distance = from == null || at == null ? 0 : from.distanceTo2D(at);
+			if (at == null || !GemstoneCrab.nearCrab(crabSpot.getX(), crabSpot.getY(), crabSpot.getPlane(),
+				at.getX(), at.getY(), at.getPlane()))
+			{
+				continue;
+			}
+			final int distance = from == null ? 0 : from.distanceTo2D(at);
 			if (distance < bestDistance)
 			{
 				bestDistance = distance;
@@ -114,37 +144,48 @@ class GemstoneCrabWatcher
 		{
 			return null;
 		}
-		if (crab == null || crabWarn != config.gemstoneCrabWarnSeconds())
-		{
-			crabWarn = config.gemstoneCrabWarnSeconds();
-			crab = new GemstoneCrab(crabWarn);
-		}
 		boolean crabSeen = false;
 		boolean shellSeen = false;
 		double fraction = -1;
+		WorldPoint spot = null;
 		for (NPC npc : view.npcs())
 		{
 			if (npc.getId() == GemstoneCrab.CRAB_ID)
 			{
 				crabSeen = true;
 				fraction = fraction(npc);
+				spot = npc.getWorldLocation();
 			}
 			else if (npc.getId() == GemstoneCrab.SHELL_ID)
 			{
 				shellSeen = true;
+				spot = npc.getWorldLocation();
 			}
 		}
 		final Player self = client.getLocalPlayer();
-		final WorldPoint here = self == null ? null : self.getWorldLocation();
+		return observe(crabSeen, shellSeen, fraction, spot, self == null ? null : self.getWorldLocation(),
+			System.currentTimeMillis());
+	}
+
+	/** One tick's reading, with the client already read; the alerts due, or null when the player has left. */
+	GemstoneCrab.Alerts observe(boolean crabSeen, boolean shellSeen, double fraction, WorldPoint spot,
+		WorldPoint here, long now)
+	{
+		if (crab == null || crabWarn != warnSeconds())
+		{
+			crabWarn = warnSeconds();
+			crab = new GemstoneCrab(crabWarn);
+		}
 		if (crabSeen || shellSeen)
 		{
 			anchor = here;
+			crabAt = spot;
 		}
 		else if (anchor != null && here != null
 			&& GemstoneCrab.left(anchor.getX(), anchor.getY(), anchor.getPlane(), here.getX(), here.getY(), here.getPlane()))
 		{
 			// Teleported or walked away: the card, arrow and outline go with the crab.
-			reset();
+			leave();
 			return null;
 		}
 		if (here != null)
@@ -152,8 +193,25 @@ class GemstoneCrabWatcher
 			arrow.update(crabSeen, shellSeen, here.getX(), here.getY(), here.getPlane());
 		}
 		final GemstoneCrab.Alerts alerts = new GemstoneCrab.Alerts();
-		reading = crab.step(crabSeen, shellSeen, fraction, System.currentTimeMillis(), alerts);
+		reading = crab.step(crabSeen, shellSeen, fraction, now, alerts);
 		return alerts;
+	}
+
+	private int warnSeconds()
+	{
+		return config == null ? 0 : config.gemstoneCrabWarnSeconds();
+	}
+
+	/** The raw read-out, whatever the config says; for tests. */
+	GemstoneCrab.Reading latest()
+	{
+		return reading;
+	}
+
+	/** Whether the cave arrow is up, whatever the config says; for tests. */
+	boolean arrowUp()
+	{
+		return arrow.shown();
 	}
 
 	/** The health bar as 0..1, or -1 while the client is not showing one. */

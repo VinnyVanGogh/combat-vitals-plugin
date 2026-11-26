@@ -981,6 +981,8 @@ public class CombatVitalsPlugin extends Plugin
 			case LOADING:
 				// Every object in view despawns and spawns again: not new Forestry events.
 				skillingEvents.sceneLoading();
+				// The caves seen belong to the old scene; the new one's arrive as it loads.
+				gemstoneCrabWatcher.clearCaves();
 				break;
 			default:
 				break;

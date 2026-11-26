@@ -2,7 +2,9 @@ package com.vinnyvangogh.combatvitals;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import net.runelite.api.coords.WorldPoint;
 import org.junit.Test;
 
 public class GemstoneCrabTest
@@ -198,5 +200,48 @@ public class GemstoneCrabTest
 		assertTrue(GemstoneCrab.left(1000, 2000, 0, 1033, 2000, 0));
 		assertTrue(GemstoneCrab.left(1000, 2000, 0, 3000, 3000, 0));
 		assertTrue(GemstoneCrab.left(1000, 2000, 0, 1000, 2000, 1));
+	}
+
+	@Test
+	public void onlyACaveNearTheCrabIsOne()
+	{
+		assertTrue(GemstoneCrab.nearCrab(1000, 2000, 0, 1012, 1988, 0));
+		assertFalse(GemstoneCrab.nearCrab(1000, 2000, 0, 1013, 2000, 0));
+		assertFalse(GemstoneCrab.nearCrab(1000, 2000, 0, 3000, 3000, 0));
+		assertFalse(GemstoneCrab.nearCrab(1000, 2000, 0, 1000, 2000, 1));
+	}
+
+	@Test
+	public void teleportingAwayClearsTheCardAndArrowAndReturningResumesOnTheNextSpawn()
+	{
+		final GemstoneCrabWatcher w = new GemstoneCrabWatcher(null, null);
+		final WorldPoint crabSpot = new WorldPoint(1000, 2000, 0);
+		final WorldPoint far = new WorldPoint(3200, 3200, 0);
+		long t = 0;
+
+		// Fighting the crab, then it burrows: the shell is up and so is the arrow.
+		w.observe(true, false, 0.5, crabSpot, crabSpot, t += 600);
+		assertEquals(GemstoneCrab.Phase.CRAB, w.latest().phase);
+		w.observe(false, true, -1, crabSpot, crabSpot, t += 600);
+		assertEquals(GemstoneCrab.Phase.SHELL, w.latest().phase);
+		assertTrue(w.arrowUp());
+
+		// Teleport away mid-burrow: the card and the arrow are gone, nothing is due.
+		assertNull(w.observe(false, false, -1, null, far, t += 600));
+		assertNull(w.latest());
+		assertFalse(w.arrowUp());
+
+		// Still away, nothing seen: it stays cleared.
+		w.observe(false, false, -1, null, far, t += 600);
+		assertFalse(w.arrowUp());
+
+		// Back at the crab: nothing from before returns, and the next spawn shows again.
+		w.observe(false, false, -1, null, crabSpot, t += 600);
+		assertFalse(w.arrowUp());
+		w.observe(true, false, 1.0, crabSpot, crabSpot, t += 600);
+		assertEquals(GemstoneCrab.Phase.CRAB, w.latest().phase);
+		w.observe(false, true, -1, crabSpot, crabSpot, t += 600);
+		assertEquals(GemstoneCrab.Phase.SHELL, w.latest().phase);
+		assertTrue(w.arrowUp());
 	}
 }

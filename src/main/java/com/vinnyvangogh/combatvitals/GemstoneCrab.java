@@ -40,6 +40,15 @@ final class GemstoneCrab
 		return plane != fromPlane || Math.max(Math.abs(x - fromX), Math.abs(y - fromY)) > AREA_TILES;
 	}
 
+	/** A cave farther than this from the crab or its shell is not the one to crawl through. */
+	static final int CAVE_TILES = 12;
+
+	/** True when a cave is on the crab's plane and within {@link #CAVE_TILES} tiles of where it was last seen. */
+	static boolean nearCrab(int crabX, int crabY, int crabPlane, int caveX, int caveY, int cavePlane)
+	{
+		return cavePlane == crabPlane && Math.max(Math.abs(caveX - crabX), Math.abs(caveY - crabY)) <= CAVE_TILES;
+	}
+
 	/** Where the remaining time came from. */
 	enum Source
 	{
